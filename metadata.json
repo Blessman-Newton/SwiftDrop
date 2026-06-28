@@ -1,0 +1,6 @@
+{
+  "name": "SwiftDrop Rider",
+  "description": "Secure courier dashboard, hotzone analytics, earnings tracking, and interactive route navigation for SwiftDrop riders.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
