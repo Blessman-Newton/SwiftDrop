@@ -1,0 +1,6 @@
+{
+  "name": "SwiftDrop",
+  "description": "A premium logistics fleet monitoring, operations dashboard, and financial reporting platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
