@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary-container: var(--on-primary-container);
+  --color-background: var(--background);
+  --color-on-background: var(--on-background);
+  --color-surface: var(--surface);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-error: var(--error);
+  --color-error-container: var(--error-container);
+  --color-on-error: var(--on-error);
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary-container: var(--on-secondary-container);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+  --color-on-tertiary-container: var(--on-tertiary-container);
+  
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --primary: #006c49;
+  --primary-container: #10b981;
+  --on-primary-container: #00422b;
+  --background: #f4fbf4;
+  --on-background: #161d19;
+  --surface: #f4fbf4;
+  --on-surface: #161d19;
+  --on-surface-variant: #3c4a42;
+  --surface-container: #e8f0e9;
+  --surface-container-low: #eef6ee;
+  --surface-container-high: #e3eae3;
+  --surface-container-highest: #dde4dd;
+  --surface-container-lowest: #ffffff;
+  --outline: #6c7a71;
+  --outline-variant: #bbcabf;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error: #ffffff;
+  --secondary: #565e74;
+  --secondary-container: #dae2fd;
+  --on-secondary-container: #5c647a;
+  --tertiary: #9d4300;
+  --tertiary-container: #ff7e2d;
+  --on-tertiary-container: #622700;
+}
+
+.dark {
+  --primary: #4edea3;
+  --primary-container: #005236;
+  --on-primary-container: #a6f5cc;
+  --background: #101612;
+  --on-background: #e1e3e0;
+  --surface: #101612;
+  --on-surface: #e1e3e0;
+  --on-surface-variant: #bfc9c1;
+  --surface-container: #1b211d;
+  --surface-container-low: #181d1a;
+  --surface-container-high: #262b27;
+  --surface-container-highest: #313632;
+  --surface-container-lowest: #0c100e;
+  --outline: #89938c;
+  --outline-variant: #404942;
+  --error: #ffb4ab;
+  --error-container: #93000a;
+  --on-error: #690005;
+  --secondary: #bec6e0;
+  --secondary-container: #3f465c;
+  --on-secondary-container: #dae2fd;
+  --tertiary: #ffb690;
+  --tertiary-container: #783200;
+  --on-tertiary-container: #ffdbca;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom scrollbar hiding helper */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

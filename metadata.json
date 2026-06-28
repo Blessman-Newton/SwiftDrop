@@ -1,0 +1,6 @@
+{
+  "name": "SwiftDrop Merchant",
+  "description": "Premium merchant portal for real-time menu management, analytics, order tracking, and delivery speed optimization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
