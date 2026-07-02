@@ -85,7 +85,7 @@ export default function DashboardView({ setActiveScreen }: DashboardViewProps) {
           </div>
           <div className="mt-4">
             <p className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider">Daily Revenue</p>
-            <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface mt-1 group-hover:text-primary-container transition-colors">$42,910</h3>
+            <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface mt-1 group-hover:text-primary-container transition-colors">GHS 42,910</h3>
           </div>
         </motion.div>
 

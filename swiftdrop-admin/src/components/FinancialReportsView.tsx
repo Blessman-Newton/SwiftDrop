@@ -59,16 +59,16 @@ export default function FinancialReportsView() {
   // Line points for Revenue Growth Trend line SVG
   // Based on SVG dimensions 1000 x 200
   const points = [
-    { x: 0, y: 180, label: 'Oct 01', val: '$84,200' },
-    { x: 100, y: 160, label: 'Oct 04', val: '$96,500' },
-    { x: 200, y: 140, label: 'Oct 08', val: '$110,400' },
-    { x: 300, y: 150, label: 'Oct 11', val: '$104,900' },
-    { x: 400, y: 110, label: 'Oct 15', val: '$132,800' },
-    { x: 500, y: 120, label: 'Oct 18', val: '$128,100' },
-    { x: 600, y: 80, label: 'Oct 22', val: '$156,000' },
-    { x: 700, y: 90, label: 'Oct 25', val: '$149,900' },
-    { x: 800, y: 60, label: 'Oct 29', val: '$178,400' },
-    { x: 1000, y: 40, label: 'Today', val: '$198,900' }
+    { x: 0, y: 180, label: 'Oct 01', val: 'GHS 84,200' },
+    { x: 100, y: 160, label: 'Oct 04', val: 'GHS 96,500' },
+    { x: 200, y: 140, label: 'Oct 08', val: 'GHS 110,400' },
+    { x: 300, y: 150, label: 'Oct 11', val: 'GHS 104,900' },
+    { x: 400, y: 110, label: 'Oct 15', val: 'GHS 132,800' },
+    { x: 500, y: 120, label: 'Oct 18', val: 'GHS 128,100' },
+    { x: 600, y: 80, label: 'Oct 22', val: 'GHS 156,000' },
+    { x: 700, y: 90, label: 'Oct 25', val: 'GHS 149,900' },
+    { x: 800, y: 60, label: 'Oct 29', val: 'GHS 178,400' },
+    { x: 1000, y: 40, label: 'Today', val: 'GHS 198,900' }
   ];
 
   return (
@@ -109,8 +109,8 @@ export default function FinancialReportsView() {
             </span>
           </div>
           <p className="text-outline text-xs font-bold uppercase tracking-wider mb-1">Gross Volume</p>
-          <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface">$2,842,900</h3>
-          <p className="text-outline text-xs mt-1.5 font-semibold">v.s. $2,527,022 last month</p>
+          <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface">GHS 2,842,900</h3>
+          <p className="text-outline text-xs mt-1.5 font-semibold">v.s. GHS 2,527,022 last month</p>
         </div>
 
         {/* Net Platform Fees */}
@@ -124,7 +124,7 @@ export default function FinancialReportsView() {
             </span>
           </div>
           <p className="text-outline text-xs font-bold uppercase tracking-wider mb-1">Net Platform Fees</p>
-          <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface">$426,180</h3>
+          <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface">GHS 426,180</h3>
           <p className="text-outline text-xs mt-1.5 font-semibold">15% average commission</p>
         </div>
 
@@ -139,7 +139,7 @@ export default function FinancialReportsView() {
             </span>
           </div>
           <p className="text-outline text-xs font-bold uppercase tracking-wider mb-1">Payout Totals</p>
-          <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface">$2,416,720</h3>
+          <h3 className="text-2xl md:text-3xl font-extrabold text-on-surface">GHS 2,416,720</h3>
           <p className="text-outline text-xs mt-1.5 font-semibold">To 1,240 partners this month</p>
         </div>
       </section>
@@ -322,7 +322,7 @@ export default function FinancialReportsView() {
                 <div className="h-2 w-full bg-surface-container-high dark:bg-surface-container rounded-full overflow-hidden">
                   <div className="h-full bg-primary w-[72%] rounded-full"></div>
                 </div>
-                <p className="text-right text-[10px] font-bold text-outline">$2,046,888</p>
+                <p className="text-right text-[10px] font-bold text-outline">GHS 2,046,888</p>
               </div>
 
               {/* Parcel Express */}
@@ -337,7 +337,7 @@ export default function FinancialReportsView() {
                 <div className="h-2 w-full bg-surface-container-high dark:bg-surface-container rounded-full overflow-hidden">
                   <div className="h-full bg-tertiary w-[24%] rounded-full"></div>
                 </div>
-                <p className="text-right text-[10px] font-bold text-outline">$682,296</p>
+                <p className="text-right text-[10px] font-bold text-outline">GHS 682,296</p>
               </div>
 
               {/* Marketplace Services */}
@@ -352,7 +352,7 @@ export default function FinancialReportsView() {
                 <div className="h-2 w-full bg-surface-container-high dark:bg-surface-container rounded-full overflow-hidden">
                   <div className="h-full bg-secondary w-[4%] rounded-full"></div>
                 </div>
-                <p className="text-right text-[10px] font-bold text-outline">$113,716</p>
+                <p className="text-right text-[10px] font-bold text-outline">GHS 113,716</p>
               </div>
             </div>
           </div>
