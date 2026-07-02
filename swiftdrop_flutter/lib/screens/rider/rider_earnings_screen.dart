@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/merchant_providers.dart';
+import '../../providers/rider_providers.dart';
 import '../../models/models.dart';
-import '../../data/riders.dart';
 
 class RiderEarningsScreen extends ConsumerStatefulWidget {
   const RiderEarningsScreen({super.key});
@@ -18,16 +18,11 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
   late AnimationController _chartController;
   late Animation<double> _chartAnimation;
 
-  double _balance = 1482.50;
+  double _balance = 0;
   bool _showWithdrawModal = false;
   String _withdrawAmount = '';
   bool _isWithdrawing = false;
   bool _withdrawSuccess = false;
-
-  final double _maxWithdraw = 1482.50;
-
-  static const List<double> _barHeights = [0.40, 0.65, 0.55, 0.85, 0.95, 0.30, 0.20];
-  static const List<String> _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   void initState() {
@@ -53,7 +48,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
 
   void _handleWithdraw() {
     final amount = double.tryParse(_withdrawAmount);
-    if (amount == null || amount <= 0 || amount > _maxWithdraw) return;
+    if (amount == null || amount <= 0 || amount > _balance) return;
 
     setState(() => _isWithdrawing = true);
     Future.delayed(const Duration(seconds: 2), () {
@@ -64,7 +59,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           _balance -= amount;
         });
         ref.read(riderToastsProvider.notifier).add(
-          'Successfully withdrew \$${amount.toStringAsFixed(2)}',
+          'Successfully withdrew GHS ${amount.toStringAsFixed(2)}',
           ToastType.success,
         );
       }
@@ -82,6 +77,10 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final earningsAsync = ref.watch(riderEarningsProvider);
+    final transactionsAsync = ref.watch(riderTransactionsProvider);
+    final statsAsync = ref.watch(riderStatsProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
       body: Stack(
@@ -90,20 +89,52 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
             children: [
               _buildAppBar(),
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                  child: Column(
-                    children: [
-                      _buildBalanceCard(),
-                      const SizedBox(height: 20),
-                      _buildWeeklyRevenueCard(),
-                      const SizedBox(height: 20),
-                      _buildDetailedBreakdown(),
-                      const SizedBox(height: 20),
-                      _buildPerformanceMetrics(),
-                      const SizedBox(height: 20),
-                      _buildRecentTransactions(),
-                    ],
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(riderEarningsProvider);
+                    ref.invalidate(riderTransactionsProvider);
+                    ref.invalidate(riderStatsProvider);
+                  },
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                    child: Column(
+                      children: [
+                        earningsAsync.when(
+                          data: (data) {
+                            if (data != null) {
+                              _balance = (data['available_balance'] as num?)?.toDouble() ?? 0;
+                            }
+                            return _buildBalanceCard(data);
+                          },
+                          loading: () => _buildBalanceCard(null),
+                          error: (_, __) => _buildBalanceCard(null),
+                        ),
+                        const SizedBox(height: 20),
+                        earningsAsync.when(
+                          data: (data) => _buildWeeklyRevenueCard(data),
+                          loading: () => _buildWeeklyRevenueCard(null),
+                          error: (_, __) => _buildWeeklyRevenueCard(null),
+                        ),
+                        const SizedBox(height: 20),
+                        earningsAsync.when(
+                          data: (data) => _buildDetailedBreakdown(data),
+                          loading: () => _buildDetailedBreakdown(null),
+                          error: (_, __) => _buildDetailedBreakdown(null),
+                        ),
+                        const SizedBox(height: 20),
+                        statsAsync.when(
+                          data: (data) => _buildPerformanceMetrics(data),
+                          loading: () => _buildPerformanceMetrics(null),
+                          error: (_, __) => _buildPerformanceMetrics(null),
+                        ),
+                        const SizedBox(height: 20),
+                        transactionsAsync.when(
+                          data: (txs) => _buildRecentTransactions(txs),
+                          loading: () => _buildRecentTransactions([]),
+                          error: (_, __) => _buildRecentTransactions([]),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -150,7 +181,10 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(Map<String, dynamic>? data) {
+    if (data != null) {
+      _balance = (data['available_balance'] as num?)?.toDouble() ?? 0;
+    }
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -194,7 +228,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                '\$${_balance.toStringAsFixed(2)}',
+                'GHS ${_balance.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
@@ -263,7 +297,16 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
     );
   }
 
-  Widget _buildWeeklyRevenueCard() {
+  Widget _buildWeeklyRevenueCard(Map<String, dynamic>? data) {
+    final weeklyEarnings = (data?['weekly_earnings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final avgDaily = (data?['average_daily'] as num?)?.toDouble() ?? 0;
+    final totalTrips = data?['total_trips'] as int? ?? 0;
+
+    final dayLabels = weeklyEarnings.map((e) => (e['day'] ?? '').toString().substring(0, 3)).toList();
+    final dayAmounts = weeklyEarnings.map((e) => (e['amount'] as num?)?.toDouble() ?? 0.0).toList();
+    final maxAmount = dayAmounts.isNotEmpty ? dayAmounts.reduce((a, b) => a > b ? a : b) : 1.0;
+    final barHeights = dayAmounts.map((a) => maxAmount > 0 ? a / maxAmount : 0.0).toList();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -316,11 +359,22 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
             child: AnimatedBuilder(
               animation: _chartAnimation,
               builder: (context, child) {
+                if (dayLabels.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No earnings data yet',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: const Color(0xFF94A3B8),
+                      ),
+                    ),
+                  );
+                }
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
-                  children: List.generate(7, (index) {
-                    final fraction = _barHeights[index];
-                    final isActive = index == 4;
+                  children: List.generate(dayLabels.length, (index) {
+                    final fraction = index < barHeights.length ? barHeights[index] : 0.0;
+                    final isActive = index == dayLabels.length - 1;
                     final barHeight = 140.0 * fraction * _chartAnimation.value;
 
                     return Expanded(
@@ -354,7 +408,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              _dayLabels[index],
+                              dayLabels[index],
                               style: GoogleFonts.inter(
                                 fontSize: 10,
                                 fontWeight: isActive ? FontWeight.w800 : FontWeight.w700,
@@ -397,7 +451,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '\$211.70',
+                          'GHS ${avgDaily.toStringAsFixed(2)}',
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -429,7 +483,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '124',
+                          '$totalTrips',
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
@@ -448,12 +502,17 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
     );
   }
 
-  Widget _buildDetailedBreakdown() {
+  Widget _buildDetailedBreakdown(Map<String, dynamic>? data) {
+    final totalBaseFare = (data?['total_base_fare'] as num?)?.toDouble() ?? 0;
+    final totalTips = (data?['total_tips'] as num?)?.toDouble() ?? 0;
+    final totalBonuses = (data?['total_bonuses'] as num?)?.toDouble() ?? 0;
+    final totalFees = (data?['total_fees'] as num?)?.toDouble() ?? 0;
+
     final items = [
       _BreakdownItem(
         icon: Icons.receipt_long,
         label: 'Base Fare',
-        amount: '+\$940.00',
+        amount: '+GHS ${totalBaseFare.toStringAsFixed(2)}',
         iconBg: const Color(0xFFF8FAFC),
         iconColor: const Color(0xFF94A3B8),
         valueColor: const Color(0xFF1E293B),
@@ -461,7 +520,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
       _BreakdownItem(
         icon: Icons.add_circle_outline,
         label: 'Tips',
-        amount: '+\$325.50',
+        amount: '+GHS ${totalTips.toStringAsFixed(2)}',
         iconBg: const Color(0xFFF8FAFC),
         iconColor: const Color(0xFF94A3B8),
         valueColor: const Color(0xFF059669),
@@ -469,7 +528,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
       _BreakdownItem(
         icon: Icons.star_outline,
         label: 'Bonuses',
-        amount: '+\$280.00',
+        amount: '+GHS ${totalBonuses.toStringAsFixed(2)}',
         iconBg: const Color(0xFFF8FAFC),
         iconColor: const Color(0xFF94A3B8),
         valueColor: const Color(0xFF059669),
@@ -477,7 +536,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
       _BreakdownItem(
         icon: Icons.remove_circle_outline,
         label: 'Fees',
-        amount: '-\$63.00',
+        amount: '-GHS ${totalFees.toStringAsFixed(2)}',
         iconBg: const Color(0xFFF8FAFC),
         iconColor: const Color(0xFF94A3B8),
         valueColor: const Color(0xFFF43F5E),
@@ -554,14 +613,18 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
     );
   }
 
-  Widget _buildPerformanceMetrics() {
+  Widget _buildPerformanceMetrics(Map<String, dynamic>? stats) {
+    final rating = (stats?['rating'] as num?)?.toDouble() ?? 0;
+    final acceptanceRate = (stats?['acceptance_rate'] as num?)?.toDouble() ?? 0;
+    final cancellationRate = (stats?['cancellation_rate'] as num?)?.toDouble() ?? 0;
+
     return Row(
       children: [
         Expanded(
           child: _buildMetricCard(
             icon: Icons.star,
             iconColor: const Color(0xFFF59E0B),
-            value: '4.92',
+            value: rating.toStringAsFixed(2),
             label: 'Rating',
             filled: true,
           ),
@@ -571,7 +634,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           child: _buildMetricCard(
             icon: Icons.check_circle,
             iconColor: const Color(0xFF059669),
-            value: '98%',
+            value: '${acceptanceRate.toStringAsFixed(0)}%',
             label: 'Acceptance',
             filled: false,
           ),
@@ -581,7 +644,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           child: _buildMetricCard(
             icon: Icons.shield,
             iconColor: const Color(0xFFF43F5E),
-            value: '0.8%',
+            value: '${cancellationRate.toStringAsFixed(1)}%',
             label: 'Canceled',
             filled: false,
           ),
@@ -641,7 +704,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
     );
   }
 
-  Widget _buildRecentTransactions() {
+  Widget _buildRecentTransactions(List<Map<String, dynamic>> transactions) {
     return Column(
       children: [
         Row(
@@ -666,56 +729,70 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           ],
         ),
         const SizedBox(height: 14),
-        ...riderTransactions.take(3).map((tx) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color.fromRGBO(241, 245, 249, 0.5),
+        if (transactions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Text(
+                'No transactions yet',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: const Color(0xFF94A3B8),
+                ),
               ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tx.title,
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF1E293B),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        tx.timestamp,
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF94A3B8),
-                        ),
-                      ),
-                    ],
-                  ),
+          )
+        else
+          ...transactions.take(3).map((tx) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color.fromRGBO(241, 245, 249, 0.5),
                 ),
-                Text(
-                  '+\$${tx.amount.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFF059669),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tx['title'] ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          tx['created_at'] ?? '',
+                          style: GoogleFonts.inter(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Text(
+                    '+GHS ${((tx['amount'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF059669),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        )),
+          )),
       ],
     );
   }
@@ -770,7 +847,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Available: \$${_balance.toStringAsFixed(2)}',
+                  'Available: GHS ${_balance.toStringAsFixed(2)}',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: const Color(0xFF94A3B8),

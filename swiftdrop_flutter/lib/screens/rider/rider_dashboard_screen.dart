@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/merchant_providers.dart';
+import '../../providers/rider_providers.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
-import '../../data/riders.dart';
 
 class RiderDashboardScreen extends ConsumerStatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -33,49 +34,76 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
     super.dispose();
   }
 
-  void _toggleOnline() {
+  void _toggleOnline() async {
     final current = ref.read(riderOnlineProvider);
     final next = !current;
-    ref.read(riderOnlineProvider.notifier).state = next;
+    final service = ref.read(riderServiceProvider);
+    bool success;
     if (next) {
-      _toggleController.forward();
+      success = await service.goOnline();
     } else {
-      _toggleController.reverse();
+      success = await service.goOffline();
+    }
+    if (mounted && success) {
+      ref.read(riderOnlineProvider.notifier).state = next;
+      if (next) {
+        _toggleController.forward();
+        ref.read(riderToastsProvider.notifier).add('You are now online', ToastType.success);
+      } else {
+        _toggleController.reverse();
+        ref.read(riderToastsProvider.notifier).add('You are now offline', ToastType.info);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isOnline = ref.watch(riderOnlineProvider);
+    final dashboardAsync = ref.watch(riderDashboardProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildAppBar(context),
-              const SizedBox(height: 20),
-              _buildWelcomeSection(),
-              const SizedBox(height: 20),
-              _buildOnlineToggle(),
-              if (isOnline) ...[
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(riderDashboardProvider);
+            ref.invalidate(riderTransactionsProvider);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAppBar(context),
                 const SizedBox(height: 20),
-                _buildPendingOrderBanner(context),
+                _buildWelcomeSection(),
+                const SizedBox(height: 20),
+                _buildOnlineToggle(),
+                if (isOnline) ...[
+                  const SizedBox(height: 20),
+                  _buildPendingOrderBanner(context),
+                ],
+                const SizedBox(height: 20),
+                dashboardAsync.when(
+                  data: (data) => _buildEarningsCard(data),
+                  loading: () => _buildEarningsCard(null),
+                  error: (_, __) => _buildEarningsCard(null),
+                ),
+                const SizedBox(height: 20),
+                dashboardAsync.when(
+                  data: (data) => _buildGoalProgressCard(data),
+                  loading: () => _buildGoalProgressCard(null),
+                  error: (_, __) => _buildGoalProgressCard(null),
+                ),
+                const SizedBox(height: 20),
+                _buildRecentActivityCard(context),
+                const SizedBox(height: 20),
+                _buildNearbyHotzonesCard(),
+                const SizedBox(height: 20),
+                _buildTipsSection(),
+                const SizedBox(height: 24),
               ],
-              const SizedBox(height: 20),
-              _buildEarningsCard(),
-              const SizedBox(height: 20),
-              _buildGoalProgressCard(),
-              const SizedBox(height: 20),
-              _buildRecentActivityCard(context),
-              const SizedBox(height: 20),
-              _buildNearbyHotzonesCard(),
-              const SizedBox(height: 20),
-              _buildTipsSection(),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
@@ -150,13 +178,24 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
   }
 
   Widget _buildWelcomeSection() {
+    final user = ref.watch(currentUserProvider);
+    final hour = DateTime.now().hour;
+    String greeting;
+    if (hour < 12) {
+      greeting = 'Good Morning';
+    } else if (hour < 17) {
+      greeting = 'Good Afternoon';
+    } else {
+      greeting = 'Good Evening';
+    }
+    final name = user?.displayName ?? 'Rider';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Good Morning, Alex',
+            '$greeting, $name',
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -342,7 +381,14 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
     );
   }
 
-  Widget _buildEarningsCard() {
+  Widget _buildEarningsCard(Map<String, dynamic>? data) {
+    final todayEarnings = (data?['today_earnings'] as num?)?.toDouble() ?? 0.0;
+    final todayTrips = data?['today_trips'] as int? ?? 0;
+    final todayDistance = (data?['today_distance'] as num?)?.toDouble() ?? 0.0;
+    final todayActiveTime = data?['today_active_time'] as int? ?? 0;
+    final activeHours = todayActiveTime ~/ 60;
+    final activeMins = todayActiveTime % 60;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -408,7 +454,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              '\$142.50',
+              'GHS ${todayEarnings.toStringAsFixed(2)}',
               style: GoogleFonts.inter(
                 fontSize: 30,
                 fontWeight: FontWeight.w800,
@@ -424,9 +470,9 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
             const SizedBox(height: 12),
             Row(
               children: [
-                _buildStatColumn('TRIPS', '12'),
-                _buildStatColumn('DISTANCE', '34.2 km'),
-                _buildStatColumn('ACTIVE', '5h 20m'),
+                _buildStatColumn('TRIPS', '$todayTrips'),
+                _buildStatColumn('DISTANCE', '${todayDistance.toStringAsFixed(1)} km'),
+                _buildStatColumn('ACTIVE', '${activeHours}h ${activeMins}m'),
               ],
             ),
           ],
@@ -463,7 +509,14 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
     );
   }
 
-  Widget _buildGoalProgressCard() {
+  Widget _buildGoalProgressCard(Map<String, dynamic>? data) {
+    final dailyGoal = (data?['daily_goal'] as num?)?.toDouble() ?? 200.0;
+    final goalProgress = (data?['goal_progress'] as num?)?.toDouble() ?? 0.0;
+    final todayEarnings = (data?['today_earnings'] as num?)?.toDouble() ?? 0.0;
+    final remaining = dailyGoal - todayEarnings;
+    final remainingStr = remaining > 0 ? remaining.toStringAsFixed(2) : '0.00';
+    final progressFraction = (goalProgress / 100).clamp(0.0, 1.0);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -504,7 +557,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
             ),
             const SizedBox(height: 4),
             Text(
-              '\$200.00 Goal',
+              'GHS ${dailyGoal.toStringAsFixed(2)} Goal',
               style: GoogleFonts.inter(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -516,7 +569,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '71% Reached',
+                  '${goalProgress.toStringAsFixed(0)}% Reached',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -524,7 +577,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
                   ),
                 ),
                 Text(
-                  '\$57.50 left',
+                  'GHS $remainingStr left',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -542,7 +595,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
                 borderRadius: BorderRadius.circular(9999),
               ),
               child: FractionallySizedBox(
-                widthFactor: 0.71,
+                widthFactor: progressFraction,
                 alignment: Alignment.centerLeft,
                 child: Container(
                   height: 8,
@@ -555,7 +608,9 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Complete 3 more orders to hit your daily bonus!',
+              goalProgress >= 100
+                  ? 'Congratulations! You hit your daily bonus!'
+                  : 'Complete more orders to hit your daily bonus!',
               style: GoogleFonts.inter(
                 fontSize: 10,
                 color: const Color.fromRGBO(209, 250, 229, 0.9),
@@ -568,6 +623,8 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
   }
 
   Widget _buildRecentActivityCard(BuildContext context) {
+    final transactionsAsync = ref.watch(riderTransactionsProvider);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -621,84 +678,120 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
               height: 1,
               color: const Color(0xFFF8FAFC),
             ),
-            if (riderActivityItems.isNotEmpty)
-              ...riderActivityItems.take(3).map((item) {
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      child: GestureDetector(
-                        onTap: () {
-                          ref.read(riderToastsProvider.notifier).add(
-                                'Viewing ${item.merchant}',
-                                ToastType.info,
-                              );
-                        },
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFECFDF5),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.local_shipping_rounded,
-                                color: Color(0xFF059669),
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.merchant,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: const Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${item.distance} - ${item.timeAgo}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF94A3B8),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Text(
-                              '\$${item.amount.toStringAsFixed(2)}',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: const Color(0xFF059669),
-                              ),
-                            ),
-                          ],
+            transactionsAsync.when(
+              data: (transactions) {
+                if (transactions.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Center(
+                      child: Text(
+                        'No recent activity',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: const Color(0xFF94A3B8),
                         ),
                       ),
                     ),
-                    if (item != riderActivityItems.take(3).last)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          width: double.infinity,
-                          height: 1,
-                          color: const Color(0xFFF8FAFC),
+                  );
+                }
+                return Column(
+                  children: transactions.take(3).map((tx) {
+                    final isLast = tx == transactions.take(3).last;
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  tx['is_bonus'] == true
+                                      ? Icons.star
+                                      : Icons.local_shipping_rounded,
+                                  color: const Color(0xFF059669),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tx['title'] ?? '',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF1E293B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      tx['created_at'] ?? '',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF94A3B8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                'GHS ${((tx['amount'] as num?)?.toDouble() ?? 0).toStringAsFixed(2)}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF059669),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                  ],
+                        if (!isLast)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Container(
+                              width: double.infinity,
+                              height: 1,
+                              color: const Color(0xFFF8FAFC),
+                            ),
+                          ),
+                      ],
+                    );
+                  }).toList(),
                 );
-              }),
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              error: (_, __) => Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Text(
+                    'Failed to load activity',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 4),
           ],
         ),

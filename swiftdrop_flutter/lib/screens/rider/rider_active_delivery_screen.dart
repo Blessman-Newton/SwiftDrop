@@ -5,9 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/merchant_providers.dart';
 import '../../providers/providers.dart';
+import '../../providers/rider_providers.dart';
 
 import '../../models/models.dart';
-import '../../data/riders.dart';
 
 class RiderActiveDeliveryScreen extends ConsumerStatefulWidget {
   const RiderActiveDeliveryScreen({super.key});
@@ -58,6 +58,9 @@ class _RiderActiveDeliveryScreenState
     _phoneBounceAnimation = Tween<double>(begin: 0.0, end: -12.0).animate(
       CurvedAnimation(parent: _phoneBounceController, curve: Curves.easeInOut),
     );
+
+    // Refresh active delivery data from API
+    Future.microtask(() => ref.invalidate(riderActiveDeliveryProvider));
   }
 
   @override
@@ -92,20 +95,32 @@ class _RiderActiveDeliveryScreenState
     });
   }
 
-  void _advanceDeliveryState() {
+  void _advanceDeliveryState() async {
+    final service = ref.read(riderServiceProvider);
     final current = ref.read(deliveryStateProvider);
     switch (current) {
       case DeliveryState.enRoute:
-        ref.read(deliveryStateProvider.notifier).state = DeliveryState.arrived;
-        ref.read(riderToastsProvider.notifier).add('Status updated: Arrived at The Burger Loft. Please verify order items.', ToastType.success);
+        final success = await service.updateDeliveryStatus('arrived');
+        if (mounted && success) {
+          ref.read(deliveryStateProvider.notifier).state = DeliveryState.arrived;
+          ref.read(riderToastsProvider.notifier).add('Status updated: Arrived at pickup. Please verify order items.', ToastType.success);
+        }
         break;
       case DeliveryState.arrived:
-        ref.read(deliveryStateProvider.notifier).state = DeliveryState.collected;
-        ref.read(riderToastsProvider.notifier).add('Items collected! Route configured for 123 Oak St.', ToastType.success);
+        final success = await service.updateDeliveryStatus('picked_up');
+        if (mounted && success) {
+          ref.read(deliveryStateProvider.notifier).state = DeliveryState.collected;
+          ref.read(riderToastsProvider.notifier).add('Items collected! Route configured for dropoff.', ToastType.success);
+        }
         break;
       case DeliveryState.collected:
-        ref.read(riderToastsProvider.notifier).add('Launching GPS Navigation Guide...', ToastType.success);
-        context.go('/rider/navigation');
+        final success = await service.updateDeliveryStatus('delivered');
+        if (mounted && success) {
+          ref.read(riderToastsProvider.notifier).add('Delivery completed! GPS Navigation Guide finished.', ToastType.success);
+          ref.invalidate(riderActiveDeliveryProvider);
+          ref.invalidate(riderDashboardProvider);
+          context.go('/rider/dashboard');
+        }
         break;
     }
   }
@@ -124,7 +139,57 @@ class _RiderActiveDeliveryScreenState
         estimatedTime: '8 mins',
       );
     }
-    return currentDelivery;
+    final deliveryAsync = ref.read(riderActiveDeliveryProvider);
+    return deliveryAsync.when(
+      data: (data) {
+        if (data == null) {
+          return DeliveryInfo(
+            orderNo: 'No active delivery',
+            items: [],
+            pickupName: '',
+            pickupAddress: '',
+            dropoffAddress: '',
+            dropoffDetails: '',
+            total: 0,
+            estimatedTime: '',
+          );
+        }
+        final items = (data['items'] as List?)
+                ?.map((i) => i['name']?.toString() ?? '')
+                .toList() ??
+            [];
+        return DeliveryInfo(
+          orderNo: data['order_no'] ?? '',
+          items: items,
+          pickupName: data['restaurant_name'] ?? '',
+          pickupAddress: data['pickup_address'] ?? '',
+          dropoffAddress: data['delivery_address'] ?? '',
+          dropoffDetails: data['delivery_notes'] ?? '',
+          total: (data['total'] as num?)?.toDouble() ?? 0,
+          estimatedTime: '8 mins',
+        );
+      },
+      loading: () => DeliveryInfo(
+        orderNo: 'Loading...',
+        items: [],
+        pickupName: '',
+        pickupAddress: '',
+        dropoffAddress: '',
+        dropoffDetails: '',
+        total: 0,
+        estimatedTime: '',
+      ),
+      error: (_, __) => DeliveryInfo(
+        orderNo: 'Error',
+        items: [],
+        pickupName: '',
+        pickupAddress: '',
+        dropoffAddress: '',
+        dropoffDetails: '',
+        total: 0,
+        estimatedTime: '',
+      ),
+    );
   }
 
   void _resetDeliveryState() {
