@@ -16,7 +16,6 @@ import '../screens/parcel_booking_screen.dart';
 import '../screens/parcel_package_details_screen.dart';
 import '../screens/parcel_service_selection_screen.dart';
 import '../screens/parcel_summary_screen.dart';
-import '../screens/booking_history_screen.dart';
 import '../screens/rider/rider_dashboard_screen.dart';
 import '../screens/rider/rider_active_delivery_screen.dart';
 import '../screens/rider/rider_navigation_screen.dart';
@@ -46,18 +45,20 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/food-delivery',
               builder: (_, __) => const FoodDeliveryScreen()),
           GoRoute(
-            path: '/restaurant/:id',
-            builder: (_, state) => RestaurantDetailScreen(
-              restaurantId: state.pathParameters['id']!,
-            ),
-          ),
-          GoRoute(path: '/map', builder: (_, __) => const MapTrackingScreen()),
-          GoRoute(
               path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(
               path: '/orders', builder: (_, __) => const OrdersScreen()),
         ],
       ),
+
+      // Full-screen routes (no bottom nav)
+      GoRoute(
+        path: '/restaurant/:id',
+        builder: (_, state) => RestaurantDetailScreen(
+          restaurantId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(path: '/map', builder: (_, __) => const MapTrackingScreen()),
 
       // Parcel routes
       GoRoute(
@@ -73,10 +74,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/parcel/summary',
           builder: (_, __) => const ParcelSummaryScreen()),
 
-      // Booking History (standalone, not inside bottom nav)
+      // Booking History → redirect to orders (same data source)
       GoRoute(
           path: '/booking-history',
-          builder: (_, __) => const BookingHistoryScreen()),
+          builder: (_, __) => const OrdersScreen()),
 
       // Rider routes
       ShellRoute(
