@@ -92,6 +92,26 @@ class FoodItem {
         imageUrl: map['imageUrl'] as String,
         category: FoodCategory.values[map['category'] as int],
       );
+
+  factory FoodItem.fromApiResponse(Map<String, dynamic> json) => FoodItem(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        description: (json['description'] as String?) ?? '',
+        price: (json['price'] as num).toDouble(),
+        imageUrl: (json['image_url'] as String?) ?? '',
+        category: _parseFoodCategory(json['category'] as String?),
+      );
+
+  static FoodCategory _parseFoodCategory(String? cat) {
+    switch (cat) {
+      case 'popular': return FoodCategory.popular;
+      case 'combos': return FoodCategory.combos;
+      case 'burgers': return FoodCategory.burgers;
+      case 'sides': return FoodCategory.sides;
+      case 'drinks': return FoodCategory.drinks;
+      default: return FoodCategory.popular;
+    }
+  }
 }
 
 class Restaurant {
@@ -128,6 +148,46 @@ class Restaurant {
   double get distanceMiles {
     final match = RegExp(r'([\d.]+)').firstMatch(distance);
     return match != null ? double.parse(match.group(1)!) : 99.0;
+  }
+
+  factory Restaurant.fromApiResponse(Map<String, dynamic> json) {
+    final deliveryFee = (json['delivery_fee'] as num?) ?? 0;
+    return Restaurant(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      tags: List<String>.from(json['tags'] ?? []),
+      deliveryTime: (json['delivery_time'] as String?) ?? '',
+      deliveryFee: deliveryFee == 0 ? 'Free' : '\$${deliveryFee.toStringAsFixed(2)}',
+      distance: '',
+      imageUrl: (json['image_url'] as String?) ?? '',
+      isPopular: (json['tags'] as List?)?.contains('Top Rated') ?? false,
+      isTrending: (json['tags'] as List?)?.contains('Trending') ?? false,
+      isNew: (json['tags'] as List?)?.contains('New') ?? false,
+      menu: [],
+    );
+  }
+
+  factory Restaurant.fromDetailResponse(Map<String, dynamic> json) {
+    final deliveryFee = (json['delivery_fee'] as num?) ?? 0;
+    final menuItems = (json['menu_items'] as List?)
+            ?.map((item) => FoodItem.fromApiResponse(item))
+            .toList() ??
+        [];
+    return Restaurant(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      tags: List<String>.from(json['tags'] ?? []),
+      deliveryTime: (json['delivery_time'] as String?) ?? '',
+      deliveryFee: deliveryFee == 0 ? 'Free' : '\$${deliveryFee.toStringAsFixed(2)}',
+      distance: '',
+      imageUrl: (json['image_url'] as String?) ?? '',
+      isPopular: (json['tags'] as List?)?.contains('Top Rated') ?? false,
+      isTrending: (json['tags'] as List?)?.contains('Trending') ?? false,
+      isNew: (json['tags'] as List?)?.contains('New') ?? false,
+      menu: menuItems,
+    );
   }
 }
 
@@ -167,6 +227,9 @@ class Order {
   final DateTime createdAt;
   final int? trackingStep;
   final String? courierId;
+  final String orderType;
+  final String? parcelPickupLocation;
+  final String? parcelDeliveryLocation;
 
   const Order({
     required this.id,
@@ -178,6 +241,9 @@ class Order {
     required this.createdAt,
     this.trackingStep,
     this.courierId,
+    this.orderType = 'food',
+    this.parcelPickupLocation,
+    this.parcelDeliveryLocation,
   });
 
   Order copyWith({
@@ -190,6 +256,9 @@ class Order {
     DateTime? createdAt,
     int? trackingStep,
     String? courierId,
+    String? orderType,
+    String? parcelPickupLocation,
+    String? parcelDeliveryLocation,
   }) {
     return Order(
       id: id ?? this.id,
@@ -201,6 +270,9 @@ class Order {
       createdAt: createdAt ?? this.createdAt,
       trackingStep: trackingStep ?? this.trackingStep,
       courierId: courierId ?? this.courierId,
+      orderType: orderType ?? this.orderType,
+      parcelPickupLocation: parcelPickupLocation ?? this.parcelPickupLocation,
+      parcelDeliveryLocation: parcelDeliveryLocation ?? this.parcelDeliveryLocation,
     );
   }
 
@@ -214,6 +286,9 @@ class Order {
         'createdAt': createdAt.toIso8601String(),
         'trackingStep': trackingStep,
         'courierId': courierId,
+        'orderType': orderType,
+        'parcelPickupLocation': parcelPickupLocation,
+        'parcelDeliveryLocation': parcelDeliveryLocation,
       };
 
   factory Order.fromMap(Map<String, dynamic> map) => Order(
@@ -228,6 +303,9 @@ class Order {
         createdAt: DateTime.parse(map['createdAt'] as String),
         trackingStep: map['trackingStep'] as int?,
         courierId: map['courierId'] as String?,
+        orderType: map['orderType'] as String? ?? 'food',
+        parcelPickupLocation: map['parcelPickupLocation'] as String?,
+        parcelDeliveryLocation: map['parcelDeliveryLocation'] as String?,
       );
 }
 
@@ -291,4 +369,137 @@ class ToastMessage {
   final String message;
   final ToastType type;
   ToastMessage({required this.id, required this.message, required this.type});
+}
+
+// ==================== PARCEL BOOKING ====================
+
+class ParcelBooking {
+  final String pickupLocation;
+  final String deliveryLocation;
+  final String packageType;
+  final double weight;
+  final double? lengthCm;
+  final double? widthCm;
+  final double? heightCm;
+  final String? riderNotes;
+  final String deliveryService;
+  final bool insuranceIncluded;
+  final String? promoCode;
+
+  const ParcelBooking({
+    this.pickupLocation = '',
+    this.deliveryLocation = '',
+    this.packageType = 'box',
+    this.weight = 5,
+    this.lengthCm,
+    this.widthCm,
+    this.heightCm,
+    this.riderNotes,
+    this.deliveryService = 'swift',
+    this.insuranceIncluded = false,
+    this.promoCode,
+  });
+
+  double get deliveryFee {
+    switch (deliveryService) {
+      case 'economy':
+        return 4.50;
+      case 'standard':
+        return 7.00;
+      case 'swift':
+      default:
+        return 12.50;
+    }
+  }
+
+  double get serviceFee => 1.50;
+  double get insuranceFee => insuranceIncluded ? 1.00 : 0.0;
+  double get discount => _promoDiscount;
+  double get total => deliveryFee + serviceFee + insuranceFee - discount;
+
+  double get _promoDiscount {
+    if (promoCode == null) return 0;
+    switch (promoCode!.toUpperCase()) {
+      case 'SWIFT15':
+        return total * 0.15;
+      case 'WELCOME10':
+        return total * 0.10;
+      case 'FREE5':
+        return 5.0;
+      default:
+        return 0;
+    }
+  }
+
+  String get deliveryEta {
+    switch (deliveryService) {
+      case 'economy':
+        return '4-6 hrs';
+      case 'standard':
+        return '2 hrs';
+      case 'swift':
+      default:
+        return '30-45 min';
+    }
+  }
+
+  String get serviceDisplayName {
+    switch (deliveryService) {
+      case 'economy':
+        return 'Economy';
+      case 'standard':
+        return 'Standard';
+      case 'swift':
+      default:
+        return 'SwiftDrop Express';
+    }
+  }
+
+  String get packageTypeLabel {
+    switch (packageType) {
+      case 'document':
+        return 'Document';
+      case 'electronics':
+        return 'Electronics';
+      case 'fragile':
+        return 'Fragile';
+      case 'box':
+      default:
+        return 'Box';
+    }
+  }
+
+  String get packageSizeLabel {
+    if (weight <= 2) return 'Small (<2kg)';
+    if (weight <= 10) return 'Medium (<10kg)';
+    return 'Large (${weight.round()}kg)';
+  }
+
+  ParcelBooking copyWith({
+    String? pickupLocation,
+    String? deliveryLocation,
+    String? packageType,
+    double? weight,
+    double? lengthCm,
+    double? widthCm,
+    double? heightCm,
+    String? riderNotes,
+    String? deliveryService,
+    bool? insuranceIncluded,
+    String? promoCode,
+  }) {
+    return ParcelBooking(
+      pickupLocation: pickupLocation ?? this.pickupLocation,
+      deliveryLocation: deliveryLocation ?? this.deliveryLocation,
+      packageType: packageType ?? this.packageType,
+      weight: weight ?? this.weight,
+      lengthCm: lengthCm ?? this.lengthCm,
+      widthCm: widthCm ?? this.widthCm,
+      heightCm: heightCm ?? this.heightCm,
+      riderNotes: riderNotes ?? this.riderNotes,
+      deliveryService: deliveryService ?? this.deliveryService,
+      insuranceIncluded: insuranceIncluded ?? this.insuranceIncluded,
+      promoCode: promoCode ?? this.promoCode,
+    );
+  }
 }

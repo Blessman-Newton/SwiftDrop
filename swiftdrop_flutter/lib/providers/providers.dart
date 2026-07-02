@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
-import '../data/restaurants.dart';
+import '../services/order_service.dart';
 
 // ==================== CART (with persistence) ====================
 
@@ -16,8 +16,20 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     _load();
   }
 
+  String? _restaurantId;
+
+  String? get restaurantId => _restaurantId;
+
+  bool get isCartEmpty => state.isEmpty;
+
+  /// Returns true if the cart belongs to a different restaurant.
+  bool belongsToRestaurant(String restaurantId) {
+    return _restaurantId != null && _restaurantId != restaurantId && state.isNotEmpty;
+  }
+
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    _restaurantId = prefs.getString('swiftdrop_cart_restaurant');
     final json = prefs.getString('swiftdrop_cart');
     if (json != null) {
       try {
@@ -33,9 +45,21 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     final prefs = await SharedPreferences.getInstance();
     final json = jsonEncode(state.map((ci) => ci.toMap()).toList());
     await prefs.setString('swiftdrop_cart', json);
+    if (_restaurantId != null) {
+      await prefs.setString('swiftdrop_cart_restaurant', _restaurantId!);
+    } else {
+      await prefs.remove('swiftdrop_cart_restaurant');
+    }
   }
 
-  void addItem(FoodItem item) {
+  /// Adds an item for a specific restaurant. If the cart has items from a
+  /// different restaurant, clears the cart first.
+  void addItem(FoodItem item, {String? restaurantId}) {
+    if (restaurantId != null && _restaurantId != null && _restaurantId != restaurantId) {
+      state = [];
+    }
+    if (restaurantId != null) _restaurantId = restaurantId;
+
     final index = state.indexWhere((ci) => ci.foodItem.id == item.id);
     if (index >= 0) {
       state = [
@@ -64,6 +88,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
         ];
       } else {
         state = state.where((ci) => ci.foodItem.id != foodItemId).toList();
+        if (state.isEmpty) _restaurantId = null;
       }
     }
     _save();
@@ -71,6 +96,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
 
   void clearCart() {
     state = [];
+    _restaurantId = null;
     _save();
   }
 
@@ -122,55 +148,56 @@ final ordersProvider =
 
 class OrdersNotifier extends StateNotifier<List<Order>> {
   OrdersNotifier() : super([]) {
-    _load();
+    _loadFromApi();
   }
 
-  static final _initialOrders = [
-    Order(
-      id: 'ord_001',
-      restaurantId: 'rest_burger_loft',
-      restaurantName: 'The Burger Loft',
-      items: [
-        const CartItem(
-          foodItem: FoodItem(
-            id: 'burger_truffle',
-            name: 'The Signature Truffle Burger',
-            description: '',
-            price: 14.99,
-            imageUrl: '',
-            category: FoodCategory.popular,
-          ),
-          quantity: 2,
-        ),
-      ],
-      totalPrice: 29.98,
-      status: OrderStatus.completed,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    Order(
-      id: 'ord_002',
-      restaurantId: 'rest_pizza_rustica',
-      restaurantName: 'Pizza Rustica',
-      items: [
-        const CartItem(
-          foodItem: FoodItem(
-            id: 'pizza_margherita',
-            name: 'Neapolitan Margherita DOP',
-            description: '',
-            price: 15.99,
-            imageUrl: '',
-            category: FoodCategory.popular,
-          ),
-          quantity: 1,
-        ),
-      ],
-      totalPrice: 15.99,
-      status: OrderStatus.completed,
-      createdAt: DateTime.now().subtract(const Duration(days: 5)),
-    ),
-  ];
+  final _orderService = OrderService();
 
-  Future<void> _load() async {
+  Future<void> _loadFromApi() async {
+    try {
+      final apiOrders = await _orderService.listOrders();
+      if (apiOrders.isNotEmpty) {
+        state = apiOrders.map((o) => Order(
+          id: o['id'] ?? '',
+          restaurantId: '',
+          restaurantName: o['restaurant_name'] ?? '',
+          items: (o['items'] as List?)?.map((i) => CartItem(
+            foodItem: FoodItem(
+              id: '',
+              name: i['name'] ?? '',
+              description: '',
+              price: (i['price'] as num?)?.toDouble() ?? 0,
+              imageUrl: '',
+              category: FoodCategory.popular,
+            ),
+            quantity: i['quantity'] ?? 1,
+          )).toList() ?? [],
+          totalPrice: (o['total'] as num?)?.toDouble() ?? 0,
+          status: _mapStatus(o['status']),
+          createdAt: o['created_at'] != null ? DateTime.parse(o['created_at']) : DateTime.now(),
+          orderType: o['order_type'] ?? 'food',
+        )).toList();
+        return;
+      }
+    } catch (_) {}
+    _loadFromLocal();
+  }
+
+  OrderStatus _mapStatus(String? apiStatus) {
+    switch (apiStatus) {
+      case 'CREATED': return OrderStatus.pending;
+      case 'CONFIRMED':
+      case 'PREPARING':
+      case 'READY_FOR_PICKUP': return OrderStatus.accepted;
+      case 'PICKED_UP':
+      case 'EN_ROUTE': return OrderStatus.outForDelivery;
+      case 'DELIVERED': return OrderStatus.completed;
+      case 'CANCELLED': return OrderStatus.completed;
+      default: return OrderStatus.pending;
+    }
+  }
+
+  Future<void> _loadFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final json = prefs.getString('swiftdrop_orders');
     if (json != null) {
@@ -179,11 +206,7 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
             .map((e) => Order.fromMap(e as Map<String, dynamic>))
             .toList();
         state = list;
-      } catch (_) {
-        state = _initialOrders;
-      }
-    } else {
-      state = _initialOrders;
+      } catch (_) {}
     }
   }
 
@@ -191,6 +214,10 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
     final prefs = await SharedPreferences.getInstance();
     final json = jsonEncode(state.map((o) => o.toMap()).toList());
     await prefs.setString('swiftdrop_orders', json);
+  }
+
+  Future<void> refreshOrders() async {
+    await _loadFromApi();
   }
 
   void placeOrder(String restaurantId, String restaurantName,
@@ -205,6 +232,11 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
       createdAt: DateTime.now(),
       trackingStep: 0,
     );
+    state = [order, ...state];
+    _save();
+  }
+
+  void addOrder(Order order) {
     state = [order, ...state];
     _save();
   }
@@ -300,4 +332,160 @@ final maxPriceLevelProvider = StateProvider<int>((ref) => 3);
 
 final promoCodeProvider = StateProvider<String?>((ref) => null);
 
-final onboardingDoneProvider = StateProvider<bool>((ref) => false);
+final onboardingDoneProvider =
+    StateNotifierProvider<OnboardingDoneNotifier, bool>((ref) {
+  return OnboardingDoneNotifier();
+});
+
+class OnboardingDoneNotifier extends StateNotifier<bool> {
+  OnboardingDoneNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('swiftdrop_onboarding_done') ?? false;
+  }
+
+  Future<void> complete() async {
+    state = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('swiftdrop_onboarding_done', true);
+  }
+}
+
+// ==================== PARCEL BOOKING ====================
+
+final parcelBookingProvider =
+    StateNotifierProvider<ParcelBookingNotifier, ParcelBooking>((ref) {
+  return ParcelBookingNotifier();
+});
+
+class ParcelBookingNotifier extends StateNotifier<ParcelBooking> {
+  ParcelBookingNotifier() : super(const ParcelBooking());
+
+  void updatePickup(String pickup) {
+    state = state.copyWith(pickupLocation: pickup);
+  }
+
+  void updateDelivery(String delivery) {
+    state = state.copyWith(deliveryLocation: delivery);
+  }
+
+  void updatePackage(String type, double weight, {double? l, double? w, double? h, String? notes}) {
+    state = state.copyWith(
+      packageType: type,
+      weight: weight,
+      lengthCm: l,
+      widthCm: w,
+      heightCm: h,
+      riderNotes: notes,
+    );
+  }
+
+  void updateService(String service, {bool? insurance}) {
+    state = state.copyWith(
+      deliveryService: service,
+      insuranceIncluded: insurance ?? state.insuranceIncluded,
+    );
+  }
+
+  void toggleInsurance() {
+    state = state.copyWith(insuranceIncluded: !state.insuranceIncluded);
+  }
+
+  void applyPromo(String code) {
+    state = state.copyWith(promoCode: code);
+  }
+
+  void reset() {
+    state = const ParcelBooking();
+  }
+}
+
+// ==================== USER PROFILE (with persistence) ====================
+
+class UserProfile {
+  final double walletBalance;
+  final int points;
+  final String membershipTier;
+
+  const UserProfile({
+    this.walletBalance = 142.50,
+    this.points = 2450,
+    this.membershipTier = 'Gold',
+  });
+
+  UserProfile copyWith({double? walletBalance, int? points, String? membershipTier}) {
+    return UserProfile(
+      walletBalance: walletBalance ?? this.walletBalance,
+      points: points ?? this.points,
+      membershipTier: membershipTier ?? this.membershipTier,
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'walletBalance': walletBalance,
+        'points': points,
+        'membershipTier': membershipTier,
+      };
+
+  factory UserProfile.fromMap(Map<String, dynamic> map) => UserProfile(
+        walletBalance: (map['walletBalance'] as num?)?.toDouble() ?? 142.50,
+        points: map['points'] as int? ?? 2450,
+        membershipTier: map['membershipTier'] as String? ?? 'Gold',
+      );
+}
+
+class UserProfileNotifier extends StateNotifier<UserProfile> {
+  UserProfileNotifier() : super(const UserProfile()) {
+    _load();
+  }
+
+  static const _key = 'swiftdrop_user_profile';
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString(_key);
+    if (json != null) {
+      try {
+        state = UserProfile.fromMap(jsonDecode(json) as Map<String, dynamic>);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, jsonEncode(state.toMap()));
+  }
+
+  void topUp(double amount) {
+    state = state.copyWith(walletBalance: state.walletBalance + amount);
+    _save();
+  }
+
+  void deduct(double amount) {
+    state = state.copyWith(walletBalance: state.walletBalance - amount);
+    _save();
+  }
+
+  void addPoints(int pts) {
+    state = state.copyWith(points: state.points + pts);
+    _save();
+  }
+
+  void redeemPoints(int pts) {
+    state = state.copyWith(points: state.points - pts);
+    _save();
+  }
+
+  void setMembership(String tier) {
+    state = state.copyWith(membershipTier: tier);
+    _save();
+  }
+}
+
+final userProfileProvider =
+    StateNotifierProvider<UserProfileNotifier, UserProfile>((ref) {
+  return UserProfileNotifier();
+});

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/providers.dart';
 
-class MainScaffold extends StatelessWidget {
+class MainScaffold extends ConsumerWidget {
   final Widget child;
 
   const MainScaffold({super.key, required this.child});
@@ -18,8 +20,9 @@ class MainScaffold extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final index = _currentIndex(context);
+    final cartCount = ref.watch(cartProvider.notifier).itemCount;
 
     return Scaffold(
       body: child,
@@ -31,7 +34,7 @@ class MainScaffold extends StatelessWidget {
               context.go('/home');
               break;
             case 1:
-              context.go('/food-delivery');
+              context.go('/orders');
               break;
             case 2:
               context.go('/map');
@@ -41,23 +44,33 @@ class MainScaffold extends StatelessWidget {
               break;
           }
         },
-        items: const [
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
             icon: Icon(Icons.home_outlined),
             activeIcon: Icon(Icons.home),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_outlined),
-            activeIcon: Icon(Icons.receipt),
+            icon: cartCount > 0
+                ? Badge(
+                    label: Text('$cartCount', style: const TextStyle(fontSize: 9)),
+                    child: const Icon(Icons.receipt_outlined),
+                  )
+                : const Icon(Icons.receipt_outlined),
+            activeIcon: cartCount > 0
+                ? Badge(
+                    label: Text('$cartCount', style: const TextStyle(fontSize: 9)),
+                    child: const Icon(Icons.receipt),
+                  )
+                : const Icon(Icons.receipt),
             label: 'Orders',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.map_outlined),
             activeIcon: Icon(Icons.map),
             label: 'Map',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             activeIcon: Icon(Icons.person),
             label: 'Profile',

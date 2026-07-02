@@ -28,17 +28,20 @@ class AuthNotifier extends StateNotifier<User?> {
     state = user;
   }
 
-  Future<bool> signIn(String email, String password) async {
-    final user = await _authService.signIn(email, password);
-    if (user != null) {
-      state = user;
-      return true;
-    }
-    return false;
+  // OTP: Send verification code
+  Future<bool> sendOtp(String phone) async {
+    return await _authService.sendOtp(phone);
   }
 
-  Future<bool> signUp(String name, String email, String phone, String password) async {
-    final user = await _authService.signUp(name, email, phone, password);
+  // OTP: Verify code and sign in/sign up
+  Future<bool> verifyOtp(String phone, String code,
+      {String? name, String role = 'customer'}) async {
+    final user = await _authService.verifyOtpApi(
+      phone,
+      code,
+      name: name,
+      role: role,
+    );
     if (user != null) {
       state = user;
       return true;
@@ -49,14 +52,6 @@ class AuthNotifier extends StateNotifier<User?> {
   Future<void> signOut() async {
     await _authService.signOut();
     state = null;
-  }
-
-  Future<bool> sendPasswordReset(String email) {
-    return _authService.sendPasswordReset(email);
-  }
-
-  Future<bool> verifyOtp(String code) {
-    return _authService.verifyOtp(code);
   }
 }
 
