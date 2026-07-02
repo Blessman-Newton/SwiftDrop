@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "motion/react";
 interface OrdersViewProps {
   orders: Order[];
   onUpdateOrderStatus: (orderId: string, newStatus: OrderStatus) => void;
-  onNavigate: (view: "dashboard" | "orders" | "menu" | "analytics") => void;
+  onNavigate: (view: "dashboard" | "orders" | "menu" | "analytics" | "settings") => void;
 }
 
 export default function OrdersView({ orders, onUpdateOrderStatus, onNavigate }: OrdersViewProps) {
@@ -182,7 +182,7 @@ export default function OrdersView({ orders, onUpdateOrderStatus, onNavigate }: 
                         </p>
                         <p className={`text-sm font-bold ${isDelayed ? "text-error" : "text-on-surface"}`}>
                           {order.status === "completed" || order.status === "declined" 
-                            ? `$${order.total.toFixed(2)}` 
+                            ? `GHS ${order.total.toFixed(2)}` 
                             : formatTime(order.elapsedSeconds)}
                         </p>
                       </div>

@@ -4,45 +4,60 @@ import DashboardView from "./components/DashboardView";
 import OrdersView from "./components/OrdersView";
 import MenuView from "./components/MenuView";
 import AnalyticsView from "./components/AnalyticsView";
+import OnboardingView from "./components/OnboardingView";
+import SettingsView from "./components/SettingsView";
+import type { OnboardingData } from "./components/OnboardingView";
 
-import { MenuItem, Order, OrderStatus } from "./types";
-import { INITIAL_MENU_ITEMS, INITIAL_ORDERS } from "./data";
+import { MenuItem, Order, OrderStatus, Category, Restaurant } from "./types";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   LayoutDashboard, 
   ClipboardList, 
   Utensils, 
   TrendingUp,
+  Settings,
   Smartphone,
   Laptop,
   Sparkles,
   Wifi,
   Battery,
-  Volume2,
   Moon,
   Sun,
-  AlertCircle
+  AlertCircle,
+  Phone,
+  KeyRound
 } from "lucide-react";
+import * as api from "./api";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics" | "settings">("dashboard");
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("swift_drop_dark_mode");
     return saved === "true";
   });
   
-  // Store status
   const [isOnline, setIsOnline] = useState(true);
 
-  // Core Data States
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(INITIAL_MENU_ITEMS);
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => api.isAuthenticated());
+  const [authPhone, setAuthPhone] = useState("");
+  const [authCode, setAuthCode] = useState("");
+  const [authStep, setAuthStep] = useState<"phone" | "otp">("phone");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [devCode, setDevCode] = useState("");
 
-  // Preview container frame mode
-  // "split" (Desktop Admin on left, interactive smartphone on right), "mobile" (Smartphone only), "web" (Standard fluid page)
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [merchantInfo, setMerchantInfo] = useState<{restaurant_name: string; merchant_name: string; avatar_url: string} | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<{total_orders_today: number; total_earnings_today: number; avg_preparation_time: number; cancelled_orders: number; active_orders: number; completed_orders: number} | null>(null);
+
   const [previewMode, setPreviewMode] = useState<"split" | "mobile" | "web">("split");
 
-  // Synchronize Dark Mode HTML class
   useEffect(() => {
     const root = window.document.documentElement;
     if (darkMode) {
@@ -53,7 +68,94 @@ export default function App() {
     localStorage.setItem("swift_drop_dark_mode", String(darkMode));
   }, [darkMode]);
 
-  // Real-time ticking effect for active orders elapsed timers
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    async function loadData() {
+      try {
+        // Fetch categories first (always available, no auth dependency on restaurant)
+        try {
+          const catData = await api.getCategories();
+          setCategories(catData);
+        } catch (e) {
+          console.error("Failed to load categories:", e);
+        }
+
+        // Fetch merchant-specific data (may 404 if no restaurant exists yet)
+        let restaurantData: Restaurant | null = null;
+        try {
+          restaurantData = await api.getRestaurant();
+          setRestaurant(restaurantData);
+          const isDefaultName = /^Restaurant \d{4}$/.test(restaurantData.name);
+          const isDefaultAddress = restaurantData.address === "Accra, Ghana";
+          setNeedsOnboarding(isDefaultName || isDefaultAddress);
+        } catch (e) {
+          console.error("No restaurant found, needs onboarding:", e);
+          setNeedsOnboarding(true);
+        }
+
+        // Fetch menu items
+        try {
+          const menuData = await api.getMenuItems();
+          setMenuItems(menuData.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            description: item.description || "",
+            price: item.price,
+            category: item.category_name || "Uncategorized",
+            category_id: item.category_id || null,
+            category_name: item.category_name || null,
+            image: item.image_url || "",
+            inStock: item.is_available,
+            is_vegetarian: item.is_vegetarian || false,
+            is_spicy: item.is_spicy || false,
+            tags: item.tags || [],
+            soldCount: 0,
+            soldTrend: "0%",
+          })));
+        } catch (e) {
+          console.error("Failed to load menu items:", e);
+        }
+
+        // Fetch orders
+        try {
+          const ordersData = await api.getOrders();
+          setOrders(ordersData.map((order: any) => ({
+            id: order.id,
+            orderNo: order.order_no,
+            status: order.status,
+            customerName: order.customer_name,
+            items: order.items,
+            total: order.total,
+            elapsedSeconds: order.elapsed_seconds,
+            createdAtStr: new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          })));
+        } catch (e) {
+          console.error("Failed to load orders:", e);
+        }
+
+        // Fetch merchant info
+        try {
+          const merchantData = await api.getMerchantInfo();
+          setMerchantInfo(merchantData);
+        } catch (e) {
+          console.error("Failed to load merchant info:", e);
+        }
+
+        // Fetch dashboard stats
+        try {
+          const dashData = await api.getDashboardStats();
+          setDashboardStats(dashData);
+        } catch (e) {
+          console.error("Failed to load dashboard stats:", e);
+        }
+      } catch (err) {
+        console.error("Failed to load data:", err);
+      }
+    }
+    loadData();
+  }, [isLoggedIn]);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setOrders((prevOrders) =>
@@ -72,69 +174,220 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Handlers
   const handleToggleOnline = () => {
     setIsOnline(!isOnline);
   };
 
-  const handleToggleStock = (itemId: string) => {
-    setMenuItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, inStock: !item.inStock } : item
-      )
-    );
+  const handleToggleStock = async (itemId: string) => {
+    try {
+      const result = await api.toggleStock(itemId);
+      setMenuItems((prev) =>
+        prev.map((item) =>
+          item.id === itemId ? { ...item, inStock: result.is_available } : item
+        )
+      );
+    } catch (err) {
+      console.error("Failed to toggle stock:", err);
+    }
   };
 
-  const handleAddItem = (newItem: Omit<MenuItem, "id" | "soldCount" | "soldTrend">) => {
-    const item: MenuItem = {
-      ...newItem,
-      id: `m-${Date.now()}`,
-      soldCount: 0,
-      soldTrend: "0%"
-    };
-    setMenuItems((prev) => [item, ...prev]);
+  const handleAddItem = async (newItem: Omit<MenuItem, "id" | "soldCount" | "soldTrend">) => {
+    try {
+      const created = await api.createMenuItem({
+        name: newItem.name,
+        description: newItem.description,
+        price: newItem.price,
+        category_id: newItem.category_id || undefined,
+        image_url: newItem.image,
+        is_available: newItem.inStock,
+        is_vegetarian: newItem.is_vegetarian,
+        is_spicy: newItem.is_spicy,
+        tags: newItem.tags,
+      });
+      const item: MenuItem = {
+        id: created.id,
+        name: created.name,
+        description: created.description || "",
+        price: created.price,
+        category: created.category_name || "Uncategorized",
+        category_id: created.category_id || null,
+        category_name: created.category_name || null,
+        image: created.image_url || "",
+        inStock: created.is_available,
+        is_vegetarian: created.is_vegetarian,
+        is_spicy: created.is_spicy,
+        tags: created.tags || [],
+        soldCount: 0,
+        soldTrend: "0%"
+      };
+      setMenuItems((prev) => [item, ...prev]);
+    } catch (err) {
+      console.error("Failed to add item:", err);
+    }
   };
 
-  const handleUpdateItem = (itemId: string, updatedFields: Partial<MenuItem>) => {
-    setMenuItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, ...updatedFields } : item
-      )
-    );
-  };
+  const handleUpdateItem = async (itemId: string, updatedFields: Partial<MenuItem>) => {
+    try {
+      const updates: Record<string, unknown> = {};
+      if (updatedFields.name !== undefined) updates.name = updatedFields.name;
+      if (updatedFields.description !== undefined) updates.description = updatedFields.description;
+      if (updatedFields.price !== undefined) updates.price = updatedFields.price;
+      if (updatedFields.category_id !== undefined) updates.category_id = updatedFields.category_id;
+      if (updatedFields.image !== undefined) updates.image_url = updatedFields.image;
+      if (updatedFields.inStock !== undefined) updates.is_available = updatedFields.inStock;
+      if (updatedFields.is_vegetarian !== undefined) updates.is_vegetarian = updatedFields.is_vegetarian;
+      if (updatedFields.is_spicy !== undefined) updates.is_spicy = updatedFields.is_spicy;
+      if (updatedFields.tags !== undefined) updates.tags = updatedFields.tags;
 
-  const handleDeleteItem = (itemId: string) => {
-    setMenuItems((prev) => prev.filter((item) => item.id !== itemId));
-  };
-
-  const handleUpdateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prev) =>
-      prev.map((order) => {
-        if (order.id === orderId) {
-          let extra: Partial<Order> = {};
-          if (newStatus === "preparing" && !order.driverName) {
-            extra = {
-              driverName: "Searching Driver...",
-              driverStatus: "Assigning soon"
-            };
-          } else if (newStatus === "awaiting_pickup") {
-            extra = {
-              driverName: "Marcus Chen",
-              driverStatus: "Arriving in 2m"
-            };
-          } else if (newStatus === "completed") {
-            extra = {
-              driverStatus: "Completed"
-            };
+      const result = await api.updateMenuItem(itemId, updates);
+      setMenuItems((prev) =>
+        prev.map((item) => {
+          if (item.id === itemId) {
+            const updated = { ...item, ...updatedFields };
+            if (result.category_name !== undefined) updated.category_name = result.category_name;
+            if (result.category_name) updated.category = result.category_name;
+            return updated;
           }
-          return { ...order, status: newStatus, ...extra };
-        }
-        return order;
-      })
-    );
+          return item;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to update item:", err);
+    }
   };
 
-  // Render correct inner page based on dynamic view
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      await api.deleteMenuItem(itemId);
+      setMenuItems((prev) => prev.filter((item) => item.id !== itemId));
+    } catch (err) {
+      console.error("Failed to delete item:", err);
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    try {
+      await api.updateOrderStatus(orderId, newStatus);
+      setOrders((prev) =>
+        prev.map((order) => {
+          if (order.id === orderId) {
+            let extra: Partial<Order> = {};
+            if (newStatus === "preparing" && !order.driverName) {
+              extra = {
+                driverName: "Searching Driver...",
+                driverStatus: "Assigning soon"
+              };
+            } else if (newStatus === "awaiting_pickup") {
+              extra = {
+                driverName: "Marcus Chen",
+                driverStatus: "Arriving in 2m"
+              };
+            } else if (newStatus === "completed") {
+              extra = {
+                driverStatus: "Completed"
+              };
+            }
+            return { ...order, status: newStatus, ...extra };
+          }
+          return order;
+        })
+      );
+    } catch (err) {
+      console.error("Failed to update order status:", err);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!authPhone) return;
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await api.sendOtp(authPhone);
+      setDevCode(res.dev_code || "");
+      setAuthStep("otp");
+    } catch (err: any) {
+      setAuthError(err.message || "Failed to send OTP");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!authCode) return;
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await api.verifyOtp(authPhone, authCode);
+      setIsLoggedIn(true);
+    } catch (err: any) {
+      setAuthError(err.message || "Invalid code");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    api.logout();
+    setIsLoggedIn(false);
+    setAuthPhone("");
+    setAuthCode("");
+    setAuthStep("phone");
+    setNeedsOnboarding(false);
+    setRestaurant(null);
+  };
+
+  const handleOnboardingComplete = async (data: OnboardingData) => {
+    setOnboardingLoading(true);
+    try {
+      let updated: Restaurant;
+      if (restaurant) {
+        // Restaurant exists, update it
+        updated = await api.updateRestaurant({
+          name: data.name,
+          description: data.description || undefined,
+          restaurant_type: data.restaurant_type,
+          address: data.address,
+          phone: data.phone || undefined,
+          email: data.email || undefined,
+          logo_url: data.logo_url || undefined,
+          opening_hours: data.opening_hours,
+        });
+      } else {
+        // No restaurant exists, create one
+        updated = await api.createRestaurant({
+          name: data.name,
+          description: data.description || undefined,
+          restaurant_type: data.restaurant_type,
+          address: data.address,
+          phone: data.phone || undefined,
+          email: data.email || undefined,
+          logo_url: data.logo_url || undefined,
+          opening_hours: data.opening_hours,
+        });
+      }
+      setRestaurant(updated);
+      setMerchantInfo((prev) => prev ? { ...prev, restaurant_name: updated.name } : prev);
+      setNeedsOnboarding(false);
+    } catch (err) {
+      console.error("Failed to save restaurant:", err);
+    } finally {
+      setOnboardingLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async (data: Partial<Restaurant>) => {
+    setSettingsLoading(true);
+    try {
+      const updated = await api.updateRestaurant(data);
+      setRestaurant(updated);
+      setMerchantInfo((prev) => prev ? { ...prev, restaurant_name: updated.name } : prev);
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
   const renderViewContent = () => {
     switch (activeView) {
       case "orders":
@@ -149,6 +402,7 @@ export default function App() {
         return (
           <MenuView 
             menuItems={menuItems} 
+            categories={categories}
             onToggleStock={handleToggleStock}
             onAddItem={handleAddItem}
             onUpdateItem={handleUpdateItem}
@@ -156,7 +410,15 @@ export default function App() {
           />
         );
       case "analytics":
-        return <AnalyticsView menuItems={menuItems} />;
+        return <AnalyticsView menuItems={menuItems} dashboardStats={dashboardStats} />;
+      case "settings":
+        return restaurant ? (
+          <SettingsView
+            restaurant={restaurant}
+            onSave={handleSaveSettings}
+            loading={settingsLoading}
+          />
+        ) : null;
       case "dashboard":
       default:
         return (
@@ -166,71 +428,177 @@ export default function App() {
             orders={orders}
             onUpdateOrderStatus={handleUpdateOrderStatus}
             onNavigate={setActiveView}
+            dashboardStats={dashboardStats}
+            merchantInfo={merchantInfo}
           />
         );
     }
   };
 
-  // Bottom navigation elements list
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Orders", icon: ClipboardList },
     { id: "menu", label: "Menu", icon: Utensils },
     { id: "analytics", label: "Analytics", icon: TrendingUp },
+    { id: "settings", label: "Settings", icon: Settings },
   ];
 
+  // AUTH SCREEN - early return
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-background text-on-background flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-surface rounded-3xl p-8 shadow-xl border border-outline-variant/20">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center">
+              <Utensils className="h-6 w-6 text-on-primary" />
+            </div>
+            <div>
+              <h1 className="font-display font-extrabold text-lg text-primary">SwiftDrop</h1>
+              <p className="text-xs text-on-surface-variant">Merchant Portal</p>
+            </div>
+          </div>
+
+          {authStep === "phone" ? (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-1 block">Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+                  <input
+                    type="tel"
+                    value={authPhone}
+                    onChange={(e) => setAuthPhone(e.target.value)}
+                    placeholder="+233..."
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary"
+                    onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
+                  />
+                </div>
+              </div>
+              {authError && (
+                <p className="text-xs text-error flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> {authError}
+                </p>
+              )}
+              <button
+                onClick={handleSendOtp}
+                disabled={authLoading || !authPhone}
+                className="w-full py-3 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-50 hover:brightness-110 transition-all"
+              >
+                {authLoading ? "Sending..." : "Send OTP"}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-xs text-on-surface-variant">Code sent to {authPhone}</p>
+              {devCode && (
+                <p className="text-xs font-mono font-bold text-primary bg-primary/10 px-3 py-2 rounded-lg text-center">
+                  Dev OTP: {devCode}
+                </p>
+              )}
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-1 block">OTP Code</label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+                  <input
+                    type="text"
+                    value={authCode}
+                    onChange={(e) => setAuthCode(e.target.value)}
+                    placeholder="123456"
+                    maxLength={6}
+                    className="w-full pl-10 pr-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary tracking-widest text-center"
+                    onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
+                  />
+                </div>
+              </div>
+              {authError && (
+                <p className="text-xs text-error flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" /> {authError}
+                </p>
+              )}
+              <button
+                onClick={handleVerifyOtp}
+                disabled={authLoading || !authCode}
+                className="w-full py-3 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-50 hover:brightness-110 transition-all"
+              >
+                {authLoading ? "Verifying..." : "Verify & Login"}
+              </button>
+              <button
+                onClick={() => { setAuthStep("phone"); setAuthCode(""); setAuthError(""); }}
+                className="w-full py-2 text-on-surface-variant text-xs hover:text-on-surface transition-all"
+              >
+                Change phone number
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ONBOARDING SCREEN - show when restaurant needs setup
+  if (isLoggedIn && needsOnboarding) {
+    return <OnboardingView onComplete={handleOnboardingComplete} loading={onboardingLoading} />;
+  }
+
+  // MAIN APP - logged in
   return (
     <div className="min-h-screen bg-background text-on-background flex flex-col transition-colors duration-300">
       
-      {/* Top Level Preview Control Bar - Promotes Premium Layout Presentation */}
+      {/* Top Preview Control Bar */}
       <div className="bg-surface-container-high border-b border-outline-variant/30 px-5 py-2.5 flex flex-wrap justify-between items-center gap-3 text-xs font-bold dark:bg-surface-container-highest">
         <div className="flex items-center gap-2 text-primary">
           <Sparkles className="h-4 w-4 shrink-0" />
           <span>Interactive SwiftDrop Merchant Portal (React 19)</span>
         </div>
 
-        {/* Presentation modes buttons */}
-        <div className="flex items-center bg-surface-container rounded-lg p-0.5 border border-outline-variant/20 dark:bg-surface-container-low">
+        <div className="flex items-center gap-3">
           <button
-            onClick={() => setPreviewMode("split")}
-            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
-              previewMode === "split" 
-                ? "bg-surface-container-lowest text-primary shadow-sm dark:bg-surface-container-high" 
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
+            onClick={handleLogout}
+            className="px-3 py-1.5 rounded-md text-error hover:bg-error/10 transition-all"
           >
-            <Laptop className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Split Presentation</span>
+            Logout
           </button>
-          <button
-            onClick={() => setPreviewMode("mobile")}
-            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
-              previewMode === "mobile" 
-                ? "bg-surface-container-lowest text-primary shadow-sm dark:bg-surface-container-high" 
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <Smartphone className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Mobile Mockup</span>
-          </button>
-          <button
-            onClick={() => setPreviewMode("web")}
-            className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
-              previewMode === "web" 
-                ? "bg-surface-container-lowest text-primary shadow-sm dark:bg-surface-container-high" 
-                : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <Laptop className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Responsive Web Only</span>
-          </button>
+          <div className="flex items-center bg-surface-container rounded-lg p-0.5 border border-outline-variant/20 dark:bg-surface-container-low">
+            <button
+              onClick={() => setPreviewMode("split")}
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+                previewMode === "split" 
+                  ? "bg-surface-container-lowest text-primary shadow-sm dark:bg-surface-container-high" 
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              <Laptop className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Split</span>
+            </button>
+            <button
+              onClick={() => setPreviewMode("mobile")}
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+                previewMode === "mobile" 
+                  ? "bg-surface-container-lowest text-primary shadow-sm dark:bg-surface-container-high" 
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Mobile</span>
+            </button>
+            <button
+              onClick={() => setPreviewMode("web")}
+              className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
+                previewMode === "web" 
+                  ? "bg-surface-container-lowest text-primary shadow-sm dark:bg-surface-container-high" 
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              <Laptop className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Web</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Render based on layout preview modes */}
       <div className="flex-1 flex flex-col md:flex-row max-w-[1536px] w-full mx-auto">
         
-        {/* LEFT COMPONENT: Responsive Desktop / Main Application layout */}
+        {/* Desktop / Split view */}
         {previewMode !== "mobile" && (
           <div className={`flex-1 flex flex-col ${previewMode === "split" ? "lg:max-w-[65%]" : "w-full"}`}>
             <Navbar 
@@ -238,11 +606,10 @@ export default function App() {
               onToggleDarkMode={() => setDarkMode(!darkMode)} 
               onNavigate={setActiveView}
               activeView={activeView}
+              merchantInfo={merchantInfo}
             />
 
-            {/* Desktop Side Bar / Header Info Panel */}
             <div className="flex-1 flex">
-              {/* Desktop Sidebar menu */}
               <aside className="hidden md:flex flex-col border-r border-outline-variant/20 bg-surface-container-low w-24 py-8 items-center gap-6 shrink-0">
                 {navItems.map((item) => {
                   const Icon = item.icon;
@@ -273,7 +640,6 @@ export default function App() {
                 })}
               </aside>
 
-              {/* Core Content Container view */}
               <main className="flex-1 px-5 py-6 overflow-y-auto max-w-[1280px]">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -290,7 +656,7 @@ export default function App() {
               </main>
             </div>
 
-            {/* Mobile Bottom Navigation Bar (Visible only on mobile screen widths) */}
+            {/* Mobile Bottom Nav */}
             <nav className="md:hidden sticky bottom-0 left-0 w-full h-20 bg-surface border-t border-outline-variant/20 flex justify-around items-center px-4 pb-safe z-40 transition-colors">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -314,37 +680,37 @@ export default function App() {
           </div>
         )}
 
-        {/* RIGHT COMPONENT: 3D-styled interactive Smartphone Mockup Frame */}
+        {/* Mobile Mockup Frame */}
         {previewMode !== "web" && (
           <div className={`flex-1 flex items-center justify-center p-6 bg-surface-container-low border-l border-outline-variant/10 dark:bg-surface-container-lowest ${
             previewMode === "mobile" ? "w-full" : "hidden lg:flex"
           }`}>
             <div className="relative mx-auto w-[370px] h-[780px] rounded-[52px] bg-neutral-900 p-3.5 shadow-2xl border-4 border-neutral-800 flex flex-col overflow-hidden ring-1 ring-white/10">
               
-              {/* Speaker Bezel & Dynamic Island Notch */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 h-8 w-44 bg-neutral-900 rounded-b-2xl z-50 flex items-center justify-center">
                 <div className="w-16 h-3 bg-neutral-950 rounded-full" />
                 <div className="w-3.5 h-3.5 bg-neutral-950 rounded-full ml-3" />
               </div>
 
-              {/* Smartphone Display Content Screen */}
               <div className="flex-1 rounded-[38px] bg-background text-on-background overflow-hidden relative flex flex-col border border-neutral-950/20 select-none">
                 
-                {/* Simulated Smartphone Status Bar */}
                 <div className="h-10 bg-surface px-6 flex items-center justify-between text-[11px] font-bold text-on-surface-variant z-40 border-b border-outline-variant/10 transition-colors">
                   <span>12:55 PM</span>
                   <div className="flex items-center gap-1.5">
                     <Wifi className="h-3 w-3" />
                     <span>5G</span>
-                    <Battery className="h-3.5 w-3.5 text-primary-container" />
+                    <Battery className="h-3.5 h-3.5 text-primary-container" />
                   </div>
                 </div>
 
-                {/* Smartphone Custom Inner Top Navbar */}
                 <div className="h-14 bg-surface flex items-center justify-between px-5 z-40 border-b border-outline-variant/10">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full border border-outline-variant/30 overflow-hidden">
-                      <img className="h-full w-full object-cover" src={INITIAL_MENU_ITEMS[0].image} alt="Chef" />
+                    <div className="w-8 h-8 rounded-full border border-outline-variant/30 overflow-hidden bg-primary/20 flex items-center justify-center">
+                      {merchantInfo?.merchant_name ? (
+                        <span className="text-xs font-bold text-primary">{merchantInfo.merchant_name[0]}</span>
+                      ) : (
+                        <span className="text-xs font-bold text-primary">M</span>
+                      )}
                     </div>
                     <span className="font-display font-extrabold text-sm text-primary">SwiftDrop</span>
                   </div>
@@ -359,7 +725,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Smartphone Main View Scrollbox */}
                 <div className="flex-1 overflow-y-auto px-4 py-4 pb-20 no-scrollbar">
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -374,7 +739,6 @@ export default function App() {
                   </AnimatePresence>
                 </div>
 
-                {/* Smartphone Simulated Bottom Navigation Bar */}
                 <nav className="absolute bottom-0 left-0 w-full h-18 bg-surface/90 backdrop-blur-md border-t border-outline-variant/20 flex justify-around items-center px-2 pb-safe z-45 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
                   {navItems.map((item) => {
                     const Icon = item.icon;

@@ -9,20 +9,22 @@ import {
   Camera, 
   Sparkles,
   ClipboardList,
-  AlertCircle
+  AlertCircle,
+  Tag
 } from "lucide-react";
-import { MenuItem } from "../types";
+import { MenuItem, Category } from "../types";
 import { motion, AnimatePresence } from "motion/react";
 
 interface MenuViewProps {
   menuItems: MenuItem[];
+  categories: Category[];
   onToggleStock: (itemId: string) => void;
   onAddItem: (newItem: Omit<MenuItem, "id" | "soldCount" | "soldTrend">) => void;
   onUpdateItem: (itemId: string, updatedItem: Partial<MenuItem>) => void;
   onDeleteItem: (itemId: string) => void;
 }
 
-const CATEGORIES = ["Popular", "Burgers", "Sides", "Beverages", "Desserts", "Combos"];
+const SUGGESTED_TAGS = ["Spicy", "Vegan", "Bestseller", "New", "Chef's Special", "Healthy"];
 
 // Suggested culinary images for quick creation
 const SUGGESTED_IMAGES = [
@@ -54,12 +56,18 @@ const SUGGESTED_IMAGES = [
 
 export default function MenuView({
   menuItems,
+  categories,
   onToggleStock,
   onAddItem,
   onUpdateItem,
   onDeleteItem,
 }: MenuViewProps) {
-  const [selectedCategory, setSelectedCategory] = useState("Popular");
+  // Build category list: "All" + API categories (only leaf categories, i.e. those with parent_id)
+  const leafCategories = useMemo(() => {
+    return categories.filter((c) => c.parent_id !== null);
+  }, [categories]);
+
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -69,19 +77,25 @@ export default function MenuView({
   const [addName, setAddName] = useState("");
   const [addDescription, setAddDescription] = useState("");
   const [addPrice, setAddPrice] = useState("");
-  const [addCategory, setAddCategory] = useState("Burgers");
+  const [addCategoryId, setAddCategoryId] = useState("");
   const [addImageUrl, setAddImageUrl] = useState(SUGGESTED_IMAGES[0].url);
   const [addInStock, setAddInStock] = useState(true);
+  const [addIsVegetarian, setAddIsVegetarian] = useState(false);
+  const [addIsSpicy, setAddIsSpicy] = useState(false);
+  const [addTags, setAddTags] = useState<string[]>([]);
 
   // Filter items by category
   const filteredItems = useMemo(() => {
-    return menuItems.filter((item) => {
-      if (selectedCategory === "Popular") {
-        return item.category === "Popular" || item.soldCount > 180;
-      }
-      return item.category === selectedCategory;
-    });
-  }, [menuItems, selectedCategory]);
+    if (selectedCategoryId === "all") return menuItems;
+    return menuItems.filter((item) => item.category_id === selectedCategoryId);
+  }, [menuItems, selectedCategoryId]);
+
+  // Get category name by id
+  const getCategoryName = (catId: string | null) => {
+    if (!catId) return "Uncategorized";
+    const cat = categories.find((c) => c.id === catId);
+    return cat?.name || "Uncategorized";
+  };
 
   const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,18 +108,26 @@ export default function MenuView({
       name: addName,
       description: addDescription,
       price: parseFloat(addPrice) || 0,
-      category: addCategory,
+      category: getCategoryName(addCategoryId || null),
+      category_id: addCategoryId || null,
+      category_name: getCategoryName(addCategoryId || null),
       image: addImageUrl,
-      inStock: addInStock
+      inStock: addInStock,
+      is_vegetarian: addIsVegetarian,
+      is_spicy: addIsSpicy,
+      tags: addTags,
     });
 
     // Reset fields
     setAddName("");
     setAddDescription("");
     setAddPrice("");
-    setAddCategory("Burgers");
+    setAddCategoryId("");
     setAddImageUrl(SUGGESTED_IMAGES[0].url);
     setAddInStock(true);
+    setAddIsVegetarian(false);
+    setAddIsSpicy(false);
+    setAddTags([]);
     setShowAddModal(false);
   };
 
@@ -133,6 +155,21 @@ export default function MenuView({
     }
   };
 
+  const toggleAddTag = (tag: string) => {
+    setAddTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const toggleEditTag = (tag: string) => {
+    if (!showEditModal) return;
+    const currentTags = showEditModal.tags || [];
+    const newTags = currentTags.includes(tag)
+      ? currentTags.filter((t) => t !== tag)
+      : [...currentTags, tag];
+    setShowEditModal({ ...showEditModal, tags: newTags });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header section */}
@@ -143,19 +180,32 @@ export default function MenuView({
 
       {/* Category Pills Slider */}
       <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${
-              selectedCategory === cat
-                ? "bg-primary text-on-primary shadow-md"
-                : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        <button
+          onClick={() => setSelectedCategoryId("all")}
+          className={`whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${
+            selectedCategoryId === "all"
+              ? "bg-primary text-on-primary shadow-md"
+              : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
+          }`}
+        >
+          All ({menuItems.length})
+        </button>
+        {leafCategories.map((cat) => {
+          const count = menuItems.filter((item) => item.category_id === cat.id).length;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategoryId(cat.id)}
+              className={`whitespace-nowrap px-5 py-2 rounded-full text-xs font-bold transition-all ${
+                selectedCategoryId === cat.id
+                  ? "bg-primary text-on-primary shadow-md"
+                  : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
+              }`}
+            >
+              {cat.name} ({count})
+            </button>
+          );
+        })}
       </div>
 
       {/* Menu Cards Grid */}
@@ -191,6 +241,13 @@ export default function MenuView({
                   </div>
                 )}
 
+                {/* Category badge */}
+                <div className="absolute top-3 left-3">
+                  <span className="bg-white/90 backdrop-blur-md text-on-surface text-[10px] font-bold px-2.5 py-1 rounded-full shadow-sm">
+                    {item.category_name || "Uncategorized"}
+                  </span>
+                </div>
+
                 {/* Edit Button overlay top right */}
                 <button 
                   onClick={(e) => handleOpenEdit(item, e)}
@@ -208,13 +265,37 @@ export default function MenuView({
                     {item.name}
                   </h3>
                   <span className="font-extrabold text-primary text-sm shrink-0">
-                    ${item.price.toFixed(2)}
+                    GHS {item.price.toFixed(2)}
                   </span>
                 </div>
                 
-                <p className="text-xs text-on-surface-variant mb-5 line-clamp-2 leading-relaxed min-h-[32px]">
+                <p className="text-xs text-on-surface-variant mb-3 line-clamp-2 leading-relaxed min-h-[32px]">
                   {item.description || "Freshly made standard kitchen item with fine premium ingredients."}
                 </p>
+
+                {/* Tags */}
+                {(item.tags.length > 0 || item.is_vegetarian || item.is_spicy) && (
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {item.is_vegetarian && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">
+                        Vegan
+                      </span>
+                    )}
+                    {item.is_spicy && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold">
+                        Spicy
+                      </span>
+                    )}
+                    {item.tags.filter((t) => t !== "Vegan" && t !== "Spicy").map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {/* Stock Switch Switcher */}
                 <div className="flex items-center justify-between pt-3 border-t border-outline-variant/20">
@@ -297,9 +378,9 @@ export default function MenuView({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Price ($) *</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Price (GHS) *</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-extrabold">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-extrabold">GHS</span>
                     <input 
                       type="number" 
                       step="0.01" 
@@ -313,14 +394,16 @@ export default function MenuView({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Category</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Category *</label>
                   <select 
-                    value={addCategory}
-                    onChange={(e) => setAddCategory(e.target.value)}
+                    value={addCategoryId}
+                    onChange={(e) => setAddCategoryId(e.target.value)}
+                    required
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface focus:ring-2 focus:ring-primary text-sm font-semibold outline-none dark:bg-surface-container-high"
                   >
-                    {CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    <option value="">Select category...</option>
+                    {leafCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
                 </div>
@@ -358,6 +441,49 @@ export default function MenuView({
                 <div className="mt-2">
                   <span className="text-[10px] text-on-surface-variant">Selected asset matches standard delivery platform guidelines.</span>
                 </div>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase mb-2">Tags</label>
+                <div className="flex flex-wrap gap-2">
+                  {SUGGESTED_TAGS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleAddTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
+                        addTags.includes(tag)
+                          ? "bg-primary text-on-primary border-primary"
+                          : "bg-surface-container text-on-surface-variant border-outline-variant/40 hover:border-primary/50"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dietary flags */}
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={addIsVegetarian}
+                    onChange={(e) => setAddIsVegetarian(e.target.checked)}
+                    className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
+                  />
+                  <span className="text-xs font-bold text-on-surface-variant">Vegan</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={addIsSpicy}
+                    onChange={(e) => setAddIsSpicy(e.target.checked)}
+                    className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
+                  />
+                  <span className="text-xs font-bold text-on-surface-variant">Spicy</span>
+                </label>
               </div>
 
               <div className="flex items-center justify-between pt-2">
@@ -424,9 +550,9 @@ export default function MenuView({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Price ($) *</label>
+                  <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Price (GHS) *</label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-extrabold">$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xs font-extrabold">GHS</span>
                     <input 
                       type="number" 
                       step="0.01" 
@@ -441,12 +567,21 @@ export default function MenuView({
                 <div>
                   <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1.5">Category</label>
                   <select 
-                    value={showEditModal.category}
-                    onChange={(e) => setShowEditModal({ ...showEditModal, category: e.target.value })}
+                    value={showEditModal.category_id || ""}
+                    onChange={(e) => {
+                      const catId = e.target.value;
+                      setShowEditModal({ 
+                        ...showEditModal, 
+                        category_id: catId || null,
+                        category_name: getCategoryName(catId || null),
+                        category: getCategoryName(catId || null),
+                      });
+                    }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface focus:ring-2 focus:ring-primary text-sm font-semibold outline-none dark:bg-surface-container-high"
                   >
-                    {CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                    <option value="">Select category...</option>
+                    {leafCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
                 </div>
@@ -480,6 +615,49 @@ export default function MenuView({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Tags in Edit */}
+              <div>
+                <label className="block text-xs font-bold text-on-surface-variant uppercase mb-2">Tags</label>
+                <div className="flex flex-wrap gap-2">
+                  {SUGGESTED_TAGS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleEditTag(tag)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
+                        (showEditModal.tags || []).includes(tag)
+                          ? "bg-primary text-on-primary border-primary"
+                          : "bg-surface-container text-on-surface-variant border-outline-variant/40 hover:border-primary/50"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dietary flags in Edit */}
+              <div className="flex items-center gap-6">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={showEditModal.is_vegetarian}
+                    onChange={(e) => setShowEditModal({ ...showEditModal, is_vegetarian: e.target.checked })}
+                    className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
+                  />
+                  <span className="text-xs font-bold text-on-surface-variant">Vegan</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={showEditModal.is_spicy}
+                    onChange={(e) => setShowEditModal({ ...showEditModal, is_spicy: e.target.checked })}
+                    className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
+                  />
+                  <span className="text-xs font-bold text-on-surface-variant">Spicy</span>
+                </label>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-outline-variant/20">

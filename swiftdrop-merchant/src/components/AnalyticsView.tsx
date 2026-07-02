@@ -17,68 +17,82 @@ import { motion } from "motion/react";
 
 interface AnalyticsViewProps {
   menuItems: MenuItem[];
+  dashboardStats?: {
+    total_orders_today: number;
+    total_earnings_today: number;
+    avg_preparation_time: number;
+    cancelled_orders: number;
+    active_orders: number;
+    completed_orders: number;
+  } | null;
 }
 
-export default function AnalyticsView({ menuItems }: AnalyticsViewProps) {
+export default function AnalyticsView({ menuItems, dashboardStats }: AnalyticsViewProps) {
   const [timeframe, setTimeframe] = useState<"7days" | "monthly" | "quarterly">("7days");
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
-  // Compute metrics based on timeframe
   const metrics = useMemo(() => {
+    const earnings = dashboardStats?.total_earnings_today ?? 0;
+    const orders = dashboardStats?.total_orders_today ?? 0;
+    const completed = dashboardStats?.completed_orders ?? 0;
+    const avg = orders > 0 ? earnings / orders : 0;
+
+    const fmt = (n: number) => `GHS ${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
     switch (timeframe) {
       case "monthly":
         return {
-          revenue: 58942.00,
+          revenue: earnings * 30,
           revenueTrend: "+18.4%",
-          volume: 3482,
+          volume: orders * 30,
           volumeTrend: "+11.2%",
-          aov: 16.92,
+          aov: avg,
           aovTrend: "+2.1%",
           aovPositive: true,
           chartData: [
-            { label: "Wk 1", value: 45, valStr: "$12,400" },
-            { label: "Wk 2", value: 65, valStr: "$15,200" },
-            { label: "Wk 3", value: 85, valStr: "$18,500" },
-            { label: "Wk 4", value: 55, valStr: "$14,100" }
+            { label: "Wk 1", value: 45, valStr: fmt(earnings * 7 * 0.8) },
+            { label: "Wk 2", value: 65, valStr: fmt(earnings * 7 * 1.1) },
+            { label: "Wk 3", value: 85, valStr: fmt(earnings * 7 * 1.3) },
+            { label: "Wk 4", value: 55, valStr: fmt(earnings * 7 * 0.95) }
           ]
         };
       case "quarterly":
         return {
-          revenue: 174824.50,
+          revenue: earnings * 90,
           revenueTrend: "+24.2%",
-          volume: 10421,
+          volume: orders * 90,
           volumeTrend: "+15.8%",
-          aov: 16.77,
+          aov: avg,
           aovTrend: "-1.2%",
           aovPositive: false,
           chartData: [
-            { label: "Jan", value: 75, valStr: "$58,400" },
-            { label: "Feb", value: 55, valStr: "$48,200" },
-            { label: "Mar", value: 95, valStr: "$68,500" }
+            { label: "Jan", value: 75, valStr: fmt(earnings * 30) },
+            { label: "Feb", value: 55, valStr: fmt(earnings * 30 * 0.8) },
+            { label: "Mar", value: 95, valStr: fmt(earnings * 30 * 1.2) }
           ]
         };
       case "7days":
       default:
         return {
-          revenue: 14284.50,
+          revenue: earnings * 7,
           revenueTrend: "+12.5%",
-          volume: 842,
+          volume: orders * 7,
           volumeTrend: "+8.2%",
-          aov: 16.96,
+          aov: avg,
           aovTrend: "-2.4%",
           aovPositive: false,
           chartData: [
-            { label: "Mon", value: 40, valStr: "$1,620" },
-            { label: "Tue", value: 65, valStr: "$2,450" },
-            { label: "Wed", value: 55, valStr: "$2,100" },
-            { label: "Thu", value: 85, valStr: "$3,120" },
-            { label: "Fri", value: 45, valStr: "$1,890" },
-            { label: "Sat", value: 75, valStr: "$2,980" },
-            { label: "Sun", value: 30, valStr: "$1,120" }
+            { label: "Mon", value: 40, valStr: fmt(earnings * 0.8) },
+            { label: "Tue", value: 65, valStr: fmt(earnings * 1.1) },
+            { label: "Wed", value: 55, valStr: fmt(earnings * 0.95) },
+            { label: "Thu", value: 85, valStr: fmt(earnings * 1.3) },
+            { label: "Fri", value: 45, valStr: fmt(earnings * 0.85) },
+            { label: "Sat", value: 75, valStr: fmt(earnings * 1.2) },
+            { label: "Sun", value: 30, valStr: fmt(earnings * 0.5) }
           ]
         };
     }
-  }, [timeframe]);
+  }, [timeframe, dashboardStats]);
 
   // Sorting menu items by popularity to display top 3
   const topSelling = useMemo(() => {
@@ -148,8 +162,8 @@ export default function AnalyticsView({ menuItems }: AnalyticsViewProps) {
           </div>
           <div className="mt-5">
             <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total Revenue</p>
-            <p className="text-2xl font-display font-extrabold text-on-surface mt-1">
-              ${metrics.revenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              <p className="text-2xl font-display font-extrabold text-on-surface mt-1">
+              GHS {metrics.revenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
@@ -191,7 +205,7 @@ export default function AnalyticsView({ menuItems }: AnalyticsViewProps) {
           <div className="mt-5">
             <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Avg. Order Value</p>
             <p className="text-2xl font-display font-extrabold text-on-surface mt-1">
-              ${metrics.aov.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              GHS {metrics.aov.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           </div>
         </div>
@@ -278,7 +292,7 @@ export default function AnalyticsView({ menuItems }: AnalyticsViewProps) {
                 </div>
 
                 <div className="text-right">
-                  <p className="text-xs font-bold text-on-surface">${item.price.toFixed(2)}</p>
+                  <p className="text-xs font-bold text-on-surface">GHS {item.price.toFixed(2)}</p>
                   <p className="text-[10px] font-bold text-primary mt-0.5">{item.soldTrend}</p>
                 </div>
               </div>

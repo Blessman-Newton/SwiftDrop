@@ -1,14 +1,17 @@
 import { Bell, Sun, Moon, Sparkles } from "lucide-react";
-import { MERCHANT_INFO } from "../data";
 
 interface NavbarProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
-  onNavigate: (view: "dashboard" | "orders" | "menu" | "analytics") => void;
+  onNavigate: (view: "dashboard" | "orders" | "menu" | "analytics" | "settings") => void;
   activeView: string;
+  merchantInfo?: { restaurant_name: string; merchant_name: string } | null;
 }
 
-export default function Navbar({ darkMode, onToggleDarkMode, onNavigate, activeView }: NavbarProps) {
+export default function Navbar({ darkMode, onToggleDarkMode, onNavigate, activeView, merchantInfo }: NavbarProps) {
+  const chefName = merchantInfo?.merchant_name || "Merchant";
+  const restaurantName = merchantInfo?.restaurant_name || "Restaurant";
+
   return (
     <header className="sticky top-0 z-40 w-full border-b border-outline-variant/20 bg-surface/95 backdrop-blur-md transition-colors duration-300">
       <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-5">
@@ -20,12 +23,9 @@ export default function Navbar({ darkMode, onToggleDarkMode, onNavigate, activeV
             className="group relative h-10 w-10 overflow-hidden rounded-full border border-outline-variant/40 bg-surface-container-highest transition-transform active:scale-95 duration-200"
             title="Go to Dashboard"
           >
-            <img 
-              className="h-full w-full object-cover transition-transform group-hover:scale-105 duration-300" 
-              src={MERCHANT_INFO.chefAvatar} 
-              alt="Alex Avatar"
-              referrerPolicy="no-referrer"
-            />
+            <div className="h-full w-full flex items-center justify-center bg-primary/20 text-primary font-bold text-sm">
+              {chefName[0]}
+            </div>
           </button>
           <div className="flex flex-col">
             <button 
@@ -34,16 +34,16 @@ export default function Navbar({ darkMode, onToggleDarkMode, onNavigate, activeV
             >
               SwiftDrop <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-primary-container/20 text-primary-container dark:text-primary/90 ml-1">Merchant</span>
             </button>
-            <span className="text-[10px] text-on-surface-variant font-medium">Alex • {MERCHANT_INFO.name}</span>
+            <span className="text-[10px] text-on-surface-variant font-medium">{chefName} • {restaurantName}</span>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           {/* Quick AI Assist Tip */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-semibold animate-pulse">
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-semibold">
             <Sparkles className="h-3 w-3" />
-            <span>AI Powered Speed: +12%</span>
+            <span>AI Powered</span>
           </div>
 
           {/* Dark Mode Toggle */}
@@ -53,7 +53,7 @@ export default function Navbar({ darkMode, onToggleDarkMode, onNavigate, activeV
             title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {darkMode ? (
-              <Sun className="h-5 w-5 text-amber-500 animate-spin-slow" />
+              <Sun className="h-5 w-5 text-amber-500" />
             ) : (
               <Moon className="h-5 w-5 text-primary" />
             )}

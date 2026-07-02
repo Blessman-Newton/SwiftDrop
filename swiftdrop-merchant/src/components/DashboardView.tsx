@@ -18,7 +18,6 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Order } from "../types";
-import { MERCHANT_INFO } from "../data";
 import { motion, AnimatePresence } from "motion/react";
 
 interface DashboardViewProps {
@@ -26,7 +25,9 @@ interface DashboardViewProps {
   onToggleOnline: () => void;
   orders: Order[];
   onUpdateOrderStatus: (orderId: string, newStatus: any) => void;
-  onNavigate: (view: "dashboard" | "orders" | "menu" | "analytics") => void;
+  onNavigate: (view: "dashboard" | "orders" | "menu" | "analytics" | "settings") => void;
+  dashboardStats?: {total_orders_today: number; total_earnings_today: number; avg_preparation_time: number; cancelled_orders: number; active_orders: number; completed_orders: number} | null;
+  merchantInfo?: {restaurant_name: string; merchant_name: string} | null;
 }
 
 export default function DashboardView({
@@ -35,6 +36,8 @@ export default function DashboardView({
   orders,
   onUpdateOrderStatus,
   onNavigate,
+  dashboardStats,
+  merchantInfo,
 }: DashboardViewProps) {
   const [courierCallState, setCourierCallState] = useState<string | null>(null);
 
@@ -51,11 +54,14 @@ export default function DashboardView({
     }, 1500);
   };
 
-  // Compute stats
-  const totalOrdersCount = orders.length + 36; // Simulate historical base
-  const totalEarningsToday = orders
+  // Use API stats when available, fallback to computed values
+  const totalOrdersCount = dashboardStats?.total_orders_today ?? orders.length;
+  const totalEarningsToday = dashboardStats?.total_earnings_today ?? orders
     .filter(o => o.status !== "declined")
-    .reduce((sum, o) => sum + o.total, 1358.5); // Simulate base today
+    .reduce((sum, o) => sum + o.total, 0);
+  const avgPrepTime = dashboardStats?.avg_preparation_time ?? 0;
+  const cancelledOrders = dashboardStats?.cancelled_orders ?? 0;
+  const activeOrdersCount = dashboardStats?.active_orders ?? dashboardOrders.length;
 
   return (
     <div className="space-y-6">
@@ -105,7 +111,7 @@ export default function DashboardView({
 
             <p className="mt-6 text-sm text-on-surface-variant leading-relaxed">
               {isOnline ? (
-                <span>Accepting orders for <strong className="text-primary font-bold">{MERCHANT_INFO.name}</strong></span>
+                <span>Accepting orders for <strong className="text-primary font-bold">{merchantInfo?.restaurant_name || 'Restaurant'}</strong></span>
               ) : (
                 <span className="text-error font-medium">Auto-reject enabled. Store is currently closed.</span>
               )}
@@ -124,13 +130,13 @@ export default function DashboardView({
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider opacity-85">Total Earnings (Today)</p>
               <h2 className="mt-1 font-display text-4xl font-extrabold tracking-tight">
-                ${totalEarningsToday.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                GHS {totalEarningsToday.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </h2>
             </div>
 
             <div className="mt-6 flex items-center gap-1 text-xs font-bold bg-white/15 w-fit px-2.5 py-1 rounded-full border border-white/10">
               <TrendingUp className="h-3.5 w-3.5" />
-              <span>+12% from yesterday</span>
+              <span>{totalOrdersCount} orders today</span>
             </div>
           </div>
           {/* Subtle light ripple decor */}
@@ -194,7 +200,7 @@ export default function DashboardView({
                         )}
                       </div>
                       <p className="text-xs text-on-surface-variant mt-1">
-                        {order.items.map(item => `${item.name} x${item.quantity}`).join(", ")} • <strong>${order.total.toFixed(2)}</strong> • Customer: {order.customerName}
+                        {order.items.map(item => `${item.name} x${item.quantity}`).join(", ")} • <strong>GHS {order.total.toFixed(2)}</strong> • Customer: {order.customerName}
                       </p>
                       {order.driverName && (
                         <p className="text-[11px] text-primary font-medium mt-1">
@@ -272,12 +278,12 @@ export default function DashboardView({
             
             <div className="flex justify-between items-center p-3 rounded-xl bg-surface-container-low/50 dark:bg-surface-container-high/40">
               <span className="text-sm font-medium text-on-surface-variant">Avg. Prep Time</span>
-              <span className="text-lg font-bold text-on-surface">14m</span>
+              <span className="text-lg font-bold text-on-surface">{avgPrepTime > 0 ? `${Math.round(avgPrepTime)}m` : '-'}</span>
             </div>
             
             <div className="flex justify-between items-center p-3 rounded-xl bg-surface-container-low/50 dark:bg-surface-container-high/40">
-              <span className="text-sm font-medium text-on-surface-variant">Missed Orders</span>
-              <span className="text-lg font-bold text-error">0</span>
+              <span className="text-sm font-medium text-on-surface-variant">Cancelled Orders</span>
+              <span className="text-lg font-bold text-error">{cancelledOrders}</span>
             </div>
           </div>
         </div>
@@ -331,7 +337,7 @@ export default function DashboardView({
       <div className="relative rounded-2xl overflow-hidden shadow-md h-40 flex items-end">
         <img 
           className="absolute inset-0 w-full h-full object-cover select-none" 
-          src={MERCHANT_INFO.kitchenBanner} 
+          src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400" 
           alt="Kitchen Tools"
           referrerPolicy="no-referrer"
         />
