@@ -1,68 +1,40 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/models.dart';
-import '../providers/providers.dart';
+import 'package:dio/dio.dart';
+import 'api_client.dart';
+import 'api_endpoints.dart';
 
-class NotificationEvent {
-  final String title;
-  final String body;
-  final DateTime timestamp;
+class NotificationService {
+  final ApiClient _api = ApiClient();
 
-  const NotificationEvent({
-    required this.title,
-    required this.body,
-    required this.timestamp,
-  });
-}
-
-class OrderNotificationService {
-  final List<NotificationEvent> _events = [];
-  final Set<String> _notifiedOrders = {};
-
-  List<NotificationEvent> get events => List.unmodifiable(_events);
-
-  void checkForStatusChanges(List<Order> orders) {
-    for (final order in orders) {
-      if (_notifiedOrders.contains(order.id)) continue;
-
-      if (order.status == OrderStatus.outForDelivery) {
-        _notifiedOrders.add(order.id);
-        final event = NotificationEvent(
-          title: 'Out for Delivery!',
-          body:
-              'Your order from ${order.restaurantName} is on its way!',
-          timestamp: DateTime.now(),
-        );
-        _events.add(event);
-      } else if (order.status == OrderStatus.completed) {
-        _notifiedOrders.add(order.id);
-        final event = NotificationEvent(
-          title: 'Order Delivered!',
-          body:
-              'Your order from ${order.restaurantName} has been delivered. Enjoy!',
-          timestamp: DateTime.now(),
-        );
-        _events.add(event);
+  /// Fetch notifications from API
+  Future<Map<String, dynamic>> listNotifications() async {
+    try {
+      final response = await _api.dio.get(ApiEndpoints.notifications);
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
       }
+      return {'notifications': [], 'unread_count': 0};
+    } on DioException catch (_) {
+      return {'notifications': [], 'unread_count': 0};
+    }
+  }
+
+  /// Mark a notification as read
+  Future<bool> markRead(String notificationId) async {
+    try {
+      final response = await _api.dio.post(ApiEndpoints.notificationRead(notificationId));
+      return response.statusCode == 200;
+    } on DioException catch (_) {
+      return false;
+    }
+  }
+
+  /// Mark all notifications as read
+  Future<bool> markAllRead() async {
+    try {
+      final response = await _api.dio.post(ApiEndpoints.notificationsReadAll);
+      return response.statusCode == 200;
+    } on DioException catch (_) {
+      return false;
     }
   }
 }
-
-final notificationServiceProvider =
-    Provider<OrderNotificationService>((ref) {
-  return OrderNotificationService();
-});
-
-final notificationEventsProvider =
-    StateProvider<List<NotificationEvent>>((ref) => []);
-
-final orderStatusWatcherProvider = Provider<void>((ref) {
-  final service = ref.watch(notificationServiceProvider);
-  final orders = ref.watch(ordersProvider);
-
-  service.checkForStatusChanges(orders);
-
-  if (service.events.isNotEmpty) {
-    ref.read(notificationEventsProvider.notifier).state =
-        service.events.toList();
-  }
-});

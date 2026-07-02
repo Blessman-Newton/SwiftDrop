@@ -1,12 +1,14 @@
 import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
+import 'api_client.dart';
+import 'api_endpoints.dart';
 
 class AuthService {
-  static const _usersKey = 'swiftdrop_users';
   static const _sessionKey = 'swiftdrop_active_session';
-  static const _demoEmail = 'hello@swiftdrop.com';
-  static const _demoPassword = 'password';
+
+  final ApiClient _api = ApiClient();
 
   SharedPreferences? _prefs;
 
@@ -15,82 +17,81 @@ class AuthService {
     return _prefs!;
   }
 
+  // Send OTP via API
+  Future<bool> sendOtp(String phone) async {
+    final response = await _api.dio.post(
+      ApiEndpoints.sendOtp,
+      data: {'phone': phone},
+    );
+    return response.statusCode == 200;
+  }
+
+  // Verify OTP via API
+  Future<User?> verifyOtpApi(String phone, String code,
+      {String? name, String role = 'customer'}) async {
+    final response = await _api.dio.post(
+      ApiEndpoints.verifyOtp,
+      data: {
+        'phone': phone,
+        'code': code,
+        'name': name,
+        'role': role,
+      },
+    );
+    if (response.statusCode == 200) {
+      final data = response.data as Map<String, dynamic>;
+      final token = data['access_token'] as String?;
+      final userData = data['user'] as Map<String, dynamic>?;
+      if (token != null && userData != null) {
+        await _api.saveToken(token);
+        final user = User(
+          uid: userData['id'] as String,
+          email: userData['email'] as String? ?? '',
+          displayName: userData['name'] as String?,
+          phoneNumber: userData['phone'] as String?,
+          avatarUrl: userData['avatar_url'] as String?,
+        );
+        // Persist locally too
+        final p = await prefs;
+        await p.setString(_sessionKey, jsonEncode(user.toMap()));
+        return user;
+      }
+    }
+    return null;
+  }
+
+  // Get current user (check API token first, then local session)
   Future<User?> getCurrentUser() async {
+    await _api.loadToken();
+
+    if (_api.isAuthenticated) {
+      try {
+        final response = await _api.dio.get(ApiEndpoints.me);
+        if (response.statusCode == 200) {
+          final data = response.data as Map<String, dynamic>;
+          return User(
+            uid: data['id'] as String,
+            email: data['email'] as String? ?? '',
+            displayName: data['name'] as String?,
+            phoneNumber: data['phone'] as String?,
+            avatarUrl: data['avatar_url'] as String?,
+          );
+        }
+      } on DioException catch (_) {
+        // Token expired, fall through to local
+      }
+    }
+
+    // Fallback: local session (only for token persistence, not auth)
     final p = await prefs;
     final sessionJson = p.getString(_sessionKey);
     if (sessionJson == null) return null;
     return User.fromMap(jsonDecode(sessionJson) as Map<String, dynamic>);
   }
 
-  Future<User?> signIn(String email, String password) async {
-    await Future.delayed(const Duration(seconds: 1));
-    final p = await prefs;
-    final usersJson = p.getString(_usersKey);
-    final users = usersJson != null
-        ? (jsonDecode(usersJson) as List).cast<Map<String, dynamic>>()
-        : <Map<String, dynamic>>[];
-
-    final match = users.where(
-      (u) => u['email'] == email && u['password'] == password,
-    );
-
-    if (match.isNotEmpty) {
-      final user = User.fromMap(match.first);
-      await p.setString(_sessionKey, jsonEncode(user.toMap()));
-      return user;
-    }
-
-    if (email == _demoEmail && password == _demoPassword) {
-      const user = User(
-        uid: 'user_demo',
-        email: _demoEmail,
-        displayName: 'Swift User',
-        phoneNumber: '+1 (555) 123-4567',
-        avatarUrl: null,
-      );
-      await p.setString(_sessionKey, jsonEncode(user.toMap()));
-      return user;
-    }
-
-    return null;
-  }
-
-  Future<User?> signUp(String name, String email, String phone, String password) async {
-    await Future.delayed(const Duration(seconds: 1));
-    final p = await prefs;
-    final usersJson = p.getString(_usersKey);
-    final users = usersJson != null
-        ? (jsonDecode(usersJson) as List).cast<Map<String, dynamic>>()
-        : <Map<String, dynamic>>[];
-
-    if (users.any((u) => u['email'] == email)) return null;
-
-    final user = User(
-      uid: 'user_${DateTime.now().millisecondsSinceEpoch}',
-      email: email,
-      displayName: name,
-      phoneNumber: phone,
-    );
-
-    final userData = {...user.toMap(), 'password': password};
-    users.add(userData);
-    await p.setString(_usersKey, jsonEncode(users));
-    await p.setString(_sessionKey, jsonEncode(user.toMap()));
-    return user;
-  }
-
   Future<void> signOut() async {
+    await _api.clearToken();
     final p = await prefs;
     await p.remove(_sessionKey);
-  }
-
-  Future<bool> sendPasswordReset(String email) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
-  }
-
-  Future<bool> verifyOtp(String code) async {
-    await Future.delayed(const Duration(seconds: 1));
-    return code.length == 4;
   }
 }
