@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/providers.dart';
-import '../data/restaurants.dart';
+import '../providers/restaurant_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 
@@ -29,6 +29,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
   Widget build(BuildContext context) {
     final favorites = ref.watch(favoritesProvider);
     final searchQuery = _searchController.text.toLowerCase();
+    final restaurantsAsync = ref.watch(restaurantsProvider);
+    final restaurants = restaurantsAsync.value ?? [];
 
     final filteredRestaurants = restaurants.where((r) {
       final matchesSearch = r.name.toLowerCase().contains(searchQuery) ||
@@ -52,7 +54,9 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
     return Container(
       height: double.infinity,
       color: const Color(0xFFF4FBF4),
-      child: SingleChildScrollView(
+      child: RefreshIndicator(
+        onRefresh: () async {},
+        child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 24),
         child: Column(
           children: [
@@ -499,7 +503,43 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                   const SizedBox(height: 16),
 
                   // Restaurant grid
-                  ...filteredRestaurants.map((restaurant) {
+                  if (filteredRestaurants.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 48,
+                            color: Colors.grey[300],
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No restaurants found',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Try adjusting your search or filters',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.grey[400],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    ...filteredRestaurants.map((restaurant) {
                     final isFav = favorites.contains(restaurant.id);
                     return Semantics(
                       label: '${restaurant.name}, ${restaurant.tags.join(', ')}, rating ${restaurant.rating}, delivery time ${restaurant.deliveryTime}',
@@ -713,6 +753,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

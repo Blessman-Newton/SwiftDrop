@@ -7,9 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
-import '../utils/validators.dart';
 
-enum AuthMode { login, signup, reset, otp }
+enum AuthMode { login, signup, otp }
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -20,7 +19,6 @@ class AuthScreen extends ConsumerStatefulWidget {
 
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   AuthMode _mode = AuthMode.login;
-  bool _obscurePassword = true;
   bool _loading = false;
   String? _error;
   bool _agreedToTerms = false;
@@ -31,8 +29,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // OTP state
-  final List<String> _otpDigits = ['', '', '', ''];
+  // OTP state (6 digits)
+  final List<String> _otpDigits = ['', '', '', '', '', ''];
   int _otpIndex = 0;
   int _countdown = 59;
   Timer? _countdownTimer;
@@ -76,7 +74,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   void _onOtpKeyPress(String key) {
-    if (_otpIndex < 4) {
+    if (_otpIndex < 6) {
       setState(() {
         _otpDigits[_otpIndex] = key;
         _otpIndex++;
@@ -96,121 +94,81 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   String get _otpCode => _otpDigits.join();
 
   Future<void> _handleLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showError('Please fill in all fields');
+    if (_phoneController.text.isEmpty) {
+      _showError('Please enter your phone number');
       return;
     }
     setState(() {
       _loading = true;
       _error = null;
     });
-    final success = await ref.read(currentUserProvider.notifier).signIn(
-          _emailController.text.trim(),
-          _passwordController.text,
+    final sent = await ref.read(currentUserProvider.notifier).sendOtp(
+          _phoneController.text.trim(),
         );
     if (!mounted) return;
     setState(() => _loading = false);
-    if (success) {
-      final role = ref.read(userRoleProvider);
-      if (role == UserRole.rider) {
-        context.go('/rider/dashboard');
-      } else {
-        context.go('/home');
-      }
+    if (sent) {
+      setState(() => _mode = AuthMode.otp);
+      _startCountdown();
     } else {
-      _showError('Invalid email or password');
-    }
-  }
-
-  Future<void> _handleGoogleLogin() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    final success = await ref.read(currentUserProvider.notifier).signIn(
-          'hello@swiftdrop.com',
-          'password',
-        );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (success) {
-      final role = ref.read(userRoleProvider);
-      if (role == UserRole.rider) {
-        context.go('/rider/dashboard');
-      } else {
-        context.go('/home');
-      }
-    } else {
-      _showError('Google sign-in failed');
+      _showError('Failed to send OTP');
     }
   }
 
   Future<void> _handleSignup() async {
     if (_nameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+        _phoneController.text.isEmpty) {
       _showError('Please fill in all fields');
+      return;
+    }
+    if (!_agreedToTerms) {
+      _showError('Please agree to the Terms of Service');
       return;
     }
     setState(() {
       _loading = true;
       _error = null;
     });
-    final success = await ref.read(currentUserProvider.notifier).signUp(
-          _nameController.text.trim(),
-          _emailController.text.trim(),
+    final sent = await ref.read(currentUserProvider.notifier).sendOtp(
           _phoneController.text.trim(),
-          _passwordController.text,
         );
     if (!mounted) return;
     setState(() => _loading = false);
-    if (success) {
-      final role = ref.read(userRoleProvider);
-      if (role == UserRole.rider) {
+    if (sent) {
+      setState(() => _mode = AuthMode.otp);
+      _startCountdown();
+    } else {
+      _showError('Failed to send OTP');
+    }
+  }
+
+  // OTP verification for phone login/signup
+  Future<void> _handleOtp() async {
+    if (_otpCode.length < 6) {
+      _showError('Please enter the full 6-digit code');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final role = ref.read(userRoleProvider) == UserRole.rider ? 'rider' : 'customer';
+    final name = _nameController.text.trim();
+    final valid = await ref.read(currentUserProvider.notifier).verifyOtp(
+          _phoneController.text.trim(),
+          _otpCode,
+          name: name.isNotEmpty ? name : null,
+          role: role,
+        );
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (valid) {
+      final userRole = ref.read(userRoleProvider);
+      if (userRole == UserRole.rider) {
         context.go('/rider/dashboard');
       } else {
         context.go('/home');
       }
-    } else {
-      _showError('Email already registered');
-    }
-  }
-
-  Future<void> _handleReset() async {
-    if (_emailController.text.isEmpty) {
-      _showError('Please enter your email');
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    await ref
-        .read(currentUserProvider.notifier)
-        .sendPasswordReset(_emailController.text.trim());
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _mode = AuthMode.otp;
-    });
-    _startCountdown();
-  }
-
-  Future<void> _handleOtp() async {
-    if (_otpCode.length < 4) {
-      _showError('Please enter the full code');
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    final valid =
-        await ref.read(currentUserProvider.notifier).verifyOtp(_otpCode);
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (valid) {
-      setState(() => _mode = AuthMode.login);
     } else {
       _showError('Invalid code');
     }
@@ -226,9 +184,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         break;
       case AuthMode.signup:
         _handleSignup();
-        break;
-      case AuthMode.reset:
-        _handleReset();
         break;
       case AuthMode.otp:
         _handleOtp();
@@ -417,9 +372,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               _mode == AuthMode.login
                   ? 'Welcome Back'
-                  : _mode == AuthMode.signup
-                      ? 'Create Account'
-                      : 'Reset Password',
+                  : 'Create Account',
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -432,9 +385,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               _mode == AuthMode.login
                   ? 'Sign in to continue'
-                  : _mode == AuthMode.signup
-                      ? 'Join SwiftDrop today'
-                      : 'Enter your email to reset',
+                  : 'Join SwiftDrop today',
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: isDark ? Colors.white54 : Colors.black45,
@@ -453,82 +404,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
             const SizedBox(height: 14),
           ],
-          if (_mode != AuthMode.reset) ...[
-            _buildField(
-              controller: _emailController,
-              label: 'Email',
-              icon: Icons.mail,
-              isDark: isDark,
-              keyboardType: TextInputType.emailAddress,
-              validator: Validators.email,
-            ),
-            const SizedBox(height: 14),
-          ],
-          if (_mode == AuthMode.reset) ...[
-            _buildField(
-              controller: _emailController,
-              label: 'Email',
-              icon: Icons.mail,
-              isDark: isDark,
-              keyboardType: TextInputType.emailAddress,
-              validator: Validators.email,
-            ),
-            const SizedBox(height: 14),
-          ],
-          if (_mode == AuthMode.signup) ...[
+          if (_mode == AuthMode.login || _mode == AuthMode.signup) ...[
             _buildField(
               controller: _phoneController,
-              label: 'Phone',
+              label: 'Phone Number',
               icon: Icons.phone,
               isDark: isDark,
               keyboardType: TextInputType.phone,
             ),
             const SizedBox(height: 14),
           ],
-          if (_mode == AuthMode.login || _mode == AuthMode.signup) ...[
-            _buildField(
-              controller: _passwordController,
-              label: 'Password',
-              icon: Icons.lock,
-              isDark: isDark,
-              obscure: _obscurePassword,
-              validator: Validators.password,
-              suffix: GestureDetector(
-                onTap: () =>
-                    setState(() => _obscurePassword = !_obscurePassword),
-                child: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  size: 18,
-                  color: isDark ? Colors.white38 : Colors.black38,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-          ],
 
           // Forgot password
-          if (_mode == AuthMode.login)
-            Align(
-              alignment: Alignment.centerRight,
-              child: Semantics(
-                label: 'Forgot password',
-                child: GestureDetector(
-                  onTap: () => setState(() => _mode = AuthMode.reset),
-                  child: Text(
-                    'Forgot Password?',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? const Color(0xFF6FFBBE)
-                          : const Color(0xFF006C49),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-          if (_mode == AuthMode.reset) const SizedBox(height: 4),
+          if (_mode == AuthMode.signup) const SizedBox(height: 4),
 
           const SizedBox(height: 20),
 
@@ -583,8 +471,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 gradient: const LinearGradient(
                   colors: [Color(0xFF10B981), Color(0xFF006C49)],
                 ),
-                borderRadius:
-                    BorderRadius.circular(_mode == AuthMode.reset ? 14 : 14),
+                borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
                     color: const Color(0xFF10B981).withValues(alpha: 0.15),
@@ -605,11 +492,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            _mode == AuthMode.login
-                                ? 'Sign In'
-                                : _mode == AuthMode.signup
-                                    ? 'Sign Up'
-                                    : 'Send Reset Link',
+                            _mode == AuthMode.login ? 'Sign In' : 'Sign Up',
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -627,82 +510,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
           ),
 
-          // Divider and Google (login only)
-          if (_mode == AuthMode.login) ...[
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: Divider(
-                      color: isDark ? Colors.white12 : Colors.grey.shade200),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Or continue with',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13,
-                      color: isDark ? Colors.white38 : Colors.black38,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Divider(
-                      color: isDark ? Colors.white12 : Colors.grey.shade200),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Semantics(
-              label: 'Sign in with Google',
-              child: GestureDetector(
-                onTap: _loading ? null : _handleGoogleLogin,
-                child: Container(
-                  width: double.infinity,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.grey.shade200,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 20,
-                        height: 20,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFF4285F4),
-                        ),
-                        child: const Center(
-                          child: Text('G',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Google Test Account',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-
           const SizedBox(height: 20),
 
           // Footer
@@ -712,9 +519,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               Text(
                 _mode == AuthMode.login
                     ? "Don't have an account? "
-                    : _mode == AuthMode.signup
-                        ? 'Already have an account? '
-                        : '',
+                    : 'Already have an account? ',
                 style: GoogleFonts.poppins(
                   fontSize: 14,
                   color: isDark ? Colors.white54 : Colors.black45,
@@ -738,24 +543,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
             ],
           ),
-
-          // Back to login from reset
-          if (_mode == AuthMode.reset) ...[
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => setState(() => _mode = AuthMode.login),
-              child: Text(
-                'Back to login',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? const Color(0xFF6FFBBE)
-                      : const Color(0xFF006C49),
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -815,18 +602,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
         const SizedBox(height: 28),
 
-        // OTP boxes
+        // OTP boxes (6 digits)
         GestureDetector(
           onTap: () {},
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(4, (i) {
+            children: List.generate(6, (i) {
               final isActive = i == _otpIndex;
               final isFilled = _otpDigits[i].isNotEmpty;
               return Container(
-                width: 56,
-                height: 64,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 44,
+                height: 56,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.05)
@@ -847,7 +634,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   child: Text(
                     _otpDigits[i],
                     style: GoogleFonts.poppins(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : Colors.black87,
                     ),

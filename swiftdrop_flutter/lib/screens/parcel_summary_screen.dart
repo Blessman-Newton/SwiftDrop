@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../utils/validators.dart';
+import '../providers/providers.dart';
+import '../models/models.dart';
+import '../services/order_service.dart';
+import '../services/api_client.dart';
 
-class ParcelSummaryScreen extends StatefulWidget {
+
+class ParcelSummaryScreen extends ConsumerStatefulWidget {
   const ParcelSummaryScreen({super.key});
 
   @override
-  State<ParcelSummaryScreen> createState() => _ParcelSummaryScreenState();
+  ConsumerState<ParcelSummaryScreen> createState() => _ParcelSummaryScreenState();
 }
 
-class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
+class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
   final _promoController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isProcessing = false;
@@ -24,6 +30,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final booking = ref.watch(parcelBookingProvider);
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
       body: Column(
@@ -108,7 +115,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '123 Urban Business Center',
+                                booking.pickupLocation,
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -116,13 +123,6 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                'Central District, Tech Park',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF3C4A42),
-                                ),
-                              ),
                               const SizedBox(height: 16),
                               Text(
                                 'Drop-off',
@@ -134,7 +134,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '456 Residential Avenue',
+                                booking.deliveryLocation,
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
@@ -142,13 +142,6 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              Text(
-                                'Oakwood Hills, Block B',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF3C4A42),
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -203,7 +196,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'SwiftDrop Express',
+                                      booking.serviceDisplayName,
                                       style: GoogleFonts.inter(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w500,
@@ -211,7 +204,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                                       ),
                                     ),
                                     Text(
-                                      '15-25 min',
+                                      booking.deliveryEta,
                                       style: GoogleFonts.inter(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -265,7 +258,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Small Box (<2kg)',
+                                      '${booking.packageTypeLabel} (${booking.packageSizeLabel})',
                                       style: GoogleFonts.inter(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -385,7 +378,9 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                         const SizedBox(width: 12),
                         GestureDetector(
                           onTap: () {
-                            _formKey.currentState!.validate();
+                            if (_formKey.currentState!.validate()) {
+                              ref.read(parcelBookingProvider.notifier).applyPromo(_promoController.text.toUpperCase());
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -435,11 +430,17 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildPriceRow('Delivery Fee', '\$8.50'),
+                        _buildPriceRow('Delivery Fee', '\$${booking.deliveryFee.toStringAsFixed(2)}'),
                         const SizedBox(height: 8),
-                        _buildPriceRow('Service Fee', '\$1.50'),
-                        const SizedBox(height: 8),
-                        _buildPriceRow('Flash Discount', '-\$2.00', isDiscount: true),
+                        _buildPriceRow('Service Fee', '\$${booking.serviceFee.toStringAsFixed(2)}'),
+                        if (booking.insuranceIncluded) ...[
+                          const SizedBox(height: 8),
+                          _buildPriceRow('Insurance', '\$${booking.insuranceFee.toStringAsFixed(2)}'),
+                        ],
+                        if (booking.discount > 0) ...[
+                          const SizedBox(height: 8),
+                          _buildPriceRow('Promo Discount', '-\$${booking.discount.toStringAsFixed(2)}', isDiscount: true),
+                        ],
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
                           child: Divider(color: Color(0xFFBBCABF)),
@@ -456,7 +457,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                               ),
                             ),
                             Text(
-                              '\$8.00',
+                              '\$${booking.total.toStringAsFixed(2)}',
                               style: GoogleFonts.inter(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w700,
@@ -519,7 +520,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                             ),
                           ),
                           Text(
-                            '14:45 - 14:55',
+                            booking.deliveryEta,
                             style: GoogleFonts.inter(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -540,7 +541,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                             ),
                           ),
                           Text(
-                            '\$8.00',
+                            '\$${booking.total.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -576,6 +577,40 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                             : () async {
                                 setState(() => _isProcessing = true);
                                 await Future.delayed(const Duration(seconds: 2));
+                                final booking = ref.read(parcelBookingProvider);
+                                final orderId = 'PARCEL-${DateTime.now().millisecondsSinceEpoch}';
+
+                                // Save order locally
+                                ref.read(ordersProvider.notifier).addOrder(Order(
+                                  id: orderId,
+                                  restaurantId: 'swiftdrop-parcel',
+                                  restaurantName: 'SwiftDrop Parcel',
+                                  items: const [],
+                                  totalPrice: booking.total,
+                                  status: OrderStatus.pending,
+                                  createdAt: DateTime.now(),
+                                  trackingStep: 0,
+                                  orderType: 'parcel',
+                                  parcelPickupLocation: booking.pickupLocation,
+                                  parcelDeliveryLocation: booking.deliveryLocation,
+                                ));
+
+                                // Also call backend API (fire and forget)
+                                if (ApiClient().isAuthenticated) {
+                                  OrderService().createOrder(
+                                    orderType: 'parcel',
+                                    restaurantName: 'SwiftDrop Parcel',
+                                    pickupAddress: booking.pickupLocation,
+                                    deliveryAddress: booking.deliveryLocation,
+                                    subtotal: booking.deliveryFee + booking.serviceFee,
+                                    deliveryFee: booking.deliveryFee,
+                                    tax: 0,
+                                    discount: booking.discount,
+                                    total: booking.total,
+                                    promoCode: booking.promoCode,
+                                  );
+                                }
+
                                 setState(() {
                                   _isProcessing = false;
                                   _orderSuccess = true;
@@ -585,7 +620,7 @@ class _ParcelSummaryScreenState extends State<ParcelSummaryScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Order confirmed! A courier is being assigned.',
+                                        'Parcel order confirmed! Tracking: $orderId',
                                         style: GoogleFonts.inter(),
                                       ),
                                       backgroundColor: const Color(0xFF006C49),

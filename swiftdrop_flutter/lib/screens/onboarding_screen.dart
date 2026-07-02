@@ -70,13 +70,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         curve: Curves.easeInOut,
       );
     } else {
-      ref.read(onboardingDoneProvider.notifier).state = true;
+      ref.read(onboardingDoneProvider.notifier).complete();
       context.go('/role-selection');
     }
   }
 
   void _skip() {
-    ref.read(onboardingDoneProvider.notifier).state = true;
+    ref.read(onboardingDoneProvider.notifier).complete();
     context.go('/role-selection');
   }
 

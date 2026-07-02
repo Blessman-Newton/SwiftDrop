@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/providers.dart';
-import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
@@ -55,9 +56,21 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   bool _showFeedbackModal = false;
   int _restaurantRating = 0;
   int _deliveryRating = 0;
-  String _feedbackComment = '';
   List<String> _selectedTags = [];
   bool _isFeedbackSubmitted = false;
+
+  Future<void> _saveFeedback() async {
+    final prefs = await SharedPreferences.getInstance();
+    final feedback = {
+      'restaurantRating': _restaurantRating,
+      'deliveryRating': _deliveryRating,
+      'tags': _selectedTags,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    final existing = prefs.getStringList('swiftdrop_feedback') ?? [];
+    existing.add(jsonEncode(feedback));
+    await prefs.setStringList('swiftdrop_feedback', existing);
+  }
 
   // Step tooltip state
   bool _showStepTooltip = false;
@@ -1928,7 +1941,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         const SizedBox(height: 8),
         TextField(
           maxLines: 3,
-          onChanged: (v) => _feedbackComment = v,
           style: GoogleFonts.inter(
             fontSize: 12,
             color: isDark ? Colors.white : Colors.black87,
@@ -2082,7 +2094,10 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   child: ElevatedButton(
                     onPressed: (_restaurantRating == 0 && _deliveryRating == 0)
                         ? null
-                        : () => setState(() => _isFeedbackSubmitted = true),
+                        : () {
+                            _saveFeedback();
+                            setState(() => _isFeedbackSubmitted = true);
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,

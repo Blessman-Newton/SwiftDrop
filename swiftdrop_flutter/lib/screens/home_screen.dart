@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
-import '../data/restaurants.dart';
+import '../providers/restaurant_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 
@@ -17,6 +17,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchController = TextEditingController();
+  String _selectedLocation = 'San Francisco, CA';
 
   @override
   void dispose() {
@@ -32,6 +33,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final selectedCuisines = ref.watch(selectedCuisinesProvider);
     final maxPrice = ref.watch(maxPriceLevelProvider);
     final sortOption = ref.watch(sortOptionProvider);
+    final restaurantsAsync = ref.watch(restaurantsProvider);
+
+    final restaurants = restaurantsAsync.value ?? [];
 
     final favoritedRestaurants =
         restaurants.where((r) => favorites.contains(r.id)).toList();
@@ -66,7 +70,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Container(
       height: double.infinity,
       color: const Color(0xFFF4FBF4),
-      child: SingleChildScrollView(
+      child: RefreshIndicator(
+        onRefresh: () async {},
+        child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 24),
         child: Column(
           children: [
@@ -78,43 +84,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Location
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on,
-                          color: AppColors.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Current Location',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[400],
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          Row(
+                  GestureDetector(
+                    onTap: () {
+                      showModalBottomSheet(
+                        context: context,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        builder: (ctx) => Container(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'San Francisco, CA',
+                                'Select Location',
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              const Text(
-                                '▼',
-                                style: TextStyle(fontSize: 10),
+                              const SizedBox(height: 16),
+                              ...['San Francisco, CA', 'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Seattle, WA'].map(
+                                (loc) => ListTile(
+                                  leading: Icon(
+                                    Icons.location_on,
+                                    color: _selectedLocation == loc ? AppColors.primary : Colors.grey,
+                                  ),
+                                  title: Text(loc),
+                                  trailing: _selectedLocation == loc
+                                      ? const Icon(Icons.check, color: AppColors.primary)
+                                      : null,
+                                  onTap: () {
+                                    setState(() => _selectedLocation = loc);
+                                    Navigator.pop(ctx);
+                                  },
+                                ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        const Icon(Icons.location_on,
+                            color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Current Location',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[400],
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  _selectedLocation,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  '▼',
+                                  style: TextStyle(fontSize: 10),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                   // Title
                   Text(
@@ -167,6 +216,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
+
+                  // Active order banner
+                  Consumer(builder: (context, ref, _) {
+                    final activeOrder = ref.watch(activeOrderProvider);
+                    if (activeOrder == null) return const SizedBox.shrink();
+                    return GestureDetector(
+                      onTap: () => context.push('/map'),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.local_shipping,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Active Order',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Track your ${activeOrder.restaurantName} order',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 10,
+                                      color: Colors.white.withOpacity(0.8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              color: Colors.white.withOpacity(0.7),
+                              size: 14,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
 
                   // Search bar
                   Semantics(
@@ -622,16 +733,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     color: Colors.grey[100],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        ),
-                      ),
-                      ],
+                               ],
+                             ),
+                           ),
+                         ),
+                       ),
+                       ),
+                       ],
+                     ),
 
-                    const SizedBox(height: 24),
-
+                     const SizedBox(height: 24),
                     // Quick Actions
                   Container(
                     padding: const EdgeInsets.all(20),
@@ -742,6 +853,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 .push('/restaurant/${restaurant.id}'),
                             child: Container(
                               width: 208,
+                              clipBehavior: Clip.hardEdge,
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(24),
@@ -751,7 +863,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 children: [
                                   // Image
                                   Container(
-                                    height: (MediaQuery.of(context).size.height * 0.15).clamp(80.0, 112.0),
+                                    height: (MediaQuery.of(context).size.height * 0.15).clamp(80.0, 104.0),
                                     decoration: BoxDecoration(
                                       borderRadius: const BorderRadius.vertical(
                                           top: Radius.circular(24)),
@@ -827,7 +939,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   // Info
                                   Padding(
-                                    padding: const EdgeInsets.all(12),
+                                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -915,8 +1027,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                          ],
                          ),
                         ),
-                        ),
-                        ),
 
                      const SizedBox(height: 24),
 
@@ -990,26 +1100,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       Positioned(
                                         top: 12,
                                         right: 12,
-                                        child: Container(
-                                          width: 32,
-                                          height: 32,
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.9),
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black
-                                                    .withOpacity(0.1),
-                                                blurRadius: 4,
-                                              ),
-                                            ],
-                                          ),
-                                          child: Icon(
-                                            Icons.favorite,
-                                            size: 16,
-                                            color: isFav
-                                                ? Colors.red
-                                                : Colors.grey[600],
+                                        child: GestureDetector(
+                                          onTap: () => ref.read(favoritesProvider.notifier).toggle(restaurant.id),
+                                          child: Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.9),
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.1),
+                                                  blurRadius: 4,
+                                                ),
+                                              ],
+                                            ),
+                                            child: Icon(
+                                              Icons.favorite,
+                                              size: 16,
+                                              color: isFav
+                                                  ? Colors.red
+                                                  : Colors.grey[600],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1151,6 +1264,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );

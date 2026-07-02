@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import '../providers/providers.dart';
 
-class ParcelServiceSelectionScreen extends StatefulWidget {
+class ParcelServiceSelectionScreen extends ConsumerStatefulWidget {
   const ParcelServiceSelectionScreen({super.key});
 
   @override
-  State<ParcelServiceSelectionScreen> createState() =>
+  ConsumerState<ParcelServiceSelectionScreen> createState() =>
       _ParcelServiceSelectionScreenState();
 }
 
-class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScreen> {
-  String _selectedService = 'swift';
-  bool _insuranceIncluded = false;
+class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSelectionScreen> {
+  late String _selectedService;
+  late bool _insuranceIncluded;
+
+  @override
+  void initState() {
+    super.initState();
+    final booking = ref.read(parcelBookingProvider);
+    _selectedService = booking.deliveryService;
+    _insuranceIncluded = booking.insuranceIncluded;
+  }
 
   double get _totalPrice {
     double base = _selectedService == 'swift'
@@ -26,6 +36,7 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
 
   @override
   Widget build(BuildContext context) {
+    final booking = ref.watch(parcelBookingProvider);
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
       body: Column(
@@ -76,7 +87,7 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
                         _buildRouteRow(
                           icon: Icons.location_on,
                           label: 'PICKUP',
-                          value: '3355 Peachtree Rd NE, Suite 1024, Atlanta',
+                          value: booking.pickupLocation,
                           iconColor: const Color(0xFF10B981),
                           isLast: false,
                         ),
@@ -85,7 +96,7 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
                         _buildRouteRow(
                           icon: Icons.location_on,
                           label: 'DELIVERY',
-                          value: '233 S Wacker Dr, Chicago, IL 60606, USA',
+                          value: booking.deliveryLocation,
                           iconColor: const Color(0xFF9D4300),
                           isLast: true,
                         ),
@@ -145,11 +156,11 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _buildInfoRow('Size', 'Small bag'),
+                  _buildInfoRow('Size', booking.packageSizeLabel),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Weight', '5 kg'),
+                  _buildInfoRow('Weight', '${booking.weight.round()} kg'),
                   const SizedBox(height: 8),
-                  _buildInfoRow('Type', 'Document'),
+                  _buildInfoRow('Type', booking.packageTypeLabel),
                   const SizedBox(height: 20),
 
                   // Insurance
@@ -180,7 +191,13 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                  onPressed: () => context.push('/parcel/summary'),
+                  onPressed: () {
+                    ref.read(parcelBookingProvider.notifier).updateService(
+                          _selectedService,
+                          insurance: _insuranceIncluded,
+                        );
+                    context.push('/parcel/summary');
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF006C49),
                     foregroundColor: Colors.white,
@@ -417,7 +434,10 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
     return Semantics(
       label: 'Include delivery insurance, adds one dollar${_insuranceIncluded ? ', selected' : ''}',
       child: GestureDetector(
-        onTap: () => setState(() => _insuranceIncluded = !_insuranceIncluded),
+        onTap: () {
+          setState(() => _insuranceIncluded = !_insuranceIncluded);
+          ref.read(parcelBookingProvider.notifier).toggleInsurance();
+        },
         child: Row(
         children: [
           Expanded(
@@ -455,7 +475,10 @@ class _ParcelServiceSelectionScreenState extends State<ParcelServiceSelectionScr
           ),
           const SizedBox(width: 12),
           GestureDetector(
-            onTap: () => setState(() => _insuranceIncluded = !_insuranceIncluded),
+        onTap: () {
+          setState(() => _insuranceIncluded = !_insuranceIncluded);
+          ref.read(parcelBookingProvider.notifier).toggleInsurance();
+        },
             child: AnimatedContainer(
               width: 56,
               height: 32,

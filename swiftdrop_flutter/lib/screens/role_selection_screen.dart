@@ -11,8 +11,9 @@ class RoleSelectionScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDark ? const Color(0xFF131b2e) : Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -48,7 +49,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                   style: GoogleFonts.inter(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -65,6 +66,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                   color: AppColors.primary,
                   title: 'Customer',
                   description: 'Order food and track deliveries',
+                  isDark: isDark,
                   onTap: () async {
                     await ref
                         .read(userRoleProvider.notifier)
@@ -78,6 +80,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                   color: const Color(0xFF059669),
                   title: 'Rider',
                   description: 'Deliver orders and track earnings',
+                  isDark: isDark,
                   onTap: () async {
                     await ref
                         .read(userRoleProvider.notifier)
@@ -91,6 +94,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                   color: const Color(0xFF6366F1),
                   title: 'Continue as Guest',
                   description: 'Browse without an account',
+                  isDark: isDark,
                   onTap: () async {
                     await ref
                         .read(userRoleProvider.notifier)
@@ -112,6 +116,7 @@ class _RoleCard extends StatelessWidget {
   final Color color;
   final String title;
   final String description;
+  final bool isDark;
   final VoidCallback onTap;
 
   const _RoleCard({
@@ -119,6 +124,7 @@ class _RoleCard extends StatelessWidget {
     required this.color,
     required this.title,
     required this.description,
+    required this.isDark,
     required this.onTap,
   });
 
@@ -132,7 +138,7 @@ class _RoleCard extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? const Color(0xFF18233c) : Colors.white,
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -167,7 +173,7 @@ class _RoleCard extends StatelessWidget {
                       style: GoogleFonts.inter(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
-                        color: Colors.black87,
+                        color: isDark ? Colors.white : Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 4),

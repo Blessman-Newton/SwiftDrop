@@ -1,26 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/app_image.dart';
-import '../utils/validators.dart';
+import '../providers/providers.dart';
 
-class ParcelPackageDetailsScreen extends StatefulWidget {
+class ParcelPackageDetailsScreen extends ConsumerStatefulWidget {
   const ParcelPackageDetailsScreen({super.key});
 
   @override
-  State<ParcelPackageDetailsScreen> createState() =>
+  ConsumerState<ParcelPackageDetailsScreen> createState() =>
       _ParcelPackageDetailsScreenState();
 }
 
 class _ParcelPackageDetailsScreenState
-    extends State<ParcelPackageDetailsScreen> {
-  String _selectedPackageType = 'box';
-  double _weight = 5;
+    extends ConsumerState<ParcelPackageDetailsScreen> {
+  late String _selectedPackageType;
+  late double _weight;
   final _formKey = GlobalKey<FormState>();
-  final _lengthController = TextEditingController();
-  final _widthController = TextEditingController();
-  final _heightController = TextEditingController();
-  final _notesController = TextEditingController();
+  late final TextEditingController _lengthController;
+  late final TextEditingController _widthController;
+  late final TextEditingController _heightController;
+  late final TextEditingController _notesController;
+
+  @override
+  void initState() {
+    super.initState();
+    final booking = ref.read(parcelBookingProvider);
+    _selectedPackageType = booking.packageType;
+    _weight = booking.weight;
+    _lengthController = TextEditingController(text: booking.lengthCm?.toString() ?? '');
+    _widthController = TextEditingController(text: booking.widthCm?.toString() ?? '');
+    _heightController = TextEditingController(text: booking.heightCm?.toString() ?? '');
+    _notesController = TextEditingController(text: booking.riderNotes ?? '');
+  }
 
   @override
   void dispose() {
@@ -379,6 +392,17 @@ class _ParcelPackageDetailsScreenState
               child: ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate()) {
+                    final l = double.tryParse(_lengthController.text);
+                    final w = double.tryParse(_widthController.text);
+                    final h = double.tryParse(_heightController.text);
+                    ref.read(parcelBookingProvider.notifier).updatePackage(
+                          _selectedPackageType,
+                          _weight,
+                          l: l,
+                          w: w,
+                          h: h,
+                          notes: _notesController.text.isEmpty ? null : _notesController.text,
+                        );
                     context.push('/parcel/service');
                   }
                 },
@@ -481,7 +505,12 @@ class _ParcelPackageDetailsScreenState
         TextFormField(
           controller: controller,
           keyboardType: TextInputType.number,
-          validator: (value) => Validators.numeric(value, fieldName: label),
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) return null;
+            final num = double.tryParse(value.trim());
+            if (num == null || num <= 0) return 'Enter a valid number';
+            return null;
+          },
           autovalidateMode: AutovalidateMode.onUserInteraction,
           decoration: InputDecoration(
             hintText: '0',

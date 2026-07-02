@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../widgets/app_image.dart';
 import '../utils/validators.dart';
+import '../providers/providers.dart';
 
-class ParcelBookingScreen extends StatefulWidget {
+class ParcelBookingScreen extends ConsumerStatefulWidget {
   const ParcelBookingScreen({super.key});
 
   @override
-  State<ParcelBookingScreen> createState() => _ParcelBookingScreenState();
+  ConsumerState<ParcelBookingScreen> createState() => _ParcelBookingScreenState();
 }
 
-class _ParcelBookingScreenState extends State<ParcelBookingScreen> {
-  final _pickupController = TextEditingController(text: 'Current Location (123 Urban St)');
-  final _deliveryController = TextEditingController();
+class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
+  late final TextEditingController _pickupController;
+  late final TextEditingController _deliveryController;
   final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    final booking = ref.read(parcelBookingProvider);
+    _pickupController = TextEditingController(
+      text: booking.pickupLocation.isNotEmpty ? booking.pickupLocation : 'Current Location (123 Urban St)',
+    );
+    _deliveryController = TextEditingController(
+      text: booking.deliveryLocation,
+    );
+  }
 
   @override
   void dispose() {
@@ -160,8 +174,8 @@ class _ParcelBookingScreenState extends State<ParcelBookingScreen> {
                           ),
                           Container(
                             width: 2,
-                            height: 32,
-                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            height: 150,
+                            margin: const EdgeInsets.symmetric(vertical: 4),
                             child: const DashedLinePainter(),
                           ),
                           const Icon(
@@ -253,6 +267,8 @@ class _ParcelBookingScreenState extends State<ParcelBookingScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
+                        ref.read(parcelBookingProvider.notifier).updatePickup(_pickupController.text);
+                        ref.read(parcelBookingProvider.notifier).updateDelivery(_deliveryController.text);
                         context.push('/parcel/details');
                       }
                     },
