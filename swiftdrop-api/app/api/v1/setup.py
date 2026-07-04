@@ -3,7 +3,6 @@ One-time setup endpoint for database initialization
 Access: POST /setup/initialize?secret=YOUR_SECRET_KEY
 """
 from fastapi import APIRouter, HTTPException, Query
-from app.core.config import settings
 import subprocess
 import sys
 
