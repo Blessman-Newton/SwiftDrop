@@ -23,9 +23,13 @@ from app.models.order import Order, OrderItem, DispatchLog
 
 
 def run_migrations_offline() -> None:
-    url = settings.DATABASE_URL
+    # Convert postgresql:// to postgresql+asyncpg:// for async support
+    database_url = settings.DATABASE_URL
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    
     context.configure(
-        url=url,
+        url=database_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -41,7 +45,12 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    configuration = {"sqlalchemy.url": settings.DATABASE_URL}
+    # Convert postgresql:// to postgresql+asyncpg:// for async support
+    database_url = settings.DATABASE_URL
+    if database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    
+    configuration = {"sqlalchemy.url": database_url}
     connectable = async_engine_from_config(
         configuration,
         prefix="sqlalchemy.",

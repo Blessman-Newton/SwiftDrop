@@ -12,7 +12,7 @@ from uuid import uuid4
 sys.path.insert(0, '/app')
 
 from sqlalchemy import text
-from app.core.database import engine, async_session_maker, Base
+from app.core.database import engine, async_session, Base
 from app.models import (
     User, Restaurant, MenuItem, Category, Order, OrderItem,
     RiderProfile, Notification, Review, Address
@@ -31,7 +31,7 @@ async def create_tables():
 async def seed_categories():
     """Seed food categories"""
     print("🍕 Seeding categories...")
-    async with async_session_maker() as session:
+    async with async_session() as session:
         # Check if categories already exist
         result = await session.execute(text("SELECT COUNT(*) FROM categories"))
         count = result.scalar()
@@ -83,7 +83,7 @@ async def seed_categories():
 async def seed_test_users():
     """Create test users for customer, merchant, and rider"""
     print("👥 Creating test users...")
-    async with async_session_maker() as session:
+    async with async_session() as session:
         # Check if test users already exist
         result = await session.execute(
             text("SELECT COUNT(*) FROM users WHERE phone IN ('+1234567890', '+0987654321', '+1122334455')")
@@ -149,7 +149,7 @@ async def seed_test_users():
 async def seed_test_restaurant(merchant_id):
     """Create a test restaurant with menu items"""
     print("🍽️  Creating test restaurant...")
-    async with async_session_maker() as session:
+    async with async_session() as session:
         # Check if restaurant already exists
         result = await session.execute(
             text("SELECT COUNT(*) FROM restaurants WHERE owner_id = :owner_id"),
@@ -270,7 +270,7 @@ async def seed_test_restaurant(merchant_id):
 async def seed_rider_profile(rider_id):
     """Create rider profile"""
     print("🚴 Creating rider profile...")
-    async with async_session_maker() as session:
+    async with async_session() as session:
         # Check if profile exists
         result = await session.execute(
             text("SELECT COUNT(*) FROM rider_profiles WHERE user_id = :user_id"),
@@ -319,7 +319,7 @@ async def main():
         print()
         
         # Step 4: Get merchant ID
-        async with async_session_maker() as session:
+        async with async_session() as session:
             result = await session.execute(
                 text("SELECT id FROM users WHERE phone = '+0987654321'")
             )
@@ -332,7 +332,7 @@ async def main():
                 print()
         
         # Step 6: Get rider ID
-        async with async_session_maker() as session:
+        async with async_session() as session:
             result = await session.execute(
                 text("SELECT id FROM users WHERE phone = '+1122334455'")
             )
