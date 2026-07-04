@@ -14,6 +14,7 @@ from app.api.v1 import (
     rider_profile,
     riders,
     restaurants,
+    setup,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -31,3 +32,4 @@ api_router.include_router(notifications.router)
 api_router.include_router(reviews.router)
 api_router.include_router(customer.router)
 api_router.include_router(rider_profile.router)
+api_router.include_router(setup.router)

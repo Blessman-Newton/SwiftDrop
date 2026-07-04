@@ -68,7 +68,7 @@ class Order(Base):
     picked_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    status_history: Mapped[dict | None] = mapped_column(JSONB, default=list)
+    status_history: Mapped[list | None] = mapped_column(JSONB, default=list)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, default=dict)
 
     customer: Mapped["User"] = relationship(

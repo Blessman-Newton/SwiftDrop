@@ -1,0 +1,6 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\user\\Downloads\\Swiftdrop\\swiftdrop-api']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [25648] using StatReload
+INFO:     Started server process [20276]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

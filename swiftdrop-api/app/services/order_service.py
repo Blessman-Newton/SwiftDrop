@@ -54,6 +54,7 @@ async def create_order(
     db.add(order)
     await db.flush()
 
+    order_items = []
     for item in request.items:
         order_item = OrderItem(
             order_id=order.id,
@@ -63,6 +64,7 @@ async def create_order(
             notes=item.notes,
         )
         db.add(order_item)
+        order_items.append(order_item)
 
     await db.flush()
 
@@ -75,7 +77,7 @@ async def create_order(
     ]
     await db.flush()
 
-    return _order_to_response(order)
+    return _order_to_response(order, order_items)
 
 
 async def list_orders(
@@ -156,7 +158,7 @@ async def update_order_status(
     return _order_to_response(order)
 
 
-def _order_to_response(order: Order) -> OrderResponse:
+def _order_to_response(order: Order, items: list[OrderItem] | None = None) -> OrderResponse:
     return OrderResponse(
         id=str(order.id),
         customer_id=str(order.customer_id),
@@ -192,6 +194,6 @@ def _order_to_response(order: Order) -> OrderResponse:
                 "price": float(item.price),
                 "notes": item.notes,
             }
-            for item in (order.items or [])
+            for item in (items if items is not None else order.items or [])
         ],
     )

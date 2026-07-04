@@ -72,7 +72,9 @@ async def get_restaurant(
 ):
     query = (
         select(Restaurant)
-        .options(selectinload(Restaurant.menu_items))
+        .options(
+            selectinload(Restaurant.menu_items).selectinload(MenuItem.category)
+        )
         .where(Restaurant.id == restaurant_id)
     )
     result = await db.execute(query)
@@ -80,6 +82,26 @@ async def get_restaurant(
 
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")
+
+    # Build menu items with category names
+    menu_items = [
+        MenuItemResponse(
+            id=str(mi.id),
+            restaurant_id=str(mi.restaurant_id),
+            name=mi.name,
+            description=mi.description,
+            price=float(mi.price),
+            image_url=mi.image_url,
+            category_id=str(mi.category_id) if mi.category_id else None,
+            category_name=mi.category.name if mi.category else None,
+            is_available=mi.is_available,
+            is_vegetarian=mi.is_vegetarian,
+            is_spicy=mi.is_spicy,
+            rating=float(mi.rating),
+            tags=mi.tags or [],
+        )
+        for mi in restaurant.menu_items
+    ]
 
     return RestaurantResponse(
         id=str(restaurant.id),
@@ -104,6 +126,7 @@ async def get_restaurant(
         owner_id=str(restaurant.owner_id) if restaurant.owner_id else None,
         created_at=restaurant.created_at,
         updated_at=restaurant.updated_at,
+        menu_items=menu_items,
     )
 
 
@@ -113,9 +136,13 @@ async def get_menu(
     category_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(MenuItem).where(
-        MenuItem.restaurant_id == restaurant_id,
-        MenuItem.is_available == True,
+    query = (
+        select(MenuItem)
+        .options(selectinload(MenuItem.category))
+        .where(
+            MenuItem.restaurant_id == restaurant_id,
+            MenuItem.is_available == True,
+        )
     )
     if category_id:
         query = query.where(MenuItem.category_id == UUID(category_id))
@@ -128,17 +155,17 @@ async def get_menu(
         MenuItemResponse(
             id=str(mi.id),
             restaurant_id=str(mi.restaurant_id),
-            category_id=str(mi.category_id) if mi.category_id else None,
             name=mi.name,
             description=mi.description,
             price=float(mi.price),
             image_url=mi.image_url,
+            category_id=str(mi.category_id) if mi.category_id else None,
+            category_name=mi.category.name if mi.category else None,
             is_available=mi.is_available,
             is_vegetarian=mi.is_vegetarian,
             is_spicy=mi.is_spicy,
             rating=float(mi.rating),
             tags=mi.tags or [],
-            created_at=mi.created_at,
         )
         for mi in items
     ]

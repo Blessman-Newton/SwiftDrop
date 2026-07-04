@@ -384,7 +384,7 @@ async def list_merchant_orders(
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
         select(Order)
-        .options(selectinload(Order.items))
+        .options(selectinload(Order.items), selectinload(Order.customer))
         .where(Order.restaurant_name == restaurant.name)
         .order_by(Order.created_at.desc())
     )
@@ -407,7 +407,7 @@ async def list_merchant_orders(
                 id=str(o.id),
                 order_no=f"SD-{str(o.id)[:4].upper()}",
                 status=o.status.lower(),
-                customer_name=current_user.name or "Customer",
+                customer_name=o.customer.name or o.customer.phone if o.customer else "Customer",
                 items=order_items,
                 total=float(o.total),
                 created_at=o.created_at,
@@ -427,7 +427,7 @@ async def update_order_status(
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
         select(Order)
-        .options(selectinload(Order.items))
+        .options(selectinload(Order.items), selectinload(Order.customer))
         .where(Order.id == order_id, Order.restaurant_name == restaurant.name)
     )
     result = await db.execute(query)
@@ -468,7 +468,7 @@ async def update_order_status(
         id=str(order.id),
         order_no=f"SD-{str(order.id)[:4].upper()}",
         status=order.status.lower(),
-        customer_name=current_user.name or "Customer",
+        customer_name=order.customer.name or order.customer.phone if order.customer else "Customer",
         items=order_items,
         total=float(order.total),
         created_at=order.created_at,
