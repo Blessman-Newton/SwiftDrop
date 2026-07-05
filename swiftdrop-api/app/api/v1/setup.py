@@ -110,16 +110,20 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
             
             # Promote admin user if exists
             result = await conn.execute(
-                text("SELECT id, email, role FROM users WHERE email = 'admin@swiftdrop.com'")
+                text("SELECT id, email, role FROM users WHERE email = :email"),
+                {"email": "admin@swiftdrop.com"}
             )
             admin_user = result.fetchone()
             
-            if admin_user and admin_user[2] != 'admin':
-                await conn.execute(
-                    text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
-                    {"user_id": admin_user[0]}
-                )
-                migrations_done.append(f"promoted {admin_user[1]} to admin")
+            if admin_user:
+                if admin_user[2] != 'admin':
+                    await conn.execute(
+                        text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
+                        {"user_id": str(admin_user[0])}
+                    )
+                    migrations_done.append(f"promoted {admin_user[1]} to admin")
+                else:
+                    migrations_done.append(f"admin user already exists: {admin_user[1]}")
         
         if migrations_done:
             return {
