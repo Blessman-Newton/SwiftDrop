@@ -164,6 +164,7 @@ async def seed_test_restaurant(merchant_id):
             id=uuid4(),
             owner_id=merchant_id,
             name="Test Restaurant",
+            slug="test-restaurant",
             description="A test restaurant for demo purposes",
             address="123 Test Street, Test City",
             phone="+1234567890",
