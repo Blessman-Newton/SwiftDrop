@@ -15,6 +15,7 @@ from app.services.sms_service import send_otp_sms
 
 async def send_otp(db: AsyncSession, phone: str) -> dict:
     # Normalize phone number to international format
+    original_phone = phone
     phone = phone.strip().replace(" ", "").replace("-", "")
     if phone.startswith("0"):
         phone = "+233" + phone[1:]  # Ghana country code
@@ -32,9 +33,10 @@ async def send_otp(db: AsyncSession, phone: str) -> dict:
     db.add(otp)
     await db.flush()
 
-    sent = await asyncio.to_thread(send_otp_sms, phone, code)
+    sent, error_msg = await asyncio.to_thread(send_otp_sms, phone, code)
     if not sent:
-        raise BadRequestException("Failed to send OTP. Please try again.")
+        print(f"[AUTH] SMS failed for {phone}: {error_msg}")
+        raise BadRequestException(f"Failed to send OTP: {error_msg}")
 
     return {"message": "OTP sent successfully", "phone": phone, "code": code}
 

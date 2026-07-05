@@ -18,19 +18,20 @@ def _get_client() -> TwilioClient | None:
         return None
 
 
-def send_sms(phone: str, message: str) -> bool:
+def send_sms(phone: str, message: str) -> tuple[bool, str]:
     # Dev mode: always log to console
     if settings.APP_ENV == "development":
         print(f"\n{'='*50}")
         print(f"[SMS DEV] To: {phone}")
         print(f"[SMS DEV] Message: {message}")
         print(f"{'='*50}\n")
-        return True
+        return True, "Dev mode - logged to console"
 
     client = _get_client()
     if not client:
-        print(f"[SMS ERROR] No Twilio client available")
-        return False
+        error_msg = "No Twilio client available - credentials missing or invalid"
+        print(f"[SMS ERROR] {error_msg}")
+        return False, error_msg
     
     try:
         # Ensure phone number has country code
@@ -45,12 +46,13 @@ def send_sms(phone: str, message: str) -> bool:
             to=phone,
         )
         print(f"[SMS] Sent successfully - SID: {msg.sid}")
-        return True
+        return True, f"Message sent - SID: {msg.sid}"
     except Exception as e:
-        print(f"[SMS ERROR] {type(e).__name__}: {e}")
-        return False
+        error_msg = f"{type(e).__name__}: {str(e)}"
+        print(f"[SMS ERROR] {error_msg}")
+        return False, error_msg
 
 
-def send_otp_sms(phone: str, code: str) -> bool:
+def send_otp_sms(phone: str, code: str) -> tuple[bool, str]:
     message = f"Your SwiftDrop verification code is {code}. Valid for 5 minutes. Do not share this code."
     return send_sms(phone, message)
