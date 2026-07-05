@@ -450,54 +450,56 @@ class _RiderActiveDeliveryScreenState
 
   Widget _buildDeliverySheet(DeliveryState deliveryState) {
     return Expanded(
-      child: Container(
-        margin: const EdgeInsets.only(top: -20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0F000000),
-              blurRadius: 30,
-              offset: Offset(0, -10),
+      child: Transform.translate(
+        offset: const Offset(0, -20),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F000000),
+                blurRadius: 30,
+                offset: Offset(0, -10),
+              ),
+            ],
+            border: const Border(
+              top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
             ),
-          ],
-          border: const Border(
-            top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
           ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Grip handle
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 6,
-                  margin: const EdgeInsets.only(top: 12, bottom: 20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE2E8F0),
-                    borderRadius: BorderRadius.circular(9999),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Grip handle
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 6,
+                    margin: const EdgeInsets.only(top: 12, bottom: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
                   ),
                 ),
-              ),
-              // Task header
-              _buildTaskHeader(deliveryState),
-              const SizedBox(height: 20),
-              // Pickup card
-              _buildPickupCard(deliveryState),
-              const SizedBox(height: 14),
-              // Dropoff card
-              _buildDropoffCard(deliveryState),
-              const SizedBox(height: 24),
-              // Contact buttons
-              _buildContactButtons(),
-              const SizedBox(height: 24),
-              // Primary CTA
-              _buildPrimaryCTA(deliveryState),
-            ],
+                // Task header
+                _buildTaskHeader(deliveryState),
+                const SizedBox(height: 20),
+                // Pickup card
+                _buildPickupCard(deliveryState),
+                const SizedBox(height: 14),
+                // Dropoff card
+                _buildDropoffCard(deliveryState),
+                const SizedBox(height: 24),
+                // Contact buttons
+                _buildContactButtons(),
+                const SizedBox(height: 24),
+                // Primary CTA
+                _buildPrimaryCTA(deliveryState),
+              ],
+            ),
           ),
         ),
       ),
