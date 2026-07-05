@@ -11,7 +11,8 @@ from app.models import (
     User, RiderProfile, OTPCode,
     Restaurant, MenuItem, PromoCode,
     Category, Order, OrderItem, DispatchLog,
-    Payment, SupportTicket, Payout
+    Payment, SupportTicket, Payout,
+    Notification, Review, Address
 )
 
 settings = get_settings()

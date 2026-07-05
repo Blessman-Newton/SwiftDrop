@@ -80,19 +80,27 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
     setState(() => _isLoading = true);
     ref.read(riderToastsProvider.notifier).add('Sending OTP...', ToastType.info);
 
-    final sent = await ref.read(currentUserProvider.notifier).sendOtp(
-          _phoneController.text.trim(),
-        );
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _otpSent = sent;
-      });
-      if (sent) {
-        _startCountdown();
-        ref.read(riderToastsProvider.notifier).add('OTP sent successfully', ToastType.success);
-      } else {
-        ref.read(riderToastsProvider.notifier).add('Failed to send OTP. Please try again.', ToastType.error);
+    try {
+      final sent = await ref.read(currentUserProvider.notifier).sendOtp(
+            _phoneController.text.trim(),
+          );
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _otpSent = sent;
+        });
+        if (sent) {
+          _startCountdown();
+          ref.read(riderToastsProvider.notifier).add('OTP sent successfully', ToastType.success);
+        } else {
+          ref.read(riderToastsProvider.notifier).add('Failed to send OTP. Please try again.', ToastType.error);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ref.read(riderToastsProvider.notifier).add(
+            e.toString().replaceFirst('Exception: ', ''), ToastType.error);
       }
     }
   }
@@ -108,8 +116,6 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
     final valid = await ref.read(currentUserProvider.notifier).verifyOtp(
           _phoneController.text.trim(),
           _otpCode,
-          name: _nameController.text.trim().isEmpty ? null : _nameController.text.trim(),
-          role: 'rider',
         );
     if (mounted) {
       setState(() => _isLoading = false);

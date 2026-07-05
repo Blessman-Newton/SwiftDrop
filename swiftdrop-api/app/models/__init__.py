@@ -5,6 +5,9 @@ from app.models.order import Order, OrderItem, DispatchLog
 from app.models.payment import Payment
 from app.models.support import SupportTicket
 from app.models.payout import Payout
+from app.models.notification import Notification
+from app.models.review import Review
+from app.models.address import Address
 
 __all__ = [
     "User",
@@ -20,4 +23,7 @@ __all__ = [
     "Payment",
     "SupportTicket",
     "Payout",
+    "Notification",
+    "Review",
+    "Address",
 ]

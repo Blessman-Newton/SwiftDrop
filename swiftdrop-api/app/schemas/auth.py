@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class SendOTPRequest(BaseModel):
@@ -8,8 +8,19 @@ class SendOTPRequest(BaseModel):
 class VerifyOTPRequest(BaseModel):
     phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
     code: str = Field(..., min_length=6, max_length=6, examples=["123456"])
+
+
+class SignUpRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$", examples=["+233241234567"])
     name: str | None = Field(None, max_length=100)
-    role: str = Field("customer", pattern=r"^(customer|rider|admin|merchant)$")
+    role: str = Field("customer", pattern=r"^(customer|rider|merchant)$")
+
+
+class EmailLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 
 class TokenResponse(BaseModel):
@@ -22,7 +33,7 @@ class UserResponse(BaseModel):
     id: str
     phone: str
     name: str | None = None
-    email: str | None = None
+    email: str
     role: str
     avatar_url: str | None = None
     is_verified: bool = False

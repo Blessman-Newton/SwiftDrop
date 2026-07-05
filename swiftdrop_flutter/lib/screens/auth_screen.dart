@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-// lucide_icons removed - using Material Icons
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
@@ -22,6 +21,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   bool _loading = false;
   String? _error;
   bool _agreedToTerms = false;
+  bool _usePhoneLogin = false;
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -29,7 +29,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // OTP state (6 digits)
   final List<String> _otpDigits = ['', '', '', '', '', ''];
   int _otpIndex = 0;
   int _countdown = 59;
@@ -93,7 +92,40 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   String get _otpCode => _otpDigits.join();
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleEmailLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showError('Please enter email and password');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final user = await ref.read(currentUserProvider.notifier).loginWithEmail(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (user != null) {
+        final userRole = ref.read(userRoleProvider);
+        if (userRole == UserRole.rider) {
+          context.go('/rider/dashboard');
+        } else {
+          context.go('/home');
+        }
+      } else {
+        _showError('Login failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _handlePhoneLogin() async {
     if (_phoneController.text.isEmpty) {
       _showError('Please enter your phone number');
       return;
@@ -102,23 +134,32 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _loading = true;
       _error = null;
     });
-    final sent = await ref.read(currentUserProvider.notifier).sendOtp(
-          _phoneController.text.trim(),
-        );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (sent) {
-      setState(() => _mode = AuthMode.otp);
+    try {
+      await ref.read(currentUserProvider.notifier).sendOtp(
+            _phoneController.text.trim(),
+          );
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _mode = AuthMode.otp;
+      });
       _startCountdown();
-    } else {
-      _showError('Failed to send OTP');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
   Future<void> _handleSignup() async {
-    if (_nameController.text.isEmpty ||
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty ||
         _phoneController.text.isEmpty) {
-      _showError('Please fill in all fields');
+      _showError('Please fill in all required fields');
+      return;
+    }
+    if (_passwordController.text.length < 8) {
+      _showError('Password must be at least 8 characters');
       return;
     }
     if (!_agreedToTerms) {
@@ -129,20 +170,35 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _loading = true;
       _error = null;
     });
-    final sent = await ref.read(currentUserProvider.notifier).sendOtp(
-          _phoneController.text.trim(),
-        );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (sent) {
-      setState(() => _mode = AuthMode.otp);
-      _startCountdown();
-    } else {
-      _showError('Failed to send OTP');
+    try {
+      final user = await ref.read(currentUserProvider.notifier).signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            phone: _phoneController.text.trim(),
+            name: _nameController.text.trim().isNotEmpty
+                ? _nameController.text.trim()
+                : null,
+            role: ref.read(userRoleProvider) == UserRole.rider ? 'rider' : 'customer',
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (user != null) {
+        final userRole = ref.read(userRoleProvider);
+        if (userRole == UserRole.rider) {
+          context.go('/rider/dashboard');
+        } else {
+          context.go('/home');
+        }
+      } else {
+        _showError('Signup failed');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
-  // OTP verification for phone login/signup
   Future<void> _handleOtp() async {
     if (_otpCode.length < 6) {
       _showError('Please enter the full 6-digit code');
@@ -152,42 +208,43 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       _loading = true;
       _error = null;
     });
-    final role = ref.read(userRoleProvider) == UserRole.rider ? 'rider' : 'customer';
-    final name = _nameController.text.trim();
-    final valid = await ref.read(currentUserProvider.notifier).verifyOtp(
-          _phoneController.text.trim(),
-          _otpCode,
-          name: name.isNotEmpty ? name : null,
-          role: role,
-        );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (valid) {
-      final userRole = ref.read(userRoleProvider);
-      if (userRole == UserRole.rider) {
-        context.go('/rider/dashboard');
+    try {
+      final valid = await ref.read(currentUserProvider.notifier).verifyOtp(
+            _phoneController.text.trim(),
+            _otpCode,
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (valid) {
+        final userRole = ref.read(userRoleProvider);
+        if (userRole == UserRole.rider) {
+          context.go('/rider/dashboard');
+        } else {
+          context.go('/home');
+        }
       } else {
-        context.go('/home');
+        _showError('Invalid code');
       }
-    } else {
-      _showError('Invalid code');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
   void _submit() {
-    if (_mode == AuthMode.login || _mode == AuthMode.signup) {
-      if (!_formKey.currentState!.validate()) return;
+    if (_mode == AuthMode.otp) {
+      _handleOtp();
+      return;
     }
-    switch (_mode) {
-      case AuthMode.login:
-        _handleLogin();
-        break;
-      case AuthMode.signup:
-        _handleSignup();
-        break;
-      case AuthMode.otp:
-        _handleOtp();
-        break;
+    if (_mode == AuthMode.signup) {
+      _handleSignup();
+      return;
+    }
+    if (_usePhoneLogin) {
+      _handlePhoneLogin();
+    } else {
+      _handleEmailLogin();
     }
   }
 
@@ -198,12 +255,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background
           Container(
             color: isDark ? const Color(0xFF131B2E) : const Color(0xFFF4FBF4),
           ),
-
-          // Top-left green blob
           Positioned(
             top: -100,
             left: -100,
@@ -219,8 +273,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
             ),
           ),
-
-          // Bottom-right orange blob
           Positioned(
             bottom: -120,
             right: -120,
@@ -236,8 +288,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
             ),
           ),
-
-          // Error toast
           if (_error != null)
             Positioned(
               top: MediaQuery.of(context).padding.top + 12,
@@ -284,8 +334,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
               ),
             ),
-
-          // Main content
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20),
@@ -325,16 +373,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             Align(
               alignment: Alignment.centerLeft,
               child: GestureDetector(
-                onTap: () => setState(() => _mode = AuthMode.login),
+                onTap: () => setState(() {
+                  _mode = AuthMode.login;
+                  _usePhoneLogin = false;
+                }),
                 child: Icon(Icons.arrow_back,
                     color: isDark ? Colors.white70 : Colors.black54, size: 22),
               ),
             ),
-
           if (_mode == AuthMode.signup) const SizedBox(height: 12),
-
           if (_mode != AuthMode.signup) ...[
-            // Logo
             Center(
               child: Container(
                 width: 48,
@@ -366,8 +414,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
             const SizedBox(height: 8),
           ],
-
-          // Title
           Center(
             child: Text(
               _mode == AuthMode.login
@@ -384,7 +430,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           Center(
             child: Text(
               _mode == AuthMode.login
-                  ? 'Sign in to continue'
+                  ? (_usePhoneLogin ? 'Sign in with phone' : 'Sign in to continue')
                   : 'Join SwiftDrop today',
               style: GoogleFonts.poppins(
                 fontSize: 14,
@@ -393,8 +439,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
           ),
           const SizedBox(height: 28),
-
-          // Fields
           if (_mode == AuthMode.signup) ...[
             _buildField(
               controller: _nameController,
@@ -404,7 +448,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
             const SizedBox(height: 14),
           ],
-          if (_mode == AuthMode.login || _mode == AuthMode.signup) ...[
+          if (_mode == AuthMode.signup || _usePhoneLogin) ...[
             _buildField(
               controller: _phoneController,
               label: 'Phone Number',
@@ -414,13 +458,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
             const SizedBox(height: 14),
           ],
-
-          // Forgot password
-          if (_mode == AuthMode.signup) const SizedBox(height: 4),
-
-          const SizedBox(height: 20),
-
-          // Terms checkbox for signup
+          if (_mode == AuthMode.signup || !_usePhoneLogin) ...[
+            _buildField(
+              controller: _emailController,
+              label: 'Email',
+              icon: Icons.email,
+              isDark: isDark,
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 14),
+            _buildField(
+              controller: _passwordController,
+              label: 'Password',
+              icon: Icons.lock,
+              isDark: isDark,
+              obscure: true,
+            ),
+            const SizedBox(height: 14),
+          ],
           if (_mode == AuthMode.signup)
             GestureDetector(
               onTap: () => setState(() => _agreedToTerms = !_agreedToTerms),
@@ -458,10 +513,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ],
               ),
             ),
-
           if (_mode == AuthMode.signup) const SizedBox(height: 20),
-
-          // Button
           GestureDetector(
             onTap: _loading ? null : _submit,
             child: Container(
@@ -509,10 +561,25 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
             ),
           ),
-
+          if (_mode == AuthMode.login) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => setState(() => _usePhoneLogin = !_usePhoneLogin),
+              child: Text(
+                _usePhoneLogin
+                    ? 'Use email & password instead'
+                    : 'Use phone number instead',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? const Color(0xFF6FFBBE)
+                      : const Color(0xFF006C49),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
-
-          // Footer
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -525,22 +592,24 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   color: isDark ? Colors.white54 : Colors.black45,
                 ),
               ),
-              if (_mode == AuthMode.login || _mode == AuthMode.signup)
-                GestureDetector(
-                  onTap: () => setState(() => _mode = _mode == AuthMode.login
+              GestureDetector(
+                onTap: () => setState(() {
+                  _mode = _mode == AuthMode.login
                       ? AuthMode.signup
-                      : AuthMode.login),
-                  child: Text(
-                    _mode == AuthMode.login ? 'Sign Up' : 'Sign In',
-                    style: GoogleFonts.poppins(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isDark
-                          ? const Color(0xFF6FFBBE)
-                          : const Color(0xFF006C49),
-                    ),
+                      : AuthMode.login;
+                  _usePhoneLogin = false;
+                }),
+                child: Text(
+                  _mode == AuthMode.login ? 'Sign Up' : 'Sign In',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark
+                        ? const Color(0xFF6FFBBE)
+                        : const Color(0xFF006C49),
                   ),
                 ),
+              ),
             ],
           ),
         ],
@@ -552,18 +621,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Back arrow
         Align(
           alignment: Alignment.centerLeft,
           child: GestureDetector(
-            onTap: () => setState(() => _mode = AuthMode.login),
+            onTap: () => setState(() {
+              _mode = AuthMode.login;
+              _usePhoneLogin = true;
+            }),
             child: Icon(Icons.arrow_back,
                 color: isDark ? Colors.white70 : Colors.black54, size: 22),
           ),
         ),
         const SizedBox(height: 16),
-
-        // Icon
         Center(
           child: Container(
             width: 56,
@@ -576,8 +645,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
         ),
         const SizedBox(height: 16),
-
-        // Title
         Center(
           child: Text(
             'Verify Phone',
@@ -593,7 +660,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           child: Text(
             _phoneController.text.isNotEmpty
                 ? _phoneController.text
-                : '+1 (555) 000-0000',
+                : '+233 000 000 0000',
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: isDark ? Colors.white54 : Colors.black45,
@@ -601,8 +668,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ),
         ),
         const SizedBox(height: 28),
-
-        // OTP boxes (6 digits)
         GestureDetector(
           onTap: () {},
           child: Row(
@@ -644,10 +709,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             }),
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // Countdown
         Text(
           _countdown > 0 ? 'Resend code in ${_countdown}s' : 'Resend code',
           style: GoogleFonts.poppins(
@@ -659,8 +721,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         ),
         if (_countdown <= 0)
           GestureDetector(
-            onTap: () {
-              _startCountdown();
+            onTap: () async {
+              try {
+                await ref.read(currentUserProvider.notifier).sendOtp(
+                      _phoneController.text.trim(),
+                    );
+                _startCountdown();
+              } catch (e) {
+                _showError(e.toString().replaceFirst('Exception: ', ''));
+              }
             },
             child: Text(
               'Resend',
@@ -672,15 +741,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               ),
             ),
           ),
-
         const SizedBox(height: 24),
-
-        // Custom numeric keypad
         _buildKeypad(isDark),
-
         const SizedBox(height: 20),
-
-        // Verify button
         GestureDetector(
           onTap: _loading ? null : _handleOtp,
           child: Container(
@@ -719,12 +782,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             ),
           ),
         ),
-
         const SizedBox(height: 12),
-
-        // Back to login
         GestureDetector(
-          onTap: () => setState(() => _mode = AuthMode.login),
+          onTap: () => setState(() {
+            _mode = AuthMode.login;
+            _usePhoneLogin = true;
+          }),
           child: Text(
             'Back to login',
             style: GoogleFonts.poppins(

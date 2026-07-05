@@ -18,6 +18,6 @@ services:
       - key: TWILIO_ACCOUNT_SID
         value: ACe3e8f702343eaad24dd3ee53f3405a4e
       - key: TWILIO_AUTH_TOKEN
-        value: 5a24d1fc4f061bd963cb21f13906fe1c
+        value: eeb1e9abccb8f38a9a9a72012334e9fa
       - key: TWILIO_FROM_NUMBER
         value: "+14843717429"

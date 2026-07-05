@@ -17,7 +17,7 @@ from app.models import (
     User, Restaurant, MenuItem, Category, Order, OrderItem,
     RiderProfile, Notification, Review, Address
 )
-from app.core.security import get_password_hash
+from app.core.security import hash_password
 
 
 async def create_tables():
@@ -100,7 +100,7 @@ async def seed_test_users():
             phone="+1234567890",
             email="customer@test.com",
             name="Test Customer",
-            password_hash=get_password_hash("customer123"),
+            password_hash=hash_password("customer123"),
             role="customer",
             is_active=True,
             is_verified=True,
@@ -115,7 +115,7 @@ async def seed_test_users():
             phone="+0987654321",
             email="merchant@test.com",
             name="Test Merchant",
-            password_hash=get_password_hash("merchant123"),
+            password_hash=hash_password("merchant123"),
             role="merchant",
             is_active=True,
             is_verified=True,
@@ -130,7 +130,7 @@ async def seed_test_users():
             phone="+1122334455",
             email="rider@test.com",
             name="Test Rider",
-            password_hash=get_password_hash("rider123"),
+            password_hash=hash_password("rider123"),
             role="rider",
             is_active=True,
             is_verified=True,

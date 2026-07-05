@@ -2,6 +2,8 @@ class ApiEndpoints {
   static const String baseUrl = 'https://swiftdrop-fvcd.onrender.com';
 
   // Auth
+  static const String signUp = '/api/v1/auth/signup';
+  static const String login = '/api/v1/auth/login';
   static const String sendOtp = '/api/v1/auth/send-otp';
   static const String verifyOtp = '/api/v1/auth/verify-otp';
   static const String me = '/api/v1/auth/me';

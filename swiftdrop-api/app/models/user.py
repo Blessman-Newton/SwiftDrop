@@ -15,8 +15,9 @@ class User(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     phone: Mapped[str] = mapped_column(String(15), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     name: Mapped[str | None] = mapped_column(String(100))
-    email: Mapped[str | None] = mapped_column(String(255))
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(
         Enum("customer", "rider", "admin", "merchant", name="user_role"), nullable=False, default="customer"
     )

@@ -10,7 +10,6 @@ final currentUserProvider =
   return AuthNotifier(ref.read(authServiceProvider));
 });
 
-// User Role (persisted to SharedPreferences)
 final userRoleProvider =
     StateNotifierProvider<UserRoleNotifier, UserRole?>((ref) {
   return UserRoleNotifier();
@@ -28,20 +27,47 @@ class AuthNotifier extends StateNotifier<User?> {
     state = user;
   }
 
-  // OTP: Send verification code
-  Future<bool> sendOtp(String phone) async {
-    return await _authService.sendOtp(phone);
-  }
-
-  // OTP: Verify code and sign in/sign up
-  Future<bool> verifyOtp(String phone, String code,
-      {String? name, String role = 'customer'}) async {
-    final user = await _authService.verifyOtpApi(
-      phone,
-      code,
+  Future<User?> signUp({
+    required String email,
+    required String password,
+    required String phone,
+    String? name,
+    String role = 'customer',
+  }) async {
+    final user = await _authService.signUp(
+      email: email,
+      password: password,
+      phone: phone,
       name: name,
       role: role,
     );
+    if (user != null) {
+      state = user;
+    }
+    return user;
+  }
+
+  Future<User?> loginWithEmail({
+    required String email,
+    required String password,
+  }) async {
+    final user = await _authService.loginWithEmail(
+      email: email,
+      password: password,
+    );
+    if (user != null) {
+      state = user;
+    }
+    return user;
+  }
+
+  Future<bool> sendOtp(String phone) async {
+    await _authService.sendOtp(phone);
+    return true;
+  }
+
+  Future<bool> verifyOtp(String phone, String code) async {
+    final user = await _authService.verifyOtpApi(phone, code);
     if (user != null) {
       state = user;
       return true;

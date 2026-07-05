@@ -6,8 +6,10 @@ from app.config import get_settings
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
+    EmailLoginRequest,
     SendOTPRequest,
     SendOTPResponse,
+    SignUpRequest,
     TokenResponse,
     UserResponse,
     VerifyOTPRequest,
@@ -15,6 +17,18 @@ from app.schemas.auth import (
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/signup", response_model=TokenResponse)
+async def signup(request: SignUpRequest, db: AsyncSession = Depends(get_db)):
+    return await auth_service.sign_up(
+        db, request.email, request.password, request.phone, request.name, request.role
+    )
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(request: EmailLoginRequest, db: AsyncSession = Depends(get_db)):
+    return await auth_service.login_with_email(db, request.email, request.password)
 
 
 @router.post("/send-otp", response_model=SendOTPResponse)
@@ -30,9 +44,7 @@ async def send_otp(request: SendOTPRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/verify-otp", response_model=TokenResponse)
 async def verify_otp(request: VerifyOTPRequest, db: AsyncSession = Depends(get_db)):
-    return await auth_service.verify_otp(
-        db, request.phone, request.code, request.name, request.role
-    )
+    return await auth_service.verify_otp(db, request.phone, request.code)
 
 
 @router.get("/me", response_model=UserResponse)
