@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://swiftdrop-fvcd.onrender.com/api/v1';
 
 async function apiFetch(path: string, options: RequestInit = {}) {
   const token = localStorage.getItem('swiftdrop_merchant_token');
