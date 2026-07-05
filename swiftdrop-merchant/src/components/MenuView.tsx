@@ -62,9 +62,9 @@ export default function MenuView({
   onUpdateItem,
   onDeleteItem,
 }: MenuViewProps) {
-  // Build category list: "All" + API categories (only leaf categories, i.e. those with parent_id)
-  const leafCategories = useMemo(() => {
-    return categories.filter((c) => c.parent_id !== null);
+  // Use all categories (no hierarchy filtering for now)
+  const availableCategories = useMemo(() => {
+    return categories.filter((c) => c.is_active !== false);
   }, [categories]);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
@@ -190,7 +190,7 @@ export default function MenuView({
         >
           All ({menuItems.length})
         </button>
-        {leafCategories.map((cat) => {
+        {availableCategories.map((cat) => {
           const count = menuItems.filter((item) => item.category_id === cat.id).length;
           return (
             <button
@@ -402,7 +402,7 @@ export default function MenuView({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface focus:ring-2 focus:ring-primary text-sm font-semibold outline-none dark:bg-surface-container-high"
                   >
                     <option value="">Select category...</option>
-                    {leafCategories.map((cat) => (
+                    {availableCategories.map((cat) => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
@@ -580,7 +580,7 @@ export default function MenuView({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-outline-variant/40 bg-surface focus:ring-2 focus:ring-primary text-sm font-semibold outline-none dark:bg-surface-container-high"
                   >
                     <option value="">Select category...</option>
-                    {leafCategories.map((cat) => (
+                    {availableCategories.map((cat) => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
