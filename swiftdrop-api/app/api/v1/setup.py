@@ -69,7 +69,7 @@ async def initialize_database(secret: str = Query(..., description="Setup secret
 @router.post("/migrate")
 async def migrate_database(secret: str = Query(..., description="Setup secret key")):
     """
-    Add missing columns to existing tables
+    Add missing columns to existing tables and promote admin user
     """
     if secret != "SWIFTDROP_SETUP_2026":
         raise HTTPException(status_code=403, detail="Invalid secret key")
@@ -107,11 +107,25 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
                     ADD COLUMN onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE
                 """))
                 migrations_done.append("onboarding_completed")
+            
+            # Promote admin user if exists
+            result = await conn.execute(
+                text("SELECT id, email, role FROM users WHERE email = 'admin@swiftdrop.com'")
+            )
+            admin_user = result.fetchone()
+            
+            if admin_user and admin_user[2] != 'admin':
+                await conn.execute(
+                    text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
+                    {"user_id": admin_user[0]}
+                )
+                migrations_done.append(f"promoted {admin_user[1]} to admin")
         
         if migrations_done:
             return {
                 "status": "success",
-                "message": f"Migration completed: added {', '.join(migrations_done)} column(s)"
+                "message": f"Migration completed: {', '.join(migrations_done)}",
+                "changes": migrations_done
             }
         else:
             return {
