@@ -6,8 +6,16 @@ settings = get_settings()
 
 def _get_client() -> TwilioClient | None:
     if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
+        print(f"[SMS] Missing Twilio credentials - SID: {bool(settings.TWILIO_ACCOUNT_SID)}, Token: {bool(settings.TWILIO_AUTH_TOKEN)}")
         return None
-    return TwilioClient(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+    try:
+        client = TwilioClient(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        # Test the connection
+        client.api.accounts(settings.TWILIO_ACCOUNT_SID).fetch()
+        return client
+    except Exception as e:
+        print(f"[SMS] Twilio auth failed: {e}")
+        return None
 
 
 def send_sms(phone: str, message: str) -> bool:
@@ -21,17 +29,25 @@ def send_sms(phone: str, message: str) -> bool:
 
     client = _get_client()
     if not client:
-        print(f"[SMS MOCK] To: {phone} | Message: {message}")
-        return True
+        print(f"[SMS ERROR] No Twilio client available")
+        return False
+    
     try:
-        client.messages.create(
+        # Ensure phone number has country code
+        if not phone.startswith("+"):
+            phone = f"+{phone}"
+        
+        print(f"[SMS] Sending to {phone} from {settings.TWILIO_FROM_NUMBER}")
+        
+        msg = client.messages.create(
             body=message,
             from_=settings.TWILIO_FROM_NUMBER,
             to=phone,
         )
+        print(f"[SMS] Sent successfully - SID: {msg.sid}")
         return True
     except Exception as e:
-        print(f"[SMS ERROR] {e}")
+        print(f"[SMS ERROR] {type(e).__name__}: {e}")
         return False
 
 

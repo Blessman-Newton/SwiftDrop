@@ -14,6 +14,15 @@ from app.services.sms_service import send_otp_sms
 
 
 async def send_otp(db: AsyncSession, phone: str) -> dict:
+    # Normalize phone number to international format
+    phone = phone.strip().replace(" ", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "+233" + phone[1:]  # Ghana country code
+    elif phone.startswith("233") and not phone.startswith("+"):
+        phone = "+" + phone
+    elif not phone.startswith("+"):
+        phone = "+" + phone
+    
     code = generate_otp()
     otp = OTPCode(
         phone=phone,
@@ -33,6 +42,15 @@ async def send_otp(db: AsyncSession, phone: str) -> dict:
 async def verify_otp(
     db: AsyncSession, phone: str, code: str, name: str | None = None, role: str = "customer"
 ) -> TokenResponse:
+    # Normalize phone number to international format
+    phone = phone.strip().replace(" ", "").replace("-", "")
+    if phone.startswith("0"):
+        phone = "+233" + phone[1:]  # Ghana country code
+    elif phone.startswith("233") and not phone.startswith("+"):
+        phone = "+" + phone
+    elif not phone.startswith("+"):
+        phone = "+" + phone
+    
     result = await db.execute(
         select(OTPCode)
         .where(
