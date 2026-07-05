@@ -250,6 +250,45 @@ async def promote_to_admin(
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+@router.post("/force-promote")
+async def force_promote(
+    secret: str = Query(..., description="Setup secret key"),
+    user_id: str = Query(..., description="User ID to promote")
+):
+    """Force promote user to admin - debug endpoint"""
+    if secret != "SWIFTDROP_SETUP_2026":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    try:
+        async with engine.begin() as conn:
+            # Direct update without conditions
+            await conn.execute(
+                text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
+                {"user_id": user_id}
+            )
+            
+            # Verify the update
+            result = await conn.execute(
+                text("SELECT id, email, role FROM users WHERE id = :user_id"),
+                {"user_id": user_id}
+            )
+            user = result.fetchone()
+            
+            if user:
+                return {
+                    "status": "success",
+                    "message": f"User promoted to admin",
+                    "user_id": str(user[0]),
+                    "email": user[1],
+                    "role": user[2]
+                }
+            else:
+                return {"status": "error", "message": "User not found after update"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint"""
