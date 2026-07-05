@@ -130,6 +130,21 @@ async def create_restaurant(
     )
 
 
+@router.post("/complete-onboarding")
+async def complete_onboarding(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
+):
+    """Mark merchant onboarding as complete."""
+    if current_user.role != "merchant":
+        raise HTTPException(status_code=400, detail="Only merchants can complete onboarding")
+    
+    current_user.onboarding_completed = True
+    await db.flush()
+    
+    return {"message": "Onboarding completed successfully", "onboarding_completed": True}
+
+
 @router.get("/restaurant", response_model=RestaurantResponse)
 async def get_restaurant(
     db: AsyncSession = Depends(get_db),

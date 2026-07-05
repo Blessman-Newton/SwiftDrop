@@ -75,6 +75,8 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
         raise HTTPException(status_code=403, detail="Invalid secret key")
     
     try:
+        migrations_done = []
+        
         async with engine.begin() as conn:
             # Check if password_hash column exists
             result = await conn.execute(text("""
@@ -89,15 +91,33 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
                     ALTER TABLE users 
                     ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''
                 """))
-                return {
-                    "status": "success",
-                    "message": "Migration completed: added password_hash column"
-                }
-            else:
-                return {
-                    "status": "success",
-                    "message": "No migration needed: password_hash column already exists"
-                }
+                migrations_done.append("password_hash")
+            
+            # Check if onboarding_completed column exists
+            result = await conn.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'onboarding_completed'
+            """))
+            
+            if not result.fetchone():
+                # Add onboarding_completed column
+                await conn.execute(text("""
+                    ALTER TABLE users 
+                    ADD COLUMN onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE
+                """))
+                migrations_done.append("onboarding_completed")
+        
+        if migrations_done:
+            return {
+                "status": "success",
+                "message": f"Migration completed: added {', '.join(migrations_done)} column(s)"
+            }
+        else:
+            return {
+                "status": "success",
+                "message": "No migration needed: all columns already exist"
+            }
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Migration error: {str(e)}")

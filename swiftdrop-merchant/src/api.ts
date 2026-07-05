@@ -213,3 +213,9 @@ export async function getDashboardStats() {
 export async function getMerchantInfo() {
   return apiFetch('/merchants/info');
 }
+
+export async function completeOnboarding() {
+  return apiFetch('/merchants/complete-onboarding', {
+    method: 'POST',
+  });
+}

@@ -86,17 +86,35 @@ export default function App() {
           console.error("Failed to load categories:", e);
         }
 
+        // Check onboarding status from localStorage
+        const onboardingData = localStorage.getItem('swiftdrop_merchant_onboarding');
+        let onboardingCompleted = false;
+        if (onboardingData) {
+          try {
+            const parsed = JSON.parse(onboardingData);
+            onboardingCompleted = parsed.completed === true;
+          } catch (e) {
+            console.error("Failed to parse onboarding data:", e);
+          }
+        }
+
         // Fetch merchant-specific data (may 404 if no restaurant exists yet)
         let restaurantData: Restaurant | null = null;
         try {
           restaurantData = await api.getRestaurant();
           setRestaurant(restaurantData);
-          const isDefaultName = /^Restaurant \d{4}$/.test(restaurantData.name);
-          const isDefaultAddress = restaurantData.address === "Accra, Ghana";
-          setNeedsOnboarding(isDefaultName || isDefaultAddress);
+          // Only show onboarding if not completed AND restaurant has default values
+          if (!onboardingCompleted) {
+            const isDefaultName = /^Restaurant \d{4}$/.test(restaurantData.name);
+            const isDefaultAddress = restaurantData.address === "Accra, Ghana";
+            setNeedsOnboarding(isDefaultName || isDefaultAddress);
+          } else {
+            setNeedsOnboarding(false);
+          }
         } catch (e) {
           console.error("No restaurant found, needs onboarding:", e);
-          setNeedsOnboarding(true);
+          // If no restaurant and onboarding not completed, show onboarding
+          setNeedsOnboarding(!onboardingCompleted);
         }
 
         // Fetch menu items
@@ -310,7 +328,10 @@ export default function App() {
     setAuthLoading(true);
     setAuthError("");
     try {
-      await api.loginWithEmail(authEmail, authPassword);
+      const res = await api.loginWithEmail(authEmail, authPassword);
+      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+        completed: res.user.onboarding_completed
+      }));
       setIsLoggedIn(true);
     } catch (err: any) {
       setAuthError(err.message || "Invalid credentials");
@@ -331,7 +352,10 @@ export default function App() {
     setAuthLoading(true);
     setAuthError("");
     try {
-      await api.signUp(authEmail, authPassword, authPhone, authName || undefined);
+      const res = await api.signUp(authEmail, authPassword, authPhone, authName || undefined);
+      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+        completed: res.user.onboarding_completed
+      }));
       setIsLoggedIn(true);
     } catch (err: any) {
       setAuthError(err.message || "Signup failed");
@@ -360,7 +384,10 @@ export default function App() {
     setAuthLoading(true);
     setAuthError("");
     try {
-      await api.verifyOtp(authPhone, authCode);
+      const res = await api.verifyOtp(authPhone, authCode);
+      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+        completed: res.user.onboarding_completed
+      }));
       setIsLoggedIn(true);
     } catch (err: any) {
       setAuthError(err.message || "Invalid code");
@@ -381,6 +408,7 @@ export default function App() {
 
   const handleLogout = () => {
     api.logout();
+    localStorage.removeItem('swiftdrop_merchant_onboarding');
     setIsLoggedIn(false);
     setAuthEmail("");
     setAuthPassword("");
@@ -425,6 +453,15 @@ export default function App() {
       }
       setRestaurant(updated);
       setMerchantInfo((prev) => prev ? { ...prev, restaurant_name: updated.name } : prev);
+      
+      // Mark onboarding as complete on backend
+      await api.completeOnboarding();
+      
+      // Update localStorage
+      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+        completed: true
+      }));
+      
       setNeedsOnboarding(false);
     } catch (err) {
       console.error("Failed to save restaurant:", err);

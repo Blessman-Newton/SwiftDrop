@@ -33,6 +33,7 @@ def _user_to_response(user: User) -> UserResponse:
         role=user.role,
         avatar_url=user.avatar_url,
         is_verified=user.is_verified,
+        onboarding_completed=user.onboarding_completed,
     )
 
 

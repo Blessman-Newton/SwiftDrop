@@ -37,6 +37,7 @@ class UserResponse(BaseModel):
     role: str
     avatar_url: str | None = None
     is_verified: bool = False
+    onboarding_completed: bool = False
 
     model_config = {"from_attributes": True}
 
