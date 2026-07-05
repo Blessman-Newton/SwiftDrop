@@ -25,7 +25,8 @@ async def initialize_database(secret: str = Query(..., description="Setup secret
             [sys.executable, "init_db.py"],
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            cwd="/app"
         )
         
         if result.returncode == 0:
@@ -37,13 +38,20 @@ async def initialize_database(secret: str = Query(..., description="Setup secret
         else:
             raise HTTPException(
                 status_code=500,
-                detail=f"Initialization failed: {result.stderr}"
+                detail={
+                    "error": "Initialization failed",
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                    "returncode": result.returncode
+                }
             )
     
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=500, detail="Initialization timed out")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
 @router.get("/health")

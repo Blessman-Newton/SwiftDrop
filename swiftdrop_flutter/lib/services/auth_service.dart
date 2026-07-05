@@ -19,11 +19,16 @@ class AuthService {
 
   // Send OTP via API
   Future<bool> sendOtp(String phone) async {
-    final response = await _api.dio.post(
-      ApiEndpoints.sendOtp,
-      data: {'phone': phone},
-    );
-    return response.statusCode == 200;
+    try {
+      final response = await _api.dio.post(
+        ApiEndpoints.sendOtp,
+        data: {'phone': phone},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      print('[sendOtp] ${e.response?.statusCode}: ${e.response?.data}');
+      return false;
+    }
   }
 
   // Verify OTP via API

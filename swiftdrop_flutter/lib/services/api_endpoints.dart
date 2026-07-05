@@ -1,5 +1,5 @@
 class ApiEndpoints {
-  static const String baseUrl = 'http://192.168.137.156:8000';
+  static const String baseUrl = 'https://swiftdrop-fvcd.onrender.com';
 
   // Auth
   static const String sendOtp = '/api/v1/auth/send-otp';

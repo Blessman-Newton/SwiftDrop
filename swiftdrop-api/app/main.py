@@ -5,6 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.config import get_settings
+from app.core.database import engine, Base
+# Import models to register them with Base.metadata
+from app.models import (
+    User, RiderProfile, OTPCode,
+    Restaurant, MenuItem, PromoCode,
+    Category, Order, OrderItem, DispatchLog,
+    Payment, SupportTicket, Payout
+)
 
 settings = get_settings()
 
@@ -12,6 +20,10 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"Starting {settings.APP_NAME} API...")
+    # Create tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    print("Database tables ensured")
     yield
     print(f"Shutting down {settings.APP_NAME} API...")
 
