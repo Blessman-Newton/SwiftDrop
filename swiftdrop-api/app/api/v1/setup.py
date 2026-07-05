@@ -116,14 +116,30 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
             admin_user = result.fetchone()
             
             if admin_user:
-                if admin_user[2] != 'admin':
+                admin_id = str(admin_user[0])
+                admin_email = admin_user[1]
+                admin_role = admin_user[2]
+                
+                if admin_role != 'admin':
                     await conn.execute(
                         text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
-                        {"user_id": str(admin_user[0])}
+                        {"user_id": admin_id}
                     )
-                    migrations_done.append(f"promoted {admin_user[1]} to admin")
+                    migrations_done.append(f"promoted {admin_email} from '{admin_role}' to 'admin'")
                 else:
-                    migrations_done.append(f"admin user already exists: {admin_user[1]}")
+                    migrations_done.append(f"admin user already exists: {admin_email}")
+            else:
+                # Try to find any user with admin in the name or email
+                result = await conn.execute(
+                    text("SELECT id, email, role FROM users WHERE email LIKE '%admin%' OR name LIKE '%admin%' LIMIT 1")
+                )
+                potential_admin = result.fetchone()
+                if potential_admin:
+                    await conn.execute(
+                        text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
+                        {"user_id": str(potential_admin[0])}
+                    )
+                    migrations_done.append(f"promoted {potential_admin[1]} to admin")
         
         if migrations_done:
             return {
