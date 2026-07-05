@@ -169,6 +169,53 @@ async def reset_database(secret: str = Query(..., description="Setup secret key"
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 
+@router.post("/promote-admin")
+async def promote_to_admin(
+    secret: str = Query(..., description="Setup secret key"),
+    user_id: str = Query(..., description="User ID to promote to admin")
+):
+    """
+    Promote a user to admin role.
+    One-time setup endpoint - use with caution!
+    """
+    if secret != "SWIFTDROP_SETUP_2026":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    try:
+        async with engine.begin() as conn:
+            # Check if user exists
+            result = await conn.execute(
+                text("SELECT id, email, role FROM users WHERE id = :user_id"),
+                {"user_id": user_id}
+            )
+            user = result.fetchone()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail=f"User not found: {user_id}")
+            
+            old_role = user[2]
+            
+            # Update role to admin
+            await conn.execute(
+                text("UPDATE users SET role = 'admin' WHERE id = :user_id"),
+                {"user_id": user_id}
+            )
+            
+            return {
+                "status": "success",
+                "message": f"User {user[1]} promoted from '{old_role}' to 'admin'",
+                "user_id": user_id,
+                "email": user[1],
+                "old_role": old_role,
+                "new_role": "admin"
+            }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint"""

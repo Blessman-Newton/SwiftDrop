@@ -17,8 +17,7 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/rider/dashboard')) return 0;
     if (location.startsWith('/rider/active-delivery') ||
-        location.startsWith('/rider/navigation') ||
-        location.startsWith('/rider/orders')) return 1;
+        location.startsWith('/rider/navigation')) return 1;
     if (location.startsWith('/rider/earnings')) return 2;
     return 0;
   }
@@ -63,13 +62,7 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
                 icon: Icons.local_shipping_rounded,
                 label: 'Orders',
                 isActive: index == 1,
-                onTap: () {
-                  if (isOnline) {
-                    context.go('/rider/orders');
-                  } else {
-                    context.go('/rider/active-delivery');
-                  }
-                },
+                onTap: () => context.go('/rider/active-delivery'),
                 isDark: isDark,
               ),
               _RiderNavItem(
