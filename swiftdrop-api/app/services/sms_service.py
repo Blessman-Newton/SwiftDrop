@@ -6,20 +6,13 @@ settings = get_settings()
 
 def _get_client() -> TwilioClient | None:
     if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN:
-        print(f"[SMS] Missing Twilio credentials - SID: {bool(settings.TWILIO_ACCOUNT_SID)}, Token: {bool(settings.TWILIO_AUTH_TOKEN)}")
+        print(f"[SMS] Missing Twilio credentials - SID: '{settings.TWILIO_ACCOUNT_SID}', Token: '{settings.TWILIO_AUTH_TOKEN}'")
         return None
-    try:
-        client = TwilioClient(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
-        # Test the connection
-        client.api.accounts(settings.TWILIO_ACCOUNT_SID).fetch()
-        return client
-    except Exception as e:
-        print(f"[SMS] Twilio auth failed: {e}")
-        return None
+    print(f"[SMS] Creating Twilio client with SID: {settings.TWILIO_ACCOUNT_SID[:8]}...")
+    return TwilioClient(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 
 
 def send_sms(phone: str, message: str) -> tuple[bool, str]:
-    # Dev mode: always log to console
     if settings.APP_ENV == "development":
         print(f"\n{'='*50}")
         print(f"[SMS DEV] To: {phone}")
@@ -29,12 +22,11 @@ def send_sms(phone: str, message: str) -> tuple[bool, str]:
 
     client = _get_client()
     if not client:
-        error_msg = "No Twilio client available - credentials missing or invalid"
+        error_msg = "No Twilio client - credentials missing"
         print(f"[SMS ERROR] {error_msg}")
         return False, error_msg
     
     try:
-        # Ensure phone number has country code
         if not phone.startswith("+"):
             phone = f"+{phone}"
         
