@@ -2,11 +2,13 @@
 One-time setup endpoint for database initialization
 Access: POST /setup/initialize?secret=YOUR_SECRET_KEY
 Access: POST /setup/reset?secret=YOUR_SECRET_KEY
+Access: POST /setup/migrate?secret=YOUR_SECRET_KEY
 """
 from fastapi import APIRouter, HTTPException, Query
 import subprocess
 import sys
 
+from sqlalchemy import text
 from app.core.database import engine, Base
 from app.models import (
     User, RiderProfile, OTPCode,
@@ -62,6 +64,43 @@ async def initialize_database(secret: str = Query(..., description="Setup secret
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.post("/migrate")
+async def migrate_database(secret: str = Query(..., description="Setup secret key")):
+    """
+    Add missing columns to existing tables
+    """
+    if secret != "SWIFTDROP_SETUP_2026":
+        raise HTTPException(status_code=403, detail="Invalid secret key")
+    
+    try:
+        async with engine.begin() as conn:
+            # Check if password_hash column exists
+            result = await conn.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' AND column_name = 'password_hash'
+            """))
+            
+            if not result.fetchone():
+                # Add password_hash column
+                await conn.execute(text("""
+                    ALTER TABLE users 
+                    ADD COLUMN password_hash VARCHAR(255) NOT NULL DEFAULT ''
+                """))
+                return {
+                    "status": "success",
+                    "message": "Migration completed: added password_hash column"
+                }
+            else:
+                return {
+                    "status": "success",
+                    "message": "No migration needed: password_hash column already exists"
+                }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Migration error: {str(e)}")
 
 
 @router.post("/reset")
