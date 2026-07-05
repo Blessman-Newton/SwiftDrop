@@ -21,6 +21,28 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 }
 
 // Auth
+export async function signUp(email: string, password: string, phone: string, name?: string) {
+  const data = await apiFetch('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, phone, name, role: 'merchant' }),
+  });
+  if (data.access_token) {
+    localStorage.setItem('swiftdrop_merchant_token', data.access_token);
+  }
+  return data;
+}
+
+export async function loginWithEmail(email: string, password: string) {
+  const data = await apiFetch('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  if (data.access_token) {
+    localStorage.setItem('swiftdrop_merchant_token', data.access_token);
+  }
+  return data;
+}
+
 export async function sendOtp(phone: string) {
   return apiFetch('/auth/send-otp', {
     method: 'POST',
@@ -31,7 +53,7 @@ export async function sendOtp(phone: string) {
 export async function verifyOtp(phone: string, code: string) {
   const data = await apiFetch('/auth/verify-otp', {
     method: 'POST',
-    body: JSON.stringify({ phone, code, role: 'merchant' }),
+    body: JSON.stringify({ phone, code }),
   });
   if (data.access_token) {
     localStorage.setItem('swiftdrop_merchant_token', data.access_token);

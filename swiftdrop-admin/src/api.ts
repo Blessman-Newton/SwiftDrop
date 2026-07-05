@@ -30,16 +30,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Auth
+  signUp: (email: string, password: string, phone: string, name?: string) =>
+    request<{ access_token: string; user: any }>('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, phone, name, role: 'admin' }),
+    }),
+
+  loginWithEmail: (email: string, password: string) =>
+    request<{ access_token: string; user: any }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+
   sendOtp: (phone: string) =>
-    request<{ message: string; phone: string }>('/auth/send-otp', {
+    request<{ message: string; phone: string; dev_code?: string }>('/auth/send-otp', {
       method: 'POST',
       body: JSON.stringify({ phone }),
     }),
 
-  verifyOtp: (phone: string, code: string, name?: string) =>
+  verifyOtp: (phone: string, code: string) =>
     request<{ access_token: string; user: any }>('/auth/verify-otp', {
       method: 'POST',
-      body: JSON.stringify({ phone, code, role: 'admin', name }),
+      body: JSON.stringify({ phone, code }),
     }),
 
   // Dashboard

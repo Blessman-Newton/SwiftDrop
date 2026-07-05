@@ -39,9 +39,14 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(true);
 
   const [isLoggedIn, setIsLoggedIn] = useState(() => api.isAuthenticated());
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [usePhoneLogin, setUsePhoneLogin] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
   const [authPhone, setAuthPhone] = useState("");
+  const [authName, setAuthName] = useState("");
   const [authCode, setAuthCode] = useState("");
-  const [authStep, setAuthStep] = useState<"phone" | "otp">("phone");
+  const [authStep, setAuthStep] = useState<"form" | "otp">("form");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [devCode, setDevCode] = useState("");
@@ -297,6 +302,44 @@ export default function App() {
     }
   };
 
+  const handleEmailLogin = async () => {
+    if (!authEmail || !authPassword) {
+      setAuthError("Please enter email and password");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await api.loginWithEmail(authEmail, authPassword);
+      setIsLoggedIn(true);
+    } catch (err: any) {
+      setAuthError(err.message || "Invalid credentials");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignup = async () => {
+    if (!authEmail || !authPassword || !authPhone) {
+      setAuthError("Please fill in all required fields");
+      return;
+    }
+    if (authPassword.length < 8) {
+      setAuthError("Password must be at least 8 characters");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await api.signUp(authEmail, authPassword, authPhone, authName || undefined);
+      setIsLoggedIn(true);
+    } catch (err: any) {
+      setAuthError(err.message || "Signup failed");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
   const handleSendOtp = async () => {
     if (!authPhone) return;
     setAuthLoading(true);
@@ -326,12 +369,27 @@ export default function App() {
     }
   };
 
+  const handleAuthSubmit = () => {
+    if (authMode === 'signup') {
+      handleSignup();
+    } else if (usePhoneLogin) {
+      handleSendOtp();
+    } else {
+      handleEmailLogin();
+    }
+  };
+
   const handleLogout = () => {
     api.logout();
     setIsLoggedIn(false);
+    setAuthEmail("");
+    setAuthPassword("");
     setAuthPhone("");
+    setAuthName("");
     setAuthCode("");
-    setAuthStep("phone");
+    setAuthStep("form");
+    setAuthMode("login");
+    setUsePhoneLogin(false);
     setNeedsOnboarding(false);
     setRestaurant(null);
   };
@@ -458,34 +516,97 @@ export default function App() {
             </div>
           </div>
 
-          {authStep === "phone" ? (
+          {authStep === "form" ? (
             <div className="space-y-4">
+              {authMode === 'signup' && (
+                <div>
+                  <label className="text-xs font-bold text-on-surface-variant mb-1 block">Full Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      placeholder="John Doe"
+                      className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="text-xs font-bold text-on-surface-variant mb-1 block">Phone Number</label>
+                <label className="text-xs font-bold text-on-surface-variant mb-1 block">Email</label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
                   <input
-                    type="tel"
-                    value={authPhone}
-                    onChange={(e) => setAuthPhone(e.target.value)}
-                    placeholder="+233..."
-                    className="w-full pl-10 pr-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary"
-                    onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="merchant@example.com"
+                    className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary"
                   />
                 </div>
               </div>
+
+              <div>
+                <label className="text-xs font-bold text-on-surface-variant mb-1 block">Password</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {(authMode === 'signup' || usePhoneLogin) && (
+                <div>
+                  <label className="text-xs font-bold text-on-surface-variant mb-1 block">Phone Number</label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+                    <input
+                      type="tel"
+                      value={authPhone}
+                      onChange={(e) => setAuthPhone(e.target.value)}
+                      placeholder="+233..."
+                      className="w-full pl-10 pr-4 py-3 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              )}
+
               {authError && (
                 <p className="text-xs text-error flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" /> {authError}
                 </p>
               )}
+
               <button
-                onClick={handleSendOtp}
-                disabled={authLoading || !authPhone}
+                onClick={handleAuthSubmit}
+                disabled={authLoading}
                 className="w-full py-3 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-50 hover:brightness-110 transition-all"
               >
-                {authLoading ? "Sending..." : "Send OTP"}
+                {authLoading ? "Please wait..." : authMode === 'signup' ? 'Create Account' : 'Login'}
               </button>
+
+              {authMode === 'login' && (
+                <button
+                  onClick={() => setUsePhoneLogin(!usePhoneLogin)}
+                  className="w-full py-2 text-primary text-xs font-bold hover:underline"
+                >
+                  {usePhoneLogin ? 'Use email & password instead' : 'Use phone number instead'}
+                </button>
+              )}
+
+              <div className="text-center text-xs text-on-surface-variant">
+                {authMode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                <button
+                  onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); }}
+                  className="text-primary font-bold hover:underline"
+                >
+                  {authMode === 'login' ? 'Sign Up' : 'Sign In'}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
@@ -523,10 +644,10 @@ export default function App() {
                 {authLoading ? "Verifying..." : "Verify & Login"}
               </button>
               <button
-                onClick={() => { setAuthStep("phone"); setAuthCode(""); setAuthError(""); }}
+                onClick={() => { setAuthStep("form"); setAuthCode(""); setAuthError(""); }}
                 className="w-full py-2 text-on-surface-variant text-xs hover:text-on-surface transition-all"
               >
-                Change phone number
+                Back to login
               </button>
             </div>
           )}

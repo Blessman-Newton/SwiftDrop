@@ -32,19 +32,38 @@ function StatCard({ label, value, icon, color = 'bg-primary-500' }: { label: str
 }
 
 function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [usePhone, setUsePhone] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
+  const [step, setStep] = useState<'form' | 'otp'>('form')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [devCode, setDevCode] = useState('')
+
+  const handleEmailLogin = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await api.loginWithEmail(email, password)
+      localStorage.setItem('admin_token', res.access_token)
+      onLogin(res.access_token)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSendOtp = async () => {
     setLoading(true)
     setError('')
     try {
       const res = await api.sendOtp(phone)
-      setDevCode((res as any).dev_code || '')
+      setDevCode(res.dev_code || '')
       setStep('otp')
     } catch (e: any) {
       setError(e.message)
@@ -67,6 +86,30 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     }
   }
 
+  const handleSignup = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await api.signUp(email, password, phone, name || undefined)
+      localStorage.setItem('admin_token', res.access_token)
+      onLogin(res.access_token)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = () => {
+    if (mode === 'signup') {
+      handleSignup()
+    } else if (usePhone) {
+      handleSendOtp()
+    } else {
+      handleEmailLogin()
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
@@ -75,26 +118,86 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
           <p className="text-gray-500 mt-2">Admin Dashboard</p>
         </div>
 
-        {step === 'phone' ? (
+        {step === 'form' ? (
           <div className="space-y-4">
+            {mode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="John Doe"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+233241234567"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@swiftdrop.com"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+              />
+            </div>
+
+            {(mode === 'signup' || usePhone) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+233241234567"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
+                />
+              </div>
+            )}
+
             {error && <p className="text-red-500 text-sm">{error}</p>}
+
             <button
-              onClick={handleSendOtp}
-              disabled={loading || !phone}
+              onClick={handleSubmit}
+              disabled={loading}
               className="w-full bg-primary-600 text-white py-3 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition"
             >
-              {loading ? 'Sending...' : 'Send OTP'}
+              {loading ? 'Please wait...' : mode === 'signup' ? 'Create Account' : 'Login'}
             </button>
+
+            {mode === 'login' && (
+              <>
+                <button
+                  onClick={() => setUsePhone(!usePhone)}
+                  className="w-full text-primary-600 py-2 text-sm hover:underline"
+                >
+                  {usePhone ? 'Use email & password instead' : 'Use phone number instead'}
+                </button>
+              </>
+            )}
+
+            <div className="text-center text-sm text-gray-500">
+              {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+              <button
+                onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}
+                className="text-primary-600 font-semibold hover:underline"
+              >
+                {mode === 'login' ? 'Sign Up' : 'Sign In'}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -121,13 +224,13 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
               disabled={loading || code.length < 6}
               className="w-full bg-primary-600 text-white py-3 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition"
             >
-              {loading ? 'Verifying...' : 'Login'}
+              {loading ? 'Verifying...' : 'Verify & Login'}
             </button>
             <button
-              onClick={() => { setStep('phone'); setCode(''); setError('') }}
+              onClick={() => { setStep('form'); setCode(''); setError('') }}
               className="w-full text-primary-600 py-2 text-sm hover:underline"
             >
-              Change phone number
+              Back to login
             </button>
           </div>
         )}
