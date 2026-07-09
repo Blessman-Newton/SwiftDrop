@@ -152,7 +152,7 @@ async def update_delivery_status(
         select(Order)
         .where(
             Order.rider_id == current_user.id,
-            Order.status.in_(["PICKED_UP", "EN_ROUTE"]),
+            Order.status.in_(["READY_FOR_PICKUP", "PICKED_UP", "EN_ROUTE"]),
         )
         .order_by(Order.created_at.desc())
         .limit(1)
