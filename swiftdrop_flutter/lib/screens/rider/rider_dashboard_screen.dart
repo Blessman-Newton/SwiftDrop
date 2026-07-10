@@ -353,9 +353,9 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Semantics(
-            label: 'New order offer available, Order $orderNo from $restaurant, pay $deliveryFee dollars',
+            label: 'New order offer available, Order $orderNo from $restaurant, pay $deliveryFee dollars. Tap to accept.',
             child: GestureDetector(
-              onTap: () => context.go('/rider/active-delivery'),
+              onTap: () => _acceptOrder(context, orderId, orderNo),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -393,13 +393,22 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
                               color: const Color(0xFF059669),
                             ),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tap to accept',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF059669),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     const Icon(
-                      Icons.arrow_forward_ios,
+                      Icons.check_circle_outline,
                       color: Color(0xFF059669),
-                      size: 16,
+                      size: 20,
                     ),
                   ],
                 ),
@@ -411,6 +420,31 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
       loading: () => const SizedBox.shrink(),
       error: (_, __) => const SizedBox.shrink(),
     );
+  }
+
+  Future<void> _acceptOrder(BuildContext context, String orderId, String orderNo) async {
+    final service = ref.read(riderServiceProvider);
+    
+    // Show loading toast
+    ref.read(riderToastsProvider.notifier).add('Accepting order #$orderNo...', ToastType.info);
+    
+    final success = await service.acceptOrder(orderId);
+    
+    if (success) {
+      ref.read(riderToastsProvider.notifier).add('Order #$orderNo accepted! Navigate to pickup location.', ToastType.success);
+      
+      // Refresh available orders and active delivery
+      ref.invalidate(riderAvailableOrdersProvider);
+      ref.invalidate(riderActiveDeliveryProvider);
+      
+      // Small delay to allow backend to update
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Navigate to active delivery screen
+      context.go('/rider/active-delivery');
+    } else {
+      ref.read(riderToastsProvider.notifier).add('Failed to accept order. Please try again.', ToastType.error);
+    }
   }
 
   Widget _buildEarningsCard(Map<String, dynamic>? data) {

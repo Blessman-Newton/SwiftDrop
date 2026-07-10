@@ -211,6 +211,7 @@ class _RiderActiveDeliveryScreenState
   @override
   Widget build(BuildContext context) {
     final deliveryState = ref.watch(deliveryStateProvider);
+    final deliveryAsync = ref.watch(riderActiveDeliveryProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
@@ -219,14 +220,77 @@ class _RiderActiveDeliveryScreenState
           Column(
             children: [
               _buildAppBar(),
-              _buildMapSection(deliveryState),
-              _buildDeliverySheet(deliveryState),
+              deliveryAsync.when(
+                data: (data) {
+                  if (data == null) {
+                    return _buildNoActiveDelivery();
+                  }
+                  return Expanded(
+                    child: Column(
+                      children: [
+                        _buildMapSection(deliveryState),
+                        _buildDeliverySheet(deliveryState),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const Expanded(
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, __) => _buildNoActiveDelivery(),
+              ),
             ],
           ),
           if (_isCalling) _buildCallingOverlay(),
           if (_isSupporting) _buildSupportOverlay(),
           _buildBottomNav(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNoActiveDelivery() {
+    return Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.local_shipping_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No Active Delivery',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Accept an order from the dashboard to start delivering',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.go('/rider/dashboard'),
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('Back to Dashboard'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -259,20 +323,23 @@ class _RiderActiveDeliveryScreenState
               ),
             ),
             const Spacer(),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE0E7FF),
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Center(
-                child: Text(
-                  'A',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+            GestureDetector(
+              onTap: () {
+                ref.invalidate(riderActiveDeliveryProvider);
+                ref.read(riderToastsProvider.notifier).add('Refreshing delivery data...', ToastType.info);
+              },
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0E7FF),
+                  borderRadius: BorderRadius.circular(9999),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.refresh,
+                    size: 18,
                     color: Color(0xFF4F46E5),
                   ),
                 ),
