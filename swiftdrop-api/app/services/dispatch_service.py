@@ -14,7 +14,7 @@ from app.services.order_service import update_order_status
 async def get_available_orders(db: AsyncSession) -> list[dict]:
     result = await db.execute(
         select(Order)
-        .where(Order.status.in_(["CONFIRMED", "PREPARING"]), Order.rider_id.is_(None))
+        .where(Order.status.in_(["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]), Order.rider_id.is_(None))
         .order_by(Order.created_at.asc())
     )
     orders = result.scalars().all()
@@ -65,7 +65,7 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
     order = result.scalar_one_or_none()
     if not order:
         raise NotFoundException("Order not found")
-    if order.status not in ["CONFIRMED", "PREPARING"]:
+    if order.status not in ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]:
         raise BadRequestException("Order not available for pickup")
     if order.rider_id is not None:
         raise BadRequestException("Order already assigned")
