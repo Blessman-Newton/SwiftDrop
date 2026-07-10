@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,6 +19,7 @@ class RiderDashboardScreen extends ConsumerStatefulWidget {
 class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _toggleController;
+  Timer? _ordersRefreshTimer;
 
   @override
   void initState() {
@@ -26,11 +28,20 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+    
+    // Auto-refresh available orders every 30 seconds
+    _ordersRefreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) {
+        ref.invalidate(riderAvailableOrdersProvider);
+      },
+    );
   }
 
   @override
   void dispose() {
     _toggleController.dispose();
+    _ordersRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -68,6 +79,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
           onRefresh: () async {
             ref.invalidate(riderDashboardProvider);
             ref.invalidate(riderTransactionsProvider);
+            ref.invalidate(riderAvailableOrdersProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -82,6 +94,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
                 if (isOnline) ...[
                   const SizedBox(height: 20),
                   _buildPendingOrderBanner(context),
+                  const SizedBox(height: 20),
                 ],
                 const SizedBox(height: 20),
                 dashboardAsync.when(
@@ -322,62 +335,81 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
   }
 
   Widget _buildPendingOrderBanner(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Semantics(
-        label: 'New order offer available, Order SW-9982, estimated 8 minutes, pay fifteen dollars and fifty cents',
-        child: GestureDetector(
-          onTap: () => context.go('/rider/active-delivery'),
-          child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFFECFDF5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: const Color.fromRGBO(5, 150, 105, 0.2),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              _BouncingTruckIcon(),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    final availableOrdersAsync = ref.watch(riderAvailableOrdersProvider);
+    
+    return availableOrdersAsync.when(
+      data: (orders) {
+        if (orders.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        final order = orders.first;
+        final orderId = order['id'] as String? ?? '';
+        final orderNo = 'SD-${orderId.substring(0, 4).toUpperCase()}';
+        final total = (order['total'] as num?)?.toDouble() ?? 0.0;
+        final deliveryFee = (order['delivery_fee'] as num?)?.toDouble() ?? 0.0;
+        final restaurant = order['restaurant_name'] as String? ?? 'Restaurant';
+        
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Semantics(
+            label: 'New order offer available, Order $orderNo from $restaurant, pay $deliveryFee dollars',
+            child: GestureDetector(
+              onTap: () => context.go('/rider/active-delivery'),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFECFDF5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color.fromRGBO(5, 150, 105, 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      'NEW ORDER OFFER AVAILABLE',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF065F46),
-                        letterSpacing: 0.5,
+                    _BouncingTruckIcon(),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'NEW ORDER OFFER AVAILABLE',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF065F46),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Order #$orderNo - $restaurant - Pay: GHS ${deliveryFee.toStringAsFixed(2)}',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF059669),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Order #SW-9982 - Est: 8 mins - Pay: \$15.50',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF059669),
-                      ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Color(0xFF059669),
+                      size: 16,
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.arrow_forward_ios,
-                color: Color(0xFF059669),
-                size: 16,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
-      ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 

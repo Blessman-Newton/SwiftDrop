@@ -37,3 +37,10 @@ final riderActiveDeliveryProvider =
   final service = ref.read(riderServiceProvider);
   return service.getActiveDelivery();
 });
+
+// Available orders for dispatch
+final riderAvailableOrdersProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final service = ref.read(riderServiceProvider);
+  return service.getAvailableOrders();
+});
