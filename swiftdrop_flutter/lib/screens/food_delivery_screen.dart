@@ -51,7 +51,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
       'Desserts'
     ];
 
-    return Container(
+    return SafeArea(
+      child: Container(
       height: double.infinity,
       color: const Color(0xFFF4FBF4),
       child: RefreshIndicator(
@@ -753,6 +754,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
               ),
             ),
           ],
+        ),
         ),
         ),
       ),

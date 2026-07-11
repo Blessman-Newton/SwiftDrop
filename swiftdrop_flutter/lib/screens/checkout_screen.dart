@@ -7,6 +7,8 @@ import '../models/models.dart';
 import '../services/order_service.dart';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
+import 'address_selection_screen.dart';
+import 'momo_payment_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final String restaurantId;
@@ -49,6 +51,14 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isProcessing = false;
   String _statusMessage = '';
+  late String _deliveryAddress;
+  MoMoPaymentResult? _momoPayment;
+
+  @override
+  void initState() {
+    super.initState();
+    _deliveryAddress = widget.deliveryAddress;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,11 +95,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildDeliveryAddress(surfaceColor, textColor, subtextColor),
+                  const SizedBox(height: 12),
                   _buildOrderSummary(surfaceColor, textColor, subtextColor),
-                  const SizedBox(height: 16),
-                  _buildPaymentInfo(surfaceColor, textColor, subtextColor),
+                  const SizedBox(height: 12),
+                  _buildPaymentMethod(surfaceColor, textColor, subtextColor),
                   if (_statusMessage.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     _buildStatusBanner(),
                   ],
                 ],
@@ -102,6 +114,89 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // ─── Delivery Address Section ────────────────────────────────────────────────
+  Widget _buildDeliveryAddress(Color surface, Color text, Color subtext) {
+    return GestureDetector(
+      onTap: _openAddressSelection,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color.fromRGBO(0, 0, 0, 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF6EE),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.location_on, color: AppColors.primary, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Deliver To',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: subtext,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEF6EE),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Tap to change',
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _deliveryAddress,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: text,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: subtext, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Order Summary ───────────────────────────────────────────────────────────
   Widget _buildOrderSummary(Color surface, Color text, Color subtext) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -121,17 +216,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           Text(
             'Order Summary',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: text,
-            ),
+            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: text),
           ),
           const SizedBox(height: 4),
-          Text(
-            widget.restaurantName,
-            style: GoogleFonts.inter(fontSize: 13, color: subtext),
-          ),
+          Text(widget.restaurantName, style: GoogleFonts.inter(fontSize: 13, color: subtext)),
           const SizedBox(height: 12),
           if (widget.orderType == 'food') ...[
             ...widget.cartItems.map((ci) => Padding(
@@ -146,11 +234,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       Text(
                         'GHS ${(ci.foodItem.price * ci.quantity).toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: text,
-                        ),
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
                       ),
                     ],
                   ),
@@ -173,21 +257,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Total',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: text,
-                ),
-              ),
+              Text('Total', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: text)),
               Text(
                 'GHS ${widget.total.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.primary,
-                ),
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary),
               ),
             ],
           ),
@@ -219,64 +292,100 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPaymentInfo(Color surface, Color text, Color subtext) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFEEF6EE),
-              borderRadius: BorderRadius.circular(10),
+  // ─── Payment Method Section ──────────────────────────────────────────────────
+  Widget _buildPaymentMethod(Color surface, Color text, Color subtext) {
+    return GestureDetector(
+      onTap: _openMoMoSelection,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color.fromRGBO(0, 0, 0, 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-            child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Secure Payment',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: text,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: _momoPayment != null
+                    ? const Color(0xFFEEF6EE)
+                    : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.phone_android,
+                color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Payment Method',
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: subtext),
                   ),
-                ),
-                Text(
-                  'Pay via card, mobile money, or bank transfer',
-                  style: GoogleFonts.inter(fontSize: 12, color: subtext),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  if (_momoPayment != null) ...[
+                    Text(
+                      '${_getProviderName(_momoPayment!.provider)} •••• ${_momoPayment!.phoneNumber.substring(_momoPayment!.phoneNumber.length - 4)}',
+                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                    ),
+                    Text(
+                      _momoPayment!.displayName,
+                      style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                    ),
+                  ] else ...[
+                    Text(
+                      'Add Mobile Money',
+                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                    ),
+                    Text(
+                      'MTN MoMo, Telecel Cash, AirtelTigo',
+                      style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: _momoPayment != null ? const Color(0xFFEEF6EE) : const Color(0xFFF3F4F6),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                _momoPayment != null ? 'Change' : 'Add',
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
+  // ─── Status Banner ───────────────────────────────────────────────────────────
   Widget _buildStatusBanner() {
     final isError = _statusMessage.contains('failed') || _statusMessage.contains('error');
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isError
-            ? const Color(0xFFFEF2F2)
-            : const Color(0xFFEEF6EE),
+        color: isError ? const Color(0xFFFEF2F2) : const Color(0xFFEEF6EE),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -301,6 +410,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // ─── Pay Button ──────────────────────────────────────────────────────────────
   Widget _buildPayButton() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -344,9 +454,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               child: _isProcessing
                   ? Row(
@@ -355,19 +463,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Color(0xFF006C49),
-                          ),
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF006C49)),
                         ),
                         const SizedBox(width: 12),
                         Text(
                           _statusMessage.isNotEmpty ? _statusMessage : 'Processing...',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF006C49),
-                          ),
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF006C49)),
                         ),
                       ],
                     )
@@ -378,10 +479,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Pay GHS ${widget.total.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -392,6 +490,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // ─── Price Row ───────────────────────────────────────────────────────────────
   Widget _buildPriceRow(String label, double value, Color text, {bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -412,9 +511,50 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  String _getProviderName(String id) {
+    switch (id) {
+      case 'mtn': return 'MTN MoMo';
+      case 'telecel': return 'Telecel Cash';
+      case 'airteltigo': return 'AirtelTigo';
+      default: return 'MoMo';
+    }
+  }
+
+  // ─── Navigation ──────────────────────────────────────────────────────────────
+  Future<void> _openAddressSelection() async {
+    final result = await Navigator.of(context).push<AddressSelectionResult>(
+      MaterialPageRoute(
+        builder: (_) => AddressSelectionScreen(
+          currentAddress: _deliveryAddress,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() => _deliveryAddress = result.address);
+    }
+  }
+
+  Future<void> _openMoMoSelection() async {
+    final result = await Navigator.of(context).push<MoMoPaymentResult>(
+      MaterialPageRoute(
+        builder: (_) => MoMoPaymentScreen(currentMethod: _momoPayment),
+      ),
+    );
+    if (result != null) {
+      setState(() => _momoPayment = result);
+    }
+  }
+
+  // ─── Payment Processing ──────────────────────────────────────────────────────
   Future<void> _processPayment() async {
     if (!ApiClient().isAuthenticated) {
       setState(() => _statusMessage = 'Please log in to place an order');
+      return;
+    }
+
+    if (_momoPayment == null) {
+      setState(() => _statusMessage = 'Please add a Mobile Money payment method');
       return;
     }
 
@@ -423,7 +563,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _statusMessage = 'Creating order...';
     });
 
-    // Step 1: Create order first
+    // Step 1: Create order
     final orderItems = widget.cartItems
         .map((ci) => {
               'name': ci.foodItem.name,
@@ -436,7 +576,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       orderType: widget.orderType,
       restaurantName: widget.restaurantName,
       pickupAddress: widget.orderType == 'food' ? widget.restaurantName : (widget.parcelPickup ?? ''),
-      deliveryAddress: widget.deliveryAddress,
+      deliveryAddress: _deliveryAddress,
       subtotal: widget.subtotal,
       deliveryFee: widget.deliveryFee,
       tax: widget.tax,
@@ -473,7 +613,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
-    // Step 3: Launch Paystack checkout
+    // Step 3: Launch Paystack checkout (MoMo is accessed through Paystack's mobile money channel)
     setState(() => _statusMessage = 'Opening payment...');
 
     try {
@@ -483,13 +623,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         context: context,
         secretKey: 'sk_test_18e607bd21de019b1407a895b4a8b0c6c0bc6c36',
         customerEmail: widget.userEmail,
+        customerFirstName: _momoPayment!.displayName.split(' ').first,
+        customerLastName: _momoPayment!.displayName.split(' ').last,
+        customerPhone: '+233${_momoPayment!.phoneNumber}',
         reference: reference,
         currency: 'GHS',
         amount: widget.total,
         callbackUrl: 'https://swiftdrop-fvcd.onrender.com/api/v1/payments/webhook',
         channels: [
-          PaystackChannel.card,
           PaystackChannel.mobileMoney,
+          PaystackChannel.card,
           PaystackChannel.bankTransfer,
         ],
         customFields: [
@@ -497,6 +640,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             displayName: 'Order ID',
             variableName: 'order_id',
             value: orderId,
+          ),
+          PaystackCustomField(
+            displayName: 'MoMo Provider',
+            variableName: 'momo_provider',
+            value: _getProviderName(_momoPayment!.provider),
           ),
         ],
         transactionCompleted: (PaymentData data) async {
@@ -522,33 +670,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _handlePaymentSuccess(String reference) async {
     setState(() => _statusMessage = 'Verifying payment...');
 
-    // Step 4: Verify payment
     final verifyResult = await OrderService().verifyPayment(reference);
 
     if (verifyResult != null && verifyResult['status'] == 'success') {
-      // Payment verified - now confirm order
       setState(() => _statusMessage = 'Payment confirmed!');
-
-      // Save order locally
-      // (The order was already created on the backend)
-
       await Future.delayed(const Duration(seconds: 1));
-
-      if (mounted) {
-        // Navigate to orders screen
-        context.go('/orders');
-      }
+      if (mounted) context.go('/orders');
     } else {
       setState(() {
         _isProcessing = false;
         _statusMessage = 'Payment verification pending. Your order has been placed.';
       });
-
-      // Even if verification is pending, order was created
       await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        context.go('/orders');
-      }
+      if (mounted) context.go('/orders');
     }
   }
 }

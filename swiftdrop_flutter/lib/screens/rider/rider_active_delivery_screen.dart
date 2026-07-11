@@ -215,7 +215,8 @@ class _RiderActiveDeliveryScreenState
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
-      body: Stack(
+      body: SafeArea(
+        child: Stack(
         children: [
           Column(
             children: [
@@ -245,6 +246,7 @@ class _RiderActiveDeliveryScreenState
           if (_isSupporting) _buildSupportOverlay(),
           _buildBottomNav(),
         ],
+        ),
       ),
     );
   }
@@ -297,7 +299,6 @@ class _RiderActiveDeliveryScreenState
 
   Widget _buildAppBar() {
     return Container(
-      height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: const Color(0xF2FFFFFF),
@@ -1074,26 +1075,25 @@ class _RiderActiveDeliveryScreenState
       right: 0,
       bottom: 0,
       child: Container(
-        height: 64,
+        height: 64 + MediaQuery.of(context).padding.bottom,
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         decoration: BoxDecoration(
           color: const Color(0xF2FFFFFF),
           border: const Border(
             top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
           ),
         ),
-        child: SafeArea(
-          top: false,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.dashboard_rounded, 'Dashboard', false, () => context.go('/rider/dashboard')),
-              _buildNavItem(Icons.local_shipping, 'Orders', true, () {}),
-              _buildNavItem(Icons.account_balance_wallet_rounded, 'Earnings', false, () => context.go('/rider/earnings')),
-              _buildNavItem(Icons.person, 'Profile', false, () {
-                ref.read(riderToastsProvider.notifier).add('Alex is a Level 4 Platinum Courier with 98% Rating', ToastType.success);
-              }),
-            ],
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildNavItem(Icons.dashboard_rounded, 'Dashboard', false, () => context.go('/rider/dashboard')),
+            _buildNavItem(Icons.local_shipping, 'Orders', true, () {}),
+            _buildNavItem(Icons.account_balance_wallet_rounded, 'Earnings', false, () => context.go('/rider/earnings')),
+            _buildNavItem(Icons.person, 'Profile', false, () {
+              ref.read(riderToastsProvider.notifier).add('Alex is a Level 4 Platinum Courier with 98% Rating', ToastType.success);
+            }),
+          ],
         ),
       ),
     );

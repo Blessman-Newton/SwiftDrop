@@ -76,7 +76,6 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
             left: 0,
             right: 0,
             child: Container(
-              height: 64,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: const BoxDecoration(
                 color: Color(0xFFF4FBF4),
@@ -89,6 +88,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                 ],
               ),
               child: SafeArea(
+                bottom: false,
                 child: Row(
                   children: [
                     Semantics(
@@ -126,7 +126,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
           ),
           // Content
           Positioned(
-            top: 80,
+            top: MediaQuery.of(context).padding.top + 56,
             left: 20,
             right: 20,
             bottom: 20,

@@ -83,11 +83,12 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              _buildAppBar(),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                _buildAppBar(),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: () async {
@@ -142,6 +143,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           ),
           if (_showWithdrawModal) _buildWithdrawModal(),
         ],
+        ),
       ),
     );
   }

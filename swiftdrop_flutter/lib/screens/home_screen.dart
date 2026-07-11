@@ -70,16 +70,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Container(
       height: double.infinity,
       color: const Color(0xFFF4FBF4),
-      child: RefreshIndicator(
-        onRefresh: () async {},
-        child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-          children: [
-            // Sticky header
-            Container(
-              color: Colors.white.withOpacity(0.8),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () async {},
+          child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            children: [
+              // Sticky header
+              Container(
+                color: Colors.white.withOpacity(0.8),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1266,6 +1267,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
         ),
+      ),
       ),
     );
   }

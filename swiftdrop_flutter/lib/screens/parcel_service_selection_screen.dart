@@ -43,7 +43,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
+              padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 16, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

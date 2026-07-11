@@ -12,6 +12,7 @@ import '../widgets/app_image.dart';
 import '../services/order_service.dart';
 import '../services/api_client.dart';
 import 'checkout_screen.dart';
+import 'address_selection_screen.dart';
 
 class RestaurantDetailScreen extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -226,7 +227,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               _buildHero(isDark),
               SliverToBoxAdapter(
                 child: Transform.translate(
-                  offset: const Offset(0, -32),
+                  offset: const Offset(0, -16),
                   child: _buildInfoCard(surfaceColor, textColor, subtextColor, cart),
                 ),
               ),
@@ -341,11 +342,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           child: Stack(
             children: [
               Container(
-                height: 300,
+                height: 320,
                 width: double.infinity,
                 child: AppImage(
                   url: _restaurant.imageUrl,
-                  height: 300,
+                  height: 320,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
@@ -890,12 +891,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                   ),
                   child: Column(
                     children: [
-                      _buildCheckoutSelector(
-                        icon: Icons.location_on_outlined,
-                        label: 'Deliver to',
-                        value: _selectedAddress,
-                        options: _addresses,
-                        onChanged: (v) => setState(() => _selectedAddress = v),
+                      _buildDeliveryAddressSelector(
                         surface: surface,
                         text: text,
                       ),
@@ -973,6 +969,45 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDeliveryAddressSelector({
+    required Color surface,
+    required Color text,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        final result = await Navigator.of(context).push<AddressSelectionResult>(
+          MaterialPageRoute(
+            builder: (_) => AddressSelectionScreen(
+              currentAddress: _selectedAddress,
+            ),
+          ),
+        );
+        if (result != null) {
+          setState(() => _selectedAddress = result.address);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.location_on_outlined, color: Color(0xFF006C49), size: 20),
+            const SizedBox(width: 12),
+            Text('Deliver to', style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF6C7A71))),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(_selectedAddress, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            const Icon(Icons.chevron_right, color: Color(0xFF6C7A71), size: 20),
+          ],
+        ),
+      ),
     );
   }
 

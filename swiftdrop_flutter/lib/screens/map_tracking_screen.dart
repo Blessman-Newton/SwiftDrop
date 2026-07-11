@@ -322,7 +322,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             child: _buildPlayPauseButton(),
           ),
           Positioned(
-            left: 16,
+            right: 16,
             top: MediaQuery.of(context).padding.top + 12,
             child: _buildNotificationBell(),
           ),
