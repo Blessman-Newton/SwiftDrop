@@ -402,7 +402,7 @@ export default function FinancialReportsView() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-on-surface block mb-1">Amount (USD)</label>
+                  <label className="text-xs font-bold text-on-surface block mb-1">Amount (GHS)</label>
                   <input 
                     type="number" 
                     required

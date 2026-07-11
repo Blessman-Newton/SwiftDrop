@@ -399,7 +399,11 @@ async def list_merchant_orders(
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
         select(Order)
-        .options(selectinload(Order.items), selectinload(Order.customer), selectinload(Order.rider))
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.customer),
+            selectinload(Order.rider).selectinload(User.rider_profile)
+        )
         .where(Order.restaurant_name == restaurant.name)
         .order_by(Order.created_at.desc())
     )
@@ -457,7 +461,11 @@ async def update_order_status(
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
         select(Order)
-        .options(selectinload(Order.items), selectinload(Order.customer), selectinload(Order.rider))
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.customer),
+            selectinload(Order.rider).selectinload(User.rider_profile)
+        )
         .where(Order.id == order_id, Order.restaurant_name == restaurant.name)
     )
     result = await db.execute(query)

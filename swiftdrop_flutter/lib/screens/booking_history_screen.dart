@@ -260,7 +260,7 @@ class _BookingHistoryScreenState extends ConsumerState<BookingHistoryScreen> {
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('${order.items.length} items • Total \$${order.totalPrice.toStringAsFixed(2)}',
+                      Text('${order.items.length} items • Total GHS ${order.totalPrice.toStringAsFixed(2)}',
                         style: GoogleFonts.inter(fontSize: 16, color: const Color(0xFF3C4A42))),
                     ],
                   ),
@@ -285,7 +285,7 @@ class _BookingHistoryScreenState extends ConsumerState<BookingHistoryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('\$${order.totalPrice.toStringAsFixed(2)}',
+                Text('GHS ${order.totalPrice.toStringAsFixed(2)}',
                   style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF161D19))),
                 ElevatedButton(
                   onPressed: () {},

@@ -212,7 +212,7 @@ class OrdersScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '\$${order.totalPrice.toStringAsFixed(2)}',
+                    'GHS ${order.totalPrice.toStringAsFixed(2)}',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -376,7 +376,7 @@ class OrdersScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(child: Text('${item.quantity}x ${item.foodItem.name}', style: GoogleFonts.inter(fontSize: 15))),
-                      Text('\$${(item.foodItem.price * item.quantity).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600)),
+                      Text('GHS ${(item.foodItem.price * item.quantity).toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 )),
@@ -389,7 +389,7 @@ class OrdersScreen extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Total', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700)),
-                  Text('\$${order.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF006C49))),
+                  Text('GHS ${order.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF006C49))),
                 ],
               ),
             ],

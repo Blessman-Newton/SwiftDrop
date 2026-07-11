@@ -150,7 +150,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             Text('Order Placed!', style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text(
-              'Your order from ${_restaurant.name} for \$${total.toStringAsFixed(2)} has been confirmed.',
+              'Your order from ${_restaurant.name} for GHS ${total.toStringAsFixed(2)} has been confirmed.',
               style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF6C7A71)),
               textAlign: TextAlign.center,
             ),
@@ -520,7 +520,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '15% off orders over \$30 with code SWIFT15',
+                    '15% off orders over GHS 30 with code SWIFT15',
                     style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent),
                   ),
                 ),
@@ -600,7 +600,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '\$${item.price.toStringAsFixed(2)}',
+                        'GHS ${item.price.toStringAsFixed(2)}',
                         style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.primary),
                       ),
                       if (qtyInCart == 0)
@@ -678,7 +678,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '\$${item.price.toStringAsFixed(2)}',
+                'GHS ${item.price.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary),
               ),
               if (qtyInCart == 0)
@@ -756,7 +756,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               ),
             ),
             Text(
-              '\$${total.toStringAsFixed(2)}',
+              'GHS ${total.toStringAsFixed(2)}',
               style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
             ),
           ],
@@ -851,7 +851,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    '\$${ci.foodItem.price.toStringAsFixed(2)}',
+                                    'GHS ${ci.foodItem.price.toStringAsFixed(2)}',
                                     style: GoogleFonts.inter(fontSize: 12, color: subtext),
                                   ),
                                 ],
@@ -968,7 +968,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                           ),
                           child: Center(
                             child: Text(
-                              'Place Order \u2022 \$${total.toStringAsFixed(2)}',
+                              'Place Order \u2022 GHS ${total.toStringAsFixed(2)}',
                               style: GoogleFonts.inter(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
@@ -1217,7 +1217,7 @@ class _CheckoutPriceRow extends StatelessWidget {
             ),
           ),
           Text(
-            (isDiscount ? '-' : '') + '\$${value.abs().toStringAsFixed(2)}',
+            (isDiscount ? '-' : '') + 'GHS ${value.abs().toStringAsFixed(2)}',
             style: GoogleFonts.inter(
               fontSize: isBold ? 16 : 12,
               fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,

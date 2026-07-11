@@ -121,7 +121,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                     id: 'economy',
                     title: 'Economy',
                     subtitle: 'Cheapest option for non-urgent deliveries',
-                    price: '\$4.50',
+                    price: 'GHS 4.50',
                     time: '4-6 hrs',
                     badge: null,
                   ),
@@ -130,7 +130,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                     id: 'standard',
                     title: 'Standard',
                     subtitle: 'Same-day delivery within a few hours',
-                    price: '\$7.00',
+                    price: 'GHS 7.00',
                     time: '2 hrs',
                     badge: null,
                   ),
@@ -139,7 +139,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                     id: 'swift',
                     title: 'Swift',
                     subtitle: 'Express and instant within the hour',
-                    price: '\$12.50',
+                    price: 'GHS 12.50',
                     time: '30-45 min',
                     badge: 'Popular',
                   ),
@@ -186,7 +186,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
             child: SafeArea(
               top: false,
               child: Semantics(
-                label: 'Confirm delivery for \$${_totalPrice.toStringAsFixed(2)}',
+                label: 'Confirm delivery for GHS ${_totalPrice.toStringAsFixed(2)}',
                 child: SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -213,7 +213,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                       const Icon(Icons.lock, size: 18),
                       const SizedBox(width: 8),
                       Text(
-                        'Confirm & Pay  \$${_totalPrice.toStringAsFixed(2)}',
+                        'Confirm & Pay  GHS ${_totalPrice.toStringAsFixed(2)}',
                         style: GoogleFonts.inter(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -466,7 +466,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
           ),
           const SizedBox(width: 16),
           Text(
-            'Adds \$1.00',
+            'Adds GHS 1.00',
             style: GoogleFonts.inter(
               fontSize: 14,
               fontWeight: FontWeight.w600,

@@ -561,15 +561,17 @@ class _RiderOrdersScreenState extends ConsumerState<RiderOrdersScreen> {
 
     if (success) {
       ref.read(riderToastsProvider.notifier).add(
-        'Order Accepted! You have successfully accepted this delivery. Navigate to Active Deliveries to begin the trip.',
+        'Order Accepted! You have successfully accepted this delivery.',
         ToastType.success,
       );
 
       ref.invalidate(riderAvailableOrdersProvider);
       ref.invalidate(riderActiveDeliveryProvider);
 
-      await Future.delayed(const Duration(milliseconds: 500));
-      context.go('/rider/active-delivery');
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        context.go('/rider/active-delivery');
+      }
     } else {
       ref.read(riderToastsProvider.notifier).add(
         'Unable to Accept Order. Something went wrong while accepting this order. Please try again.',

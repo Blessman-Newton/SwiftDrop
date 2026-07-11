@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
 from app.models.order import Order, OrderItem
+from app.models.user import User
 from app.schemas.order import CreateOrderRequest, OrderResponse
 
 
@@ -83,7 +84,10 @@ async def create_order(
 async def list_orders(
     db: AsyncSession, customer_id: UUID | None = None, rider_id: UUID | None = None
 ) -> list[OrderResponse]:
-    query = select(Order).options(selectinload(Order.items), selectinload(Order.rider))
+    query = select(Order).options(
+        selectinload(Order.items),
+        selectinload(Order.rider).selectinload(User.rider_profile)
+    )
     if customer_id:
         query = query.where(Order.customer_id == customer_id)
     if rider_id:
@@ -97,7 +101,10 @@ async def list_orders(
 
 async def get_order(db: AsyncSession, order_id: UUID) -> OrderResponse:
     result = await db.execute(
-        select(Order).options(selectinload(Order.items), selectinload(Order.rider)).where(Order.id == order_id)
+        select(Order).options(
+            selectinload(Order.items),
+            selectinload(Order.rider).selectinload(User.rider_profile)
+        ).where(Order.id == order_id)
     )
     order = result.scalar_one_or_none()
     if not order:

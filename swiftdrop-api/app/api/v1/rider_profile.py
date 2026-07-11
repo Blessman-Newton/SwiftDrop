@@ -53,7 +53,7 @@ async def get_rider_dashboard(
 
     pending_q = select(func.count(Order.id)).where(
         Order.rider_id == current_user.id,
-        Order.status.in_(["PICKED_UP", "EN_ROUTE"]),
+        Order.status.in_(["READY_FOR_PICKUP", "PICKED_UP", "EN_ROUTE"]),
     )
     pending_count = (await db.execute(pending_q)).scalar() or 0
 

@@ -93,6 +93,8 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
                 _buildOnlineToggle(),
                 if (isOnline) ...[
                   const SizedBox(height: 20),
+                  _buildActiveDeliveryBanner(context),
+                  const SizedBox(height: 20),
                   _buildPendingOrderBanner(context),
                   const SizedBox(height: 20),
                 ],
@@ -334,6 +336,126 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
     );
   }
 
+  Widget _buildActiveDeliveryBanner(BuildContext context) {
+    final activeDeliveryAsync = ref.watch(riderActiveDeliveryProvider);
+    
+    return activeDeliveryAsync.when(
+      data: (delivery) {
+        if (delivery == null) {
+          return const SizedBox.shrink();
+        }
+        
+        final orderNo = delivery['order_no'] as String? ?? '';
+        final restaurant = delivery['restaurant_name'] as String? ?? '';
+        final status = delivery['status'] as String? ?? '';
+        
+        String statusText;
+        switch (status) {
+          case 'READY_FOR_PICKUP':
+            statusText = 'Ready for Pickup';
+            break;
+          case 'PICKED_UP':
+            statusText = 'Picked Up';
+            break;
+          case 'EN_ROUTE':
+            statusText = 'En Route';
+            break;
+          default:
+            statusText = status;
+        }
+        
+        return GestureDetector(
+          onTap: () => context.go('/rider/active-delivery'),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF059669), Color(0xFF10B981)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF059669).withAlpha(51),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(26),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.local_shipping_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Active Delivery',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$orderNo - $restaurant',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withAlpha(204),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(38),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
   Widget _buildPendingOrderBanner(BuildContext context) {
     final availableOrdersAsync = ref.watch(riderAvailableOrdersProvider);
     
@@ -353,7 +475,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Semantics(
-            label: 'New order offer available, Order $orderNo from $restaurant, pay $deliveryFee dollars. Tap to accept.',
+            label: 'New order offer available, Order $orderNo from $restaurant, pay GHS $deliveryFee. Tap to accept.',
             child: GestureDetector(
               onTap: () => _acceptOrder(context, orderId, orderNo),
               child: Container(

@@ -888,7 +888,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           child: Row(
             children: [
               Text(
-                '\$',
+                'GHS ',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

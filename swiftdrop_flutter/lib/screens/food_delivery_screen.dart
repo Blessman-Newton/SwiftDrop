@@ -228,7 +228,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                       children: [
                         // Promo 1
                         Semantics(
-                          label: 'Promotion: Free delivery at The Pizza Place, order above twenty-five dollars',
+                          label: 'Promotion: Free delivery at The Pizza Place, order above GHS 25',
                           child: Container(
                           margin: const EdgeInsets.only(right: 16),
                           padding: const EdgeInsets.symmetric(
@@ -296,7 +296,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        'Order above \$25',
+                                        'Order above GHS 25',
                                         style: GoogleFonts.inter(
                                           fontSize: 10,
                                           color: Colors.white

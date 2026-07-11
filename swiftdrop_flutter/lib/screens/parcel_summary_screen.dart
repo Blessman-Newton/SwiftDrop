@@ -430,16 +430,16 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildPriceRow('Delivery Fee', '\$${booking.deliveryFee.toStringAsFixed(2)}'),
+                        _buildPriceRow('Delivery Fee', 'GHS ${booking.deliveryFee.toStringAsFixed(2)}'),
                         const SizedBox(height: 8),
-                        _buildPriceRow('Service Fee', '\$${booking.serviceFee.toStringAsFixed(2)}'),
+                        _buildPriceRow('Service Fee', 'GHS ${booking.serviceFee.toStringAsFixed(2)}'),
                         if (booking.insuranceIncluded) ...[
                           const SizedBox(height: 8),
-                          _buildPriceRow('Insurance', '\$${booking.insuranceFee.toStringAsFixed(2)}'),
+                          _buildPriceRow('Insurance', 'GHS ${booking.insuranceFee.toStringAsFixed(2)}'),
                         ],
                         if (booking.discount > 0) ...[
                           const SizedBox(height: 8),
-                          _buildPriceRow('Promo Discount', '-\$${booking.discount.toStringAsFixed(2)}', isDiscount: true),
+                          _buildPriceRow('Promo Discount', '-GHS ${booking.discount.toStringAsFixed(2)}', isDiscount: true),
                         ],
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
@@ -457,7 +457,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                               ),
                             ),
                             Text(
-                              '\$${booking.total.toStringAsFixed(2)}',
+                              'GHS ${booking.total.toStringAsFixed(2)}',
                               style: GoogleFonts.inter(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w700,
@@ -541,7 +541,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                             ),
                           ),
                           Text(
-                            '\$${booking.total.toStringAsFixed(2)}',
+                            'GHS ${booking.total.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
