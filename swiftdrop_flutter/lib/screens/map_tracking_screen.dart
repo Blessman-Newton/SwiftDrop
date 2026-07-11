@@ -10,6 +10,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
+import '../services/order_service.dart';
 import '../services/tomtom_service.dart';
 import '../theme/app_theme.dart';
 
@@ -24,10 +25,10 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     with SingleTickerProviderStateMixin {
   bool _isOfflineCached = false;
   bool _isSyncing = false;
-  int _activeStep = 2;
-  bool _isPlaying = false;
+  int _activeStep = 0;
   int _zoomLevel = 14;
-  Timer? _demoTimer;
+  Timer? _orderPollTimer;
+  Timer? _riderLocationTimer;
   Timer? _mapTimer;
   AnimationController? _pulseController;
 
@@ -100,6 +101,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     )..repeat(reverse: true);
     _startMapAnimation();
     _loadOrderRoute();
+    _startOrderPolling();
   }
 
   void _loadOrderRoute() {
@@ -137,9 +139,76 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     }
   }
 
+  int _statusToStep(String? apiStatus) {
+    switch (apiStatus) {
+      case 'CREATED': return 0;
+      case 'CONFIRMED':
+      case 'PREPARING': return 1;
+      case 'READY_FOR_PICKUP':
+      case 'PICKED_UP': return 2;
+      case 'EN_ROUTE': return 2;
+      case 'DELIVERED': return 3;
+      default: return 0;
+    }
+  }
+
+  void _startOrderPolling() {
+    _orderPollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (!mounted) return;
+      try {
+        final orderService = OrderService();
+        final orders = await orderService.listOrders();
+        if (orders.isNotEmpty && mounted) {
+          final active = orders.firstWhere(
+            (o) => o['status'] != 'DELIVERED' && o['status'] != 'CANCELLED',
+            orElse: () => {},
+          );
+          if (active.isNotEmpty) {
+            final newStep = _statusToStep(active['status']);
+            if (newStep != _activeStep) {
+              setState(() => _activeStep = newStep);
+            }
+            // Start rider location polling when order is picked up
+            if ((active['status'] == 'PICKED_UP' || active['status'] == 'EN_ROUTE') &&
+                _riderLocationTimer == null) {
+              _startRiderLocationPolling();
+            }
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  void _startRiderLocationPolling() {
+    _riderLocationTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+      if (!mounted) return;
+      try {
+        final orderService = OrderService();
+        final orders = await orderService.listOrders();
+        if (orders.isNotEmpty) {
+          final active = orders.firstWhere(
+            (o) => o['status'] != 'DELIVERED' && o['status'] != 'CANCELLED',
+            orElse: () => {},
+          );
+          if (active.isNotEmpty) {
+            final riderLat = active['rider_lat'] as num?;
+            final riderLng = active['rider_lng'] as num?;
+            if (riderLat != null && riderLng != null && mounted) {
+              final newPos = LatLng(riderLat.toDouble(), riderLng.toDouble());
+              setState(() {
+                _driverPosition = newPos;
+              });
+            }
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
   @override
   void dispose() {
-    _demoTimer?.cancel();
+    _orderPollTimer?.cancel();
+    _riderLocationTimer?.cancel();
     _mapTimer?.cancel();
     _callTimer?.cancel();
     _pulseController?.dispose();
@@ -153,74 +222,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     });
   }
 
-  void _startDemo() {
-    if (_activeStep >= 3) {
-      setState(() {
-        _activeStep = 0;
-        _isPlaying = true;
-      });
-    } else {
-      setState(() => _isPlaying = !_isPlaying);
-    }
-
-    _demoTimer?.cancel();
-    if (_isPlaying) {
-      _demoTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-        if (_activeStep < 3) {
-          final prev = _activeStep;
-          setState(() => _activeStep++);
-          _triggerNotification(prev);
-        } else {
-          setState(() => _isPlaying = false);
-          _demoTimer?.cancel();
-        }
-      });
-    }
-  }
-
-  void _triggerNotification(int prevStep) {
-    final activeOrder = ref.read(activeOrderProvider);
-
-    if (_activeStep == 1 && prevStep == 0) {
-      _showInAppNotification(
-          'Order Preparing!', 'The kitchen is crafting your selection.');
-      if (activeOrder != null) {
-        ref.read(ordersProvider.notifier).updateOrderStatus(
-            activeOrder.id, OrderStatus.accepted);
-        ref.read(ordersProvider.notifier).updateTrackingStep(
-            activeOrder.id, 1);
-      }
-    } else if (_activeStep == 2 && prevStep < 2) {
-      _showInAppNotification('Out for Delivery!',
-          'SwiftRider #42 is heading your way with your fresh selection!');
-      if (activeOrder != null) {
-        ref.read(ordersProvider.notifier).updateOrderStatus(
-            activeOrder.id, OrderStatus.outForDelivery);
-        ref.read(ordersProvider.notifier).updateTrackingStep(
-            activeOrder.id, 2);
-        ref.read(ordersProvider.notifier).assignCourier(
-            activeOrder.id, 'rider_42');
-      }
-    } else if (_activeStep == 3 && prevStep == 2) {
-      _showInAppNotification(
-          'Order Delivered!', 'Your food has been delivered. Enjoy!');
-      if (activeOrder != null) {
-        ref.read(ordersProvider.notifier).updateOrderStatus(
-            activeOrder.id, OrderStatus.completed);
-        ref.read(ordersProvider.notifier).updateTrackingStep(
-            activeOrder.id, 3);
-      }
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          setState(() {
-            _showFeedbackModal = true;
-            _isFeedbackSubmitted = false;
-          });
-        }
-      });
-    }
-  }
-
   void _showInAppNotification(String title, String body) {
     setState(() => _inAppNotification = {'title': title, 'body': body, 'visible': true});
     Future.delayed(const Duration(seconds: 5), () {
@@ -229,34 +230,46 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Map<String, dynamic> _getStepDetails(int step) {
+    final activeOrder = ref.watch(activeOrderProvider);
+    final apiStatus = activeOrder?.status;
+
+    // Calculate ETA from route if available
+    String eta = '...';
+    if (_routePoints.isNotEmpty && step >= 2) {
+      double totalDist = 0;
+      for (int i = 1; i < _routePoints.length; i++) {
+        final dlat = _routePoints[i].latitude - _routePoints[i - 1].latitude;
+        final dlng = _routePoints[i].longitude - _routePoints[i - 1].longitude;
+        totalDist += sqrt(dlat * dlat + dlng * dlng) * 111320;
+      }
+      final mins = (totalDist / 500).round();
+      eta = mins > 0 ? '$mins' : '...';
+    }
+
     switch (step) {
       case 0:
         return {
           'status': 'Order Received',
-          'description': 'Your order has been received and confirmed.',
-          'eta': '25',
-          'speed': '0 mph',
+          'description': 'Waiting for restaurant to confirm your order.',
+          'eta': eta == '...' ? '...' : eta,
         };
       case 1:
         return {
           'status': 'Preparing',
-          'description': 'Chef is handcrafting your selection.',
-          'eta': '15',
-          'speed': '0 mph',
+          'description': 'The kitchen is crafting your selection.',
+          'eta': eta == '...' ? '...' : eta,
         };
       case 2:
         return {
-          'status': 'Out for Delivery',
-          'description': 'SwiftRider is zooming your way.',
-          'eta': '4',
-          'speed': '18 mph',
+          'status': 'On the Way',
+          'description': 'Your rider is heading to you.',
+          'eta': eta,
         };
       default:
         return {
           'status': 'Delivered',
-          'description': 'Rider arrived with your hot meal!',
+          'description': 'Your order has been delivered. Enjoy!',
           'eta': '0',
-          'speed': '0 mph',
         };
     }
   }
@@ -682,34 +695,34 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Widget _buildPlayPauseButton() {
-    return GestureDetector(
-      onTap: _startDemo,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xFF10b981).withOpacity(0.12),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              size: 16,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _activeStep == 3 ? Colors.green : AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _activeStep == 3 ? 'Delivered' : 'Live Tracking',
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
               color: AppColors.primary,
+              letterSpacing: 0.8,
             ),
-            const SizedBox(width: 2),
-            Text(
-              _isPlaying ? 'Pause' : 'Play Demo',
-              style: GoogleFonts.inter(
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
-                letterSpacing: 0.8,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -828,36 +841,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             ),
           ],
         ),
-        GestureDetector(
-          onTap: _startDemo,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10b981).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  size: 12,
-                  color: AppColors.primary,
-                ),
-                const SizedBox(width: 2),
-                Text(
-                  _isPlaying ? 'Pause Demo' : 'Play Demo',
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-              ),
-            ),
-            ),
-          ],
+        ],
     );
   }
 
@@ -897,45 +881,34 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               final stepIdx = index ~/ 2;
               final isActive = stepIdx == _activeStep;
               final isCompleted = stepIdx < _activeStep;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _activeStep = stepIdx;
-                    _isPlaying = false;
-                    _showStepTooltip = true;
-                    _tooltipStep = stepIdx;
-                  });
-                  _demoTimer?.cancel();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? AppColors.primary
-                        : isCompleted
-                            ? AppColors.primary
-                            : (isDark
-                                ? Colors.white.withOpacity(0.05)
-                                : Colors.grey.shade100),
-                    shape: BoxShape.circle,
-                    boxShadow: isActive
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.3),
-                              blurRadius: 8,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Icon(
-                    isCompleted ? Icons.check_rounded : icons[stepIdx],
-                    size: 14,
-                    color: (isActive || isCompleted)
-                        ? Colors.white
-                        : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
-                  ),
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.primary
+                      : isCompleted
+                          ? AppColors.primary
+                          : (isDark
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.grey.shade100),
+                  shape: BoxShape.circle,
+                  boxShadow: isActive
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 8,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Icon(
+                  isCompleted ? Icons.check_rounded : icons[stepIdx],
+                  size: 14,
+                  color: (isActive || isCompleted)
+                      ? Colors.white
+                      : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
                 ),
               );
             }),
@@ -971,6 +944,10 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Widget _buildCourierInfo(Map<String, dynamic> stepDetails, bool isDark) {
+    final activeOrder = ref.watch(activeOrderProvider);
+    final restaurantName = activeOrder?.restaurantName ?? 'Restaurant';
+    final riderName = activeOrder?.riderName ?? 'Assigned Rider';
+
     return Row(
       children: [
         Container(
@@ -992,7 +969,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'The Burger Loft',
+                restaurantName,
                 style: GoogleFonts.inter(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
@@ -1041,6 +1018,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Widget _buildContactButtons(bool isDark) {
+    final activeOrder = ref.watch(activeOrderProvider);
+    final riderName = activeOrder?.riderName ?? 'Assigned Rider';
+
     return Container(
       padding: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
@@ -1057,7 +1037,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'SwiftRider #42',
+                riderName,
                 style: GoogleFonts.inter(
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
@@ -1066,7 +1046,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 ),
               ),
               Text(
-                'Speed: ${_getStepDetails(_activeStep)['speed']}',
+                'Status: ${_activeStep == 3 ? "Delivered" : "Active"}',
                 style: GoogleFonts.inter(
                   fontSize: 9,
                   color: isDark ? Colors.grey.shade500 : Colors.grey.shade400,
@@ -1256,7 +1236,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
                           _buildTooltipStat('ETA', '${details['eta']} min', isDark),
-                          _buildTooltipStat('Speed', details['speed'], isDark),
+                          _buildTooltipStat('Status', _activeStep == 3 ? 'Done' : 'Active', isDark),
                           _buildTooltipStat('Rating', '4.9 ★', isDark),
                         ],
                       ),

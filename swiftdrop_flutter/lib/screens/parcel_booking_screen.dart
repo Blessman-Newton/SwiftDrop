@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -248,6 +249,8 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
+                      _buildCurrentLocationButton(),
+                      const SizedBox(width: 16),
                       _buildSavedAddress(
                         icon: Icons.home,
                         label: 'Home',
@@ -367,7 +370,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
             Semantics(
               label: 'Choose $label on map',
               child: GestureDetector(
-                onTap: () {},
+                onTap: onMapTap,
                 child: Row(
                 children: [
                   const Icon(Icons.map, size: 16, color: Color(0xFF006C49)),
@@ -416,6 +419,50 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCurrentLocationButton() {
+    return GestureDetector(
+      onTap: () async {
+        try {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            permission = await Geolocator.requestPermission();
+          }
+          if (permission == LocationPermission.deniedForever ||
+              permission == LocationPermission.denied) return;
+
+          final pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          );
+          final tomtom = TomTomService();
+          final result = await tomtom.reverseGeocode(
+            LatLng(pos.latitude, pos.longitude),
+          );
+          if (mounted) {
+            final addr = result?.address ??
+                '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+            _pickupController.text = addr;
+            ref.read(parcelBookingProvider.notifier).updatePickup(
+              addr, lat: pos.latitude, lng: pos.longitude);
+          }
+        } catch (_) {}
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFF006C49).withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFF006C49), width: 1.5),
+        ),
+        child: const Icon(
+          Icons.my_location,
+          color: Color(0xFF006C49),
+          size: 20,
+        ),
+      ),
     );
   }
 

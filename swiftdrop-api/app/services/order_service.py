@@ -170,12 +170,16 @@ def _order_to_response(order: Order, items: list[OrderItem] | None = None) -> Or
     rider_phone = None
     rider_avatar = None
     rider_vehicle_type = None
+    rider_lat = None
+    rider_lng = None
     if order.rider:
         rider_name = order.rider.name
         rider_phone = order.rider.phone
         rider_avatar = order.rider.avatar_url
         if hasattr(order.rider, 'rider_profile') and order.rider.rider_profile:
             rider_vehicle_type = order.rider.rider_profile.vehicle_type
+            rider_lat = float(order.rider.rider_profile.last_lat) if order.rider.rider_profile.last_lat else None
+            rider_lng = float(order.rider.rider_profile.last_lng) if order.rider.rider_profile.last_lng else None
 
     return OrderResponse(
         id=str(order.id),
@@ -208,6 +212,8 @@ def _order_to_response(order: Order, items: list[OrderItem] | None = None) -> Or
         picked_up_at=order.picked_up_at,
         delivered_at=order.delivered_at,
         cancelled_at=order.cancelled_at,
+        rider_lat=rider_lat,
+        rider_lng=rider_lng,
         items=[
             {
                 "id": str(item.id),

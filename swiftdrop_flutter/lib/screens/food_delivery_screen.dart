@@ -571,7 +571,11 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                                     top: Radius.circular(16)),
                                 image: DecorationImage(
                                   image:
-                                      NetworkImage(restaurant.imageUrl),
+                                      NetworkImage(
+                                        restaurant.imageUrl.isNotEmpty
+                                            ? restaurant.imageUrl
+                                            : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+                                      ),
                                   fit: BoxFit.cover,
                                 ),
                               ),

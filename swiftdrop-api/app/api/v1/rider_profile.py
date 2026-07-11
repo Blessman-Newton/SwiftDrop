@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -172,6 +173,14 @@ async def update_delivery_status(
     new_status = status_map.get(request.status, request.status.upper())
     order.status = new_status
 
+    # Store rider GPS location if provided
+    if request.latitude is not None and request.longitude is not None:
+        profile_q = select(RiderProfile).where(RiderProfile.user_id == current_user.id)
+        profile = (await db.execute(profile_q)).scalar_one_or_none()
+        if profile:
+            profile.last_lat = request.latitude
+            profile.last_lng = request.longitude
+
     now = datetime.now(timezone.utc)
     if new_status == "DELIVERED":
         order.delivered_at = now
@@ -220,6 +229,54 @@ async def update_delivery_status(
             await db.flush()
 
     return {"message": f"Delivery status updated to {new_status}", "status": new_status}
+
+
+class LocationUpdateRequest(BaseModel):
+    latitude: float
+    longitude: float
+
+
+@router.post("/location")
+async def update_rider_location(
+    request: LocationUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_rider_dep),
+):
+    profile_q = select(RiderProfile).where(RiderProfile.user_id == current_user.id)
+    profile = (await db.execute(profile_q)).scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Rider profile not found")
+
+    profile.last_lat = request.latitude
+    profile.last_lng = request.longitude
+    await db.flush()
+    return {"message": "Location updated"}
+
+
+@router.get("/location/{order_id}")
+async def get_rider_location(
+    order_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        order_uuid = uuid.UUID(order_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid order ID")
+
+    order_q = select(Order).where(Order.id == order_uuid)
+    order = (await db.execute(order_q)).scalar_one_or_none()
+    if not order or not order.rider_id:
+        return {"latitude": None, "longitude": None}
+
+    profile_q = select(RiderProfile).where(RiderProfile.user_id == order.rider_id)
+    profile = (await db.execute(profile_q)).scalar_one_or_none()
+    if not profile:
+        return {"latitude": None, "longitude": None}
+
+    return {
+        "latitude": float(profile.last_lat) if profile.last_lat else None,
+        "longitude": float(profile.last_lng) if profile.last_lng else None,
+    }
 
 
 @router.get("/earnings", response_model=RiderEarningsResponse)

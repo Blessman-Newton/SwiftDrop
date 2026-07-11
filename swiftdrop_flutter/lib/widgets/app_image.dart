@@ -57,6 +57,10 @@ class AppImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (url.isEmpty || !url.startsWith('http')) {
+      return _buildError();
+    }
+
     Widget image = CachedNetworkImage(
       imageUrl: url,
       fit: fit,

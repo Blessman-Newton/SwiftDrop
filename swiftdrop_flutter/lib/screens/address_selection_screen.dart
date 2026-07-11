@@ -57,7 +57,32 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
     super.initState();
     if (widget.currentLat != null && widget.currentLng != null) {
       _center = LatLng(widget.currentLat!, widget.currentLng!);
+    } else {
+      _tryCenterOnGPS();
     }
+  }
+
+  Future<void> _tryCenterOnGPS() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) return;
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (mounted) {
+        setState(() {
+          _center = LatLng(pos.latitude, pos.longitude);
+        });
+        if (_mapReady) {
+          _mapController.move(_center, 14);
+        }
+      }
+    } catch (_) {}
   }
 
   @override

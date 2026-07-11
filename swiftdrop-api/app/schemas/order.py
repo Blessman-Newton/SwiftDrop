@@ -68,6 +68,8 @@ class OrderResponse(BaseModel):
     picked_up_at: datetime | None = None
     delivered_at: datetime | None = None
     cancelled_at: datetime | None = None
+    rider_lat: float | None = None
+    rider_lng: float | None = None
     items: list[OrderItemResponse] = []
 
     model_config = {"from_attributes": True}

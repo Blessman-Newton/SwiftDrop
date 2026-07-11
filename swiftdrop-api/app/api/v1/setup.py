@@ -107,6 +107,24 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
                     ADD COLUMN onboarding_completed BOOLEAN NOT NULL DEFAULT FALSE
                 """))
                 migrations_done.append("onboarding_completed")
+
+            # Check if last_lat column exists on rider_profiles
+            result = await conn.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'rider_profiles' AND column_name = 'last_lat'
+            """))
+            
+            if not result.fetchone():
+                await conn.execute(text("""
+                    ALTER TABLE rider_profiles 
+                    ADD COLUMN last_lat DOUBLE PRECISION
+                """))
+                await conn.execute(text("""
+                    ALTER TABLE rider_profiles 
+                    ADD COLUMN last_lng DOUBLE PRECISION
+                """))
+                migrations_done.append("rider_location_columns")
             
             # Promote admin user if exists
             result = await conn.execute(

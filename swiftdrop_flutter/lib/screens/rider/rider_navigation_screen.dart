@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
@@ -19,13 +20,14 @@ class RiderNavigationScreen extends ConsumerStatefulWidget {
 
 class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
     with SingleTickerProviderStateMixin {
-  late Timer _countdownTimer;
+  late Timer _gpsTimer;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
   int _distance = 400;
   int _zoomLevel = 16;
   bool _isDarkMap = false;
+  LatLng _riderPosition = TomTomService.defaultCenter;
 
   @override
   void initState() {
@@ -38,19 +40,43 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
     );
 
-    _countdownTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+    _initGPS();
+  }
+
+  void _initGPS() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) return;
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
       setState(() {
-        _distance -= 4;
-        if (_distance < 15) {
-          _distance = 400;
-        }
+        _riderPosition = LatLng(pos.latitude, pos.longitude);
       });
-    });
+
+      _gpsTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+        try {
+          final currentPos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          );
+          if (mounted) {
+            setState(() {
+              _riderPosition = LatLng(currentPos.latitude, currentPos.longitude);
+            });
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _countdownTimer.cancel();
+    _gpsTimer.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -82,7 +108,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
     return Positioned.fill(
       child: FlutterMap(
         options: MapOptions(
-          initialCenter: TomTomService.defaultCenter,
+          initialCenter: _riderPosition,
           initialZoom: 16,
           maxZoom: 19,
           minZoom: 1,
@@ -95,7 +121,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
           MarkerLayer(
             markers: [
               Marker(
-                point: TomTomService.defaultCenter,
+                point: _riderPosition,
                 width: 36,
                 height: 36,
                 child: Container(

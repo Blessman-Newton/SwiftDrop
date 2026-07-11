@@ -66,10 +66,10 @@ class TomTomService {
   static const String _apiKey = 'ewNoi22dTJTv9gbvIzlOdUXQZULLTKgy';
   static const String _baseUrl = 'https://api.tomtom.com';
   static const String _tileUrl =
-      'https://api.tomtom.com/map/1/tile/main/256/{z}/{x}/{y}.png?key=$_apiKey';
+      'https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=$_apiKey';
 
-  // Default center: Accra, Ghana
-  static const LatLng defaultCenter = LatLng(5.6037, -0.1870);
+  // Default center: Sunyani, Ghana
+  static const LatLng defaultCenter = LatLng(7.3349, -2.3266);
 
   final Dio _dio;
 
@@ -207,8 +207,8 @@ class TomTomService {
 
   static LatLng parseLatLng(dynamic lat, dynamic lng) {
     if (lat == null || lng == null) return defaultCenter;
-    final latD = lat is num ? lat.toDouble() : double.tryParse(lat.toString()) ?? 5.6037;
-    final lngD = lng is num ? lng.toDouble() : double.tryParse(lng.toString()) ?? -0.1870;
+    final latD = lat is num ? lat.toDouble() : double.tryParse(lat.toString()) ?? 7.3349;
+    final lngD = lng is num ? lng.toDouble() : double.tryParse(lng.toString()) ?? -2.3266;
     return LatLng(latD, lngD);
   }
 }

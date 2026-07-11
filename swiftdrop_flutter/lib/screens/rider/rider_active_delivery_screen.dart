@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../providers/merchant_providers.dart';
 import '../../providers/providers.dart';
 import '../../providers/rider_providers.dart';
+import '../../services/rider_service.dart';
 import '../../services/tomtom_service.dart';
 
 import '../../models/models.dart';
@@ -34,10 +36,13 @@ class _RiderActiveDeliveryScreenState
   bool _isSupporting = false;
   Timer? _callTimer;
   Timer? _supportTimer;
+  Timer? _gpsTimer;
+  LatLng _riderPosition = TomTomService.defaultCenter;
 
   @override
   void initState() {
     super.initState();
+    _initGPS();
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -73,6 +78,7 @@ class _RiderActiveDeliveryScreenState
     _phoneBounceController.dispose();
     _callTimer?.cancel();
     _supportTimer?.cancel();
+    _gpsTimer?.cancel();
     super.dispose();
   }
 
@@ -98,26 +104,62 @@ class _RiderActiveDeliveryScreenState
     });
   }
 
+  void _initGPS() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) return;
+
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      setState(() {
+        _riderPosition = LatLng(pos.latitude, pos.longitude);
+      });
+
+      // Share GPS every 5 seconds
+      _gpsTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+        try {
+          final currentPos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          );
+          if (mounted) {
+            setState(() {
+              _riderPosition = LatLng(currentPos.latitude, currentPos.longitude);
+            });
+            final service = ref.read(riderServiceProvider);
+            service.updateLocation(currentPos.latitude, currentPos.longitude);
+          }
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
   void _advanceDeliveryState() async {
     final service = ref.read(riderServiceProvider);
     final current = ref.read(deliveryStateProvider);
+    final lat = _riderPosition.latitude;
+    final lng = _riderPosition.longitude;
     switch (current) {
       case DeliveryState.enRoute:
-        final success = await service.updateDeliveryStatus('arrived');
+        final success = await service.updateDeliveryStatus('arrived', latitude: lat, longitude: lng);
         if (mounted && success) {
           ref.read(deliveryStateProvider.notifier).state = DeliveryState.arrived;
           ref.read(riderToastsProvider.notifier).add('Status updated: Arrived at pickup. Please verify order items.', ToastType.success);
         }
         break;
       case DeliveryState.arrived:
-        final success = await service.updateDeliveryStatus('picked_up');
+        final success = await service.updateDeliveryStatus('picked_up', latitude: lat, longitude: lng);
         if (mounted && success) {
           ref.read(deliveryStateProvider.notifier).state = DeliveryState.collected;
           ref.read(riderToastsProvider.notifier).add('Items collected! Route configured for dropoff.', ToastType.success);
         }
         break;
       case DeliveryState.collected:
-        final success = await service.updateDeliveryStatus('delivered');
+        final success = await service.updateDeliveryStatus('delivered', latitude: lat, longitude: lng);
         if (mounted && success) {
           ref.read(riderToastsProvider.notifier).add('Delivery completed! GPS Navigation Guide finished.', ToastType.success);
           ref.invalidate(riderActiveDeliveryProvider);
@@ -363,7 +405,7 @@ class _RiderActiveDeliveryScreenState
     final dropoff = TomTomService.parseLatLng(
       activeOrder?['delivery_lat'], activeOrder?['delivery_lng']);
     final target = isCollected ? dropoff : pickup;
-    final riderPos = TomTomService.defaultCenter;
+    final riderPos = _riderPosition;
 
     return SizedBox(
       height: 256,

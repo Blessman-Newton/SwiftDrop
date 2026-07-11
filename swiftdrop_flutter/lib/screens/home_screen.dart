@@ -20,7 +20,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchController = TextEditingController();
-  String _selectedLocation = 'Accra, Ghana';
+  String _selectedLocation = 'Sunyani, Ghana';
   final TomTomService _tomtom = TomTomService();
 
   @override
@@ -942,21 +942,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   // Image
                                   Container(
                                     height: (MediaQuery.of(context).size.height * 0.15).clamp(80.0, 104.0),
-                                    decoration: BoxDecoration(
-                                      borderRadius: const BorderRadius.vertical(
-                                          top: Radius.circular(24)),
-                                      image: DecorationImage(
-                                        image: NetworkImage(restaurant.imageUrl),
-                                        fit: BoxFit.cover,
+                                      decoration: BoxDecoration(
+                                        borderRadius: const BorderRadius.vertical(
+                                            top: Radius.circular(24)),
+                                        image: DecorationImage(
+                                          image: NetworkImage(
+                                            restaurant.imageUrl.isNotEmpty
+                                                ? restaurant.imageUrl
+                                                : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+                                          ),
+                                          fit: BoxFit.cover,
+                                        ),
                                       ),
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        // Heart
-                                        Positioned(
-                                          top: 10,
-                                          right: 10,
-                                          child: Container(
+                                      child: Stack(
+                                        children: [
+                                          // Heart
+                                          Positioned(
+                                            top: 10,
+                                            right: 10,
+                                            child: Container(
                                             width: 28,
                                             height: 28,
                                             decoration: BoxDecoration(
@@ -1168,7 +1172,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     borderRadius: const BorderRadius.vertical(
                                         top: Radius.circular(24)),
                                     image: DecorationImage(
-                                      image: NetworkImage(restaurant.imageUrl),
+                                      image: NetworkImage(
+                                        restaurant.imageUrl.isNotEmpty
+                                            ? restaurant.imageUrl
+                                            : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
+                                      ),
                                       fit: BoxFit.cover,
                                     ),
                                   ),

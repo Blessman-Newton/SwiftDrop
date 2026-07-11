@@ -99,11 +99,28 @@ class RiderService {
   }
 
   /// Update active delivery status
-  Future<bool> updateDeliveryStatus(String status) async {
+  Future<bool> updateDeliveryStatus(String status, {double? latitude, double? longitude}) async {
     try {
       final response = await _api.dio.put(
         ApiEndpoints.riderDeliveryStatus,
-        data: {'status': status},
+        data: {
+          'status': status,
+          if (latitude != null) 'latitude': latitude,
+          if (longitude != null) 'longitude': longitude,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (_) {
+      return false;
+    }
+  }
+
+  /// Update rider GPS location
+  Future<bool> updateLocation(double latitude, double longitude) async {
+    try {
+      final response = await _api.dio.post(
+        '/api/v1/rider-profile/location',
+        data: {'latitude': latitude, 'longitude': longitude},
       );
       return response.statusCode == 200;
     } on DioException catch (_) {

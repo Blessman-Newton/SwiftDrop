@@ -60,6 +60,8 @@ class RiderProfile(Base):
     license_number: Mapped[str | None] = mapped_column(String(50))
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
     dispatch_priority: Mapped[float] = mapped_column(Numeric(3, 2), default=1.0)
+    last_lat: Mapped[float | None] = mapped_column()
+    last_lng: Mapped[float | None] = mapped_column()
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
