@@ -20,6 +20,7 @@ import '../screens/rider/rider_dashboard_screen.dart';
 import '../screens/rider/rider_active_delivery_screen.dart';
 import '../screens/rider/rider_navigation_screen.dart';
 import '../screens/rider/rider_earnings_screen.dart';
+import '../screens/rider/rider_orders_screen.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/rider_scaffold.dart';
 import '../models/models.dart';
@@ -86,6 +87,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/rider/dashboard',
               builder: (_, __) => const RiderDashboardScreen()),
+          GoRoute(
+              path: '/rider/orders',
+              builder: (_, __) => const RiderOrdersScreen()),
           GoRoute(
               path: '/rider/active-delivery',
               builder: (_, __) => const RiderActiveDeliveryScreen()),

@@ -83,7 +83,7 @@ async def create_order(
 async def list_orders(
     db: AsyncSession, customer_id: UUID | None = None, rider_id: UUID | None = None
 ) -> list[OrderResponse]:
-    query = select(Order).options(selectinload(Order.items))
+    query = select(Order).options(selectinload(Order.items), selectinload(Order.rider))
     if customer_id:
         query = query.where(Order.customer_id == customer_id)
     if rider_id:
@@ -97,7 +97,7 @@ async def list_orders(
 
 async def get_order(db: AsyncSession, order_id: UUID) -> OrderResponse:
     result = await db.execute(
-        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+        select(Order).options(selectinload(Order.items), selectinload(Order.rider)).where(Order.id == order_id)
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -159,10 +159,25 @@ async def update_order_status(
 
 
 def _order_to_response(order: Order, items: list[OrderItem] | None = None) -> OrderResponse:
+    rider_name = None
+    rider_phone = None
+    rider_avatar = None
+    rider_vehicle_type = None
+    if order.rider:
+        rider_name = order.rider.name
+        rider_phone = order.rider.phone
+        rider_avatar = order.rider.avatar_url
+        if hasattr(order.rider, 'rider_profile') and order.rider.rider_profile:
+            rider_vehicle_type = order.rider.rider_profile.vehicle_type
+
     return OrderResponse(
         id=str(order.id),
         customer_id=str(order.customer_id),
         rider_id=str(order.rider_id) if order.rider_id else None,
+        rider_name=rider_name,
+        rider_phone=rider_phone,
+        rider_avatar=rider_avatar,
+        rider_vehicle_type=rider_vehicle_type,
         order_type=order.order_type,
         status=order.status,
         restaurant_name=order.restaurant_name,

@@ -399,7 +399,7 @@ async def list_merchant_orders(
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
         select(Order)
-        .options(selectinload(Order.items), selectinload(Order.customer))
+        .options(selectinload(Order.items), selectinload(Order.customer), selectinload(Order.rider))
         .where(Order.restaurant_name == restaurant.name)
         .order_by(Order.created_at.desc())
     )
@@ -417,6 +417,17 @@ async def list_merchant_orders(
             OrderItemResponse(name=oi.name, quantity=oi.quantity, price=float(oi.price))
             for oi in o.items
         ]
+        rider_name = None
+        rider_phone = None
+        rider_avatar = None
+        rider_vehicle_type = None
+        if o.rider:
+            rider_name = o.rider.name
+            rider_phone = o.rider.phone
+            rider_avatar = o.rider.avatar_url
+            if hasattr(o.rider, 'rider_profile') and o.rider.rider_profile:
+                rider_vehicle_type = o.rider.rider_profile.vehicle_type
+
         response.append(
             OrderResponse(
                 id=str(o.id),
@@ -427,6 +438,10 @@ async def list_merchant_orders(
                 total=float(o.total),
                 created_at=o.created_at,
                 elapsed_seconds=elapsed,
+                rider_name=rider_name,
+                rider_phone=rider_phone,
+                rider_avatar=rider_avatar,
+                rider_vehicle_type=rider_vehicle_type,
             )
         )
     return response
@@ -442,7 +457,7 @@ async def update_order_status(
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
         select(Order)
-        .options(selectinload(Order.items), selectinload(Order.customer))
+        .options(selectinload(Order.items), selectinload(Order.customer), selectinload(Order.rider))
         .where(Order.id == order_id, Order.restaurant_name == restaurant.name)
     )
     result = await db.execute(query)
@@ -479,6 +494,17 @@ async def update_order_status(
         for oi in order.items
     ]
 
+    rider_name = None
+    rider_phone = None
+    rider_avatar = None
+    rider_vehicle_type = None
+    if order.rider:
+        rider_name = order.rider.name
+        rider_phone = order.rider.phone
+        rider_avatar = order.rider.avatar_url
+        if hasattr(order.rider, 'rider_profile') and order.rider.rider_profile:
+            rider_vehicle_type = order.rider.rider_profile.vehicle_type
+
     return OrderResponse(
         id=str(order.id),
         order_no=f"SD-{str(order.id)[:4].upper()}",
@@ -488,6 +514,10 @@ async def update_order_status(
         total=float(order.total),
         created_at=order.created_at,
         elapsed_seconds=elapsed,
+        rider_name=rider_name,
+        rider_phone=rider_phone,
+        rider_avatar=rider_avatar,
+        rider_vehicle_type=rider_vehicle_type,
     )
 
 

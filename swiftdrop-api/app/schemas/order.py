@@ -41,6 +41,10 @@ class OrderResponse(BaseModel):
     id: str
     customer_id: str
     rider_id: str | None = None
+    rider_name: str | None = None
+    rider_phone: str | None = None
+    rider_avatar: str | None = None
+    rider_vehicle_type: str | None = None
     order_type: str
     status: str
     restaurant_name: str | None = None

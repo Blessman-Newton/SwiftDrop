@@ -71,6 +71,10 @@ class OrderResponse(BaseModel):
     total: float
     created_at: datetime
     elapsed_seconds: int = 0
+    rider_name: str | None = None
+    rider_phone: str | None = None
+    rider_avatar: str | None = None
+    rider_vehicle_type: str | None = None
 
     model_config = {"from_attributes": True}
 

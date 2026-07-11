@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -149,9 +150,23 @@ final ordersProvider =
 class OrdersNotifier extends StateNotifier<List<Order>> {
   OrdersNotifier() : super([]) {
     _loadFromApi();
+    _startPolling();
   }
 
   final _orderService = OrderService();
+  Timer? _pollTimer;
+
+  void _startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      _loadFromApi();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _loadFromApi() async {
     try {
@@ -176,6 +191,13 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
           status: _mapStatus(o['status']),
           createdAt: o['created_at'] != null ? DateTime.parse(o['created_at']) : DateTime.now(),
           orderType: o['order_type'] ?? 'food',
+          riderId: o['rider_id'] as String?,
+          riderName: o['rider_name'] as String?,
+          riderPhone: o['rider_phone'] as String?,
+          riderAvatar: o['rider_avatar'] as String?,
+          riderVehicleType: o['rider_vehicle_type'] as String?,
+          pickupAddress: o['pickup_address'] as String?,
+          deliveryAddress: o['delivery_address'] as String?,
         )).toList();
         return;
       }

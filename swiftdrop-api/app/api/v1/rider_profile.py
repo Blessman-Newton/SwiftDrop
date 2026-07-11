@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models.order import Order, OrderItem
 from app.models.payout import Payout
 from app.models.user import User, RiderProfile
+from app.models.notification import Notification
 from app.schemas.rider_profile import (
     RiderActiveDeliveryResponse,
     RiderDashboardResponse,
@@ -112,7 +113,7 @@ async def get_active_delivery(
         .options(selectinload(Order.items))
         .where(
             Order.rider_id == current_user.id,
-            Order.status.in_(["PICKED_UP", "EN_ROUTE"]),
+            Order.status.in_(["READY_FOR_PICKUP", "PICKED_UP", "EN_ROUTE"]),
         )
         .order_by(Order.created_at.desc())
         .limit(1)
@@ -176,6 +177,37 @@ async def update_delivery_status(
         order.delivered_at = now
     elif new_status == "PICKED_UP":
         order.picked_up_at = now
+
+    rider_result = await db.execute(select(User).where(User.id == current_user.id))
+    rider = rider_result.scalar_one_or_none()
+    rider_name = rider.name if rider else "Your rider"
+
+    if new_status == "PICKED_UP":
+        customer_notification = Notification(
+            user_id=order.customer_id,
+            title="Your Order is On the Way",
+            body=f"Your order has been handed over to {rider_name} and is now on its way to your delivery location.",
+            type="order",
+            metadata_={
+                "order_id": str(order.id),
+                "rider_name": rider_name,
+                "status": "on_the_way",
+            },
+        )
+        db.add(customer_notification)
+
+    elif new_status == "DELIVERED":
+        customer_notification = Notification(
+            user_id=order.customer_id,
+            title="Order Delivered",
+            body="Your order has been delivered successfully. Thank you for ordering with us!",
+            type="order",
+            metadata_={
+                "order_id": str(order.id),
+                "status": "delivered",
+            },
+        )
+        db.add(customer_notification)
 
     await db.flush()
 

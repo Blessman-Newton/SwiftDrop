@@ -227,7 +227,14 @@ class Order {
   final DateTime createdAt;
   final int? trackingStep;
   final String? courierId;
+  final String? riderId;
+  final String? riderName;
+  final String? riderPhone;
+  final String? riderAvatar;
+  final String? riderVehicleType;
   final String orderType;
+  final String? pickupAddress;
+  final String? deliveryAddress;
   final String? parcelPickupLocation;
   final String? parcelDeliveryLocation;
 
@@ -241,7 +248,14 @@ class Order {
     required this.createdAt,
     this.trackingStep,
     this.courierId,
+    this.riderId,
+    this.riderName,
+    this.riderPhone,
+    this.riderAvatar,
+    this.riderVehicleType,
     this.orderType = 'food',
+    this.pickupAddress,
+    this.deliveryAddress,
     this.parcelPickupLocation,
     this.parcelDeliveryLocation,
   });
@@ -256,7 +270,14 @@ class Order {
     DateTime? createdAt,
     int? trackingStep,
     String? courierId,
+    String? riderId,
+    String? riderName,
+    String? riderPhone,
+    String? riderAvatar,
+    String? riderVehicleType,
     String? orderType,
+    String? pickupAddress,
+    String? deliveryAddress,
     String? parcelPickupLocation,
     String? parcelDeliveryLocation,
   }) {
@@ -270,7 +291,14 @@ class Order {
       createdAt: createdAt ?? this.createdAt,
       trackingStep: trackingStep ?? this.trackingStep,
       courierId: courierId ?? this.courierId,
+      riderId: riderId ?? this.riderId,
+      riderName: riderName ?? this.riderName,
+      riderPhone: riderPhone ?? this.riderPhone,
+      riderAvatar: riderAvatar ?? this.riderAvatar,
+      riderVehicleType: riderVehicleType ?? this.riderVehicleType,
       orderType: orderType ?? this.orderType,
+      pickupAddress: pickupAddress ?? this.pickupAddress,
+      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
       parcelPickupLocation: parcelPickupLocation ?? this.parcelPickupLocation,
       parcelDeliveryLocation: parcelDeliveryLocation ?? this.parcelDeliveryLocation,
     );
@@ -286,24 +314,38 @@ class Order {
         'createdAt': createdAt.toIso8601String(),
         'trackingStep': trackingStep,
         'courierId': courierId,
+        'riderId': riderId,
+        'riderName': riderName,
+        'riderPhone': riderPhone,
+        'riderAvatar': riderAvatar,
+        'riderVehicleType': riderVehicleType,
         'orderType': orderType,
+        'pickupAddress': pickupAddress,
+        'deliveryAddress': deliveryAddress,
         'parcelPickupLocation': parcelPickupLocation,
         'parcelDeliveryLocation': parcelDeliveryLocation,
       };
 
   factory Order.fromMap(Map<String, dynamic> map) => Order(
         id: map['id'] as String,
-        restaurantId: map['restaurantId'] as String,
-        restaurantName: map['restaurantName'] as String,
-        items: (map['items'] as List)
-            .map((e) => CartItem.fromMap(e as Map<String, dynamic>))
-            .toList(),
-        totalPrice: (map['totalPrice'] as num).toDouble(),
-        status: OrderStatus.values[map['status'] as int],
-        createdAt: DateTime.parse(map['createdAt'] as String),
+        restaurantId: map['restaurantId'] as String? ?? '',
+        restaurantName: map['restaurantName'] as String? ?? '',
+        items: (map['items'] as List?)
+            ?.map((e) => CartItem.fromMap(e as Map<String, dynamic>))
+            .toList() ?? [],
+        totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0,
+        status: OrderStatus.values[map['status'] as int? ?? 0],
+        createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
         trackingStep: map['trackingStep'] as int?,
         courierId: map['courierId'] as String?,
+        riderId: map['riderId'] as String?,
+        riderName: map['riderName'] as String?,
+        riderPhone: map['riderPhone'] as String?,
+        riderAvatar: map['riderAvatar'] as String?,
+        riderVehicleType: map['riderVehicleType'] as String?,
         orderType: map['orderType'] as String? ?? 'food',
+        pickupAddress: map['pickupAddress'] as String?,
+        deliveryAddress: map['deliveryAddress'] as String?,
         parcelPickupLocation: map['parcelPickupLocation'] as String?,
         parcelDeliveryLocation: map['parcelDeliveryLocation'] as String?,
       );

@@ -152,6 +152,10 @@ export default function App() {
             total: order.total,
             elapsedSeconds: order.elapsed_seconds,
             createdAtStr: new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            driverName: order.rider_name || null,
+            driverStatus: order.rider_name ? (order.status === 'awaiting_pickup' ? 'Arriving' : 'Assigned') : null,
+            driverPhone: order.rider_phone || null,
+            driverAvatar: order.rider_avatar || null,
           })));
         } catch (e) {
           console.error("Failed to load orders:", e);
@@ -196,6 +200,33 @@ export default function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Poll for order updates every 15 seconds
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const ordersData = await api.getOrders();
+        setOrders(ordersData.map((order: any) => ({
+          id: order.id,
+          orderNo: order.order_no,
+          status: order.status,
+          customerName: order.customer_name,
+          items: order.items,
+          total: order.total,
+          elapsedSeconds: order.elapsed_seconds,
+          createdAtStr: new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          driverName: order.rider_name || null,
+          driverStatus: order.rider_name ? (order.status === 'awaiting_pickup' ? 'Arriving' : 'Assigned') : null,
+          driverPhone: order.rider_phone || null,
+          driverAvatar: order.rider_avatar || null,
+        })));
+      } catch (e) {
+        console.error("Failed to poll orders:", e);
+      }
+    }, 15000);
+    return () => clearInterval(pollInterval);
+  }, [isLoggedIn]);
 
   const handleToggleOnline = () => {
     setIsOnline(!isOnline);
@@ -290,27 +321,20 @@ export default function App() {
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
-      await api.updateOrderStatus(orderId, newStatus);
+      const response = await api.updateOrderStatus(orderId, newStatus);
       setOrders((prev) =>
         prev.map((order) => {
           if (order.id === orderId) {
-            let extra: Partial<Order> = {};
-            if (newStatus === "preparing" && !order.driverName) {
-              extra = {
-                driverName: "Searching Driver...",
-                driverStatus: "Assigning soon"
-              };
-            } else if (newStatus === "awaiting_pickup") {
-              extra = {
-                driverName: "Marcus Chen",
-                driverStatus: "Arriving in 2m"
-              };
-            } else if (newStatus === "completed") {
-              extra = {
-                driverStatus: "Completed"
-              };
-            }
-            return { ...order, status: newStatus, ...extra };
+            return {
+              ...order,
+              status: newStatus,
+              driverName: response?.rider_name || order.driverName,
+              driverStatus: response?.rider_name
+                ? (newStatus === 'awaiting_pickup' ? 'Arriving' : 'Assigned')
+                : order.driverStatus,
+              driverPhone: response?.rider_phone || order.driverPhone,
+              driverAvatar: response?.rider_avatar || order.driverAvatar,
+            };
           }
           return order;
         })

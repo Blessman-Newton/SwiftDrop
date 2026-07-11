@@ -70,5 +70,7 @@ export interface Order {
   createdAtStr: string; // Formatting like "12:45 PM"
   driverName?: string;
   driverStatus?: string;
+  driverPhone?: string;
+  driverAvatar?: string;
   avatarUrl?: string;
 }

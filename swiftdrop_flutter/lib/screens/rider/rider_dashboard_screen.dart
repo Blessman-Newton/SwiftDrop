@@ -386,7 +386,7 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Order #$orderNo - $restaurant - Pay: GHS ${deliveryFee.toStringAsFixed(2)}',
+                            'Order #$orderNo - $restaurant - Pay: GHS ${total.toStringAsFixed(2)}',
                             style: GoogleFonts.inter(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,

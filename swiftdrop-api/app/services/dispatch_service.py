@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.models.order import DispatchLog, Order
 from app.models.user import RiderProfile, User
+from app.models.notification import Notification
 from app.services.order_service import update_order_status
 
 
@@ -61,7 +62,9 @@ async def go_offline(db: AsyncSession, user_id: UUID) -> dict:
 
 
 async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict:
-    result = await db.execute(select(Order).where(Order.id == order_id))
+    result = await db.execute(
+        select(Order).where(Order.id == order_id)
+    )
     order = result.scalar_one_or_none()
     if not order:
         raise NotFoundException("Order not found")
@@ -83,6 +86,24 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
     profile = profile_result.scalar_one_or_none()
     if profile:
         profile.current_order_id = order_id
+
+    rider_result = await db.execute(select(User).where(User.id == rider_id))
+    rider = rider_result.scalar_one_or_none()
+    rider_name = rider.name if rider else "Your rider"
+
+    customer_notification = Notification(
+        user_id=order.customer_id,
+        title="Rider Assigned",
+        body=f"Good news! {rider_name} has been assigned to deliver your order. They will arrive at the merchant shortly to pick it up.",
+        type="order",
+        metadata_={
+            "order_id": str(order_id),
+            "rider_name": rider_name,
+            "rider_id": str(rider_id),
+            "status": "rider_assigned",
+        },
+    )
+    db.add(customer_notification)
 
     await db.flush()
     return {"message": "Order accepted", "order_id": str(order_id)}

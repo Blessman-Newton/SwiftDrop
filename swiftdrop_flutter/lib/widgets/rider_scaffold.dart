@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/merchant_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'toast_overlay.dart';
 
 class RiderScaffold extends ConsumerStatefulWidget {
   final Widget child;
@@ -16,6 +17,7 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/rider/dashboard')) return 0;
+    if (location.startsWith('/rider/orders')) return 1;
     if (location.startsWith('/rider/active-delivery') ||
         location.startsWith('/rider/navigation')) return 1;
     if (location.startsWith('/rider/earnings')) return 2;
@@ -26,11 +28,12 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
   Widget build(BuildContext context) {
     final index = _currentIndex(context);
     final isDark = ref.watch(riderDarkModeProvider);
-    final isOnline = ref.watch(riderOnlineProvider);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121814) : const Color(0xFFF4FBF4),
-      body: widget.child,
+      body: ToastOverlay(
+        child: widget.child,
+      ),
       bottomNavigationBar: Container(
         height: 64,
         decoration: BoxDecoration(
@@ -62,7 +65,7 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
                 icon: Icons.local_shipping_rounded,
                 label: 'Orders',
                 isActive: index == 1,
-                onTap: () => context.go('/rider/active-delivery'),
+                onTap: () => context.go('/rider/orders'),
                 isDark: isDark,
               ),
               _RiderNavItem(
