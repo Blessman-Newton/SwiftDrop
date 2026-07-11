@@ -234,7 +234,11 @@ class Order {
   final String? riderVehicleType;
   final String orderType;
   final String? pickupAddress;
+  final double? pickupLat;
+  final double? pickupLng;
   final String? deliveryAddress;
+  final double? deliveryLat;
+  final double? deliveryLng;
   final String? parcelPickupLocation;
   final String? parcelDeliveryLocation;
 
@@ -255,7 +259,11 @@ class Order {
     this.riderVehicleType,
     this.orderType = 'food',
     this.pickupAddress,
+    this.pickupLat,
+    this.pickupLng,
     this.deliveryAddress,
+    this.deliveryLat,
+    this.deliveryLng,
     this.parcelPickupLocation,
     this.parcelDeliveryLocation,
   });
@@ -277,7 +285,11 @@ class Order {
     String? riderVehicleType,
     String? orderType,
     String? pickupAddress,
+    double? pickupLat,
+    double? pickupLng,
     String? deliveryAddress,
+    double? deliveryLat,
+    double? deliveryLng,
     String? parcelPickupLocation,
     String? parcelDeliveryLocation,
   }) {
@@ -298,7 +310,11 @@ class Order {
       riderVehicleType: riderVehicleType ?? this.riderVehicleType,
       orderType: orderType ?? this.orderType,
       pickupAddress: pickupAddress ?? this.pickupAddress,
+      pickupLat: pickupLat ?? this.pickupLat,
+      pickupLng: pickupLng ?? this.pickupLng,
       deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+      deliveryLat: deliveryLat ?? this.deliveryLat,
+      deliveryLng: deliveryLng ?? this.deliveryLng,
       parcelPickupLocation: parcelPickupLocation ?? this.parcelPickupLocation,
       parcelDeliveryLocation: parcelDeliveryLocation ?? this.parcelDeliveryLocation,
     );
@@ -321,7 +337,11 @@ class Order {
         'riderVehicleType': riderVehicleType,
         'orderType': orderType,
         'pickupAddress': pickupAddress,
+        'pickupLat': pickupLat,
+        'pickupLng': pickupLng,
         'deliveryAddress': deliveryAddress,
+        'deliveryLat': deliveryLat,
+        'deliveryLng': deliveryLng,
         'parcelPickupLocation': parcelPickupLocation,
         'parcelDeliveryLocation': parcelDeliveryLocation,
       };
@@ -345,7 +365,11 @@ class Order {
         riderVehicleType: map['riderVehicleType'] as String?,
         orderType: map['orderType'] as String? ?? 'food',
         pickupAddress: map['pickupAddress'] as String?,
+        pickupLat: (map['pickupLat'] as num?)?.toDouble(),
+        pickupLng: (map['pickupLng'] as num?)?.toDouble(),
         deliveryAddress: map['deliveryAddress'] as String?,
+        deliveryLat: (map['deliveryLat'] as num?)?.toDouble(),
+        deliveryLng: (map['deliveryLng'] as num?)?.toDouble(),
         parcelPickupLocation: map['parcelPickupLocation'] as String?,
         parcelDeliveryLocation: map['parcelDeliveryLocation'] as String?,
       );
@@ -417,7 +441,11 @@ class ToastMessage {
 
 class ParcelBooking {
   final String pickupLocation;
+  final double? pickupLat;
+  final double? pickupLng;
   final String deliveryLocation;
+  final double? deliveryLat;
+  final double? deliveryLng;
   final String packageType;
   final double weight;
   final double? lengthCm;
@@ -430,7 +458,11 @@ class ParcelBooking {
 
   const ParcelBooking({
     this.pickupLocation = '',
+    this.pickupLat,
+    this.pickupLng,
     this.deliveryLocation = '',
+    this.deliveryLat,
+    this.deliveryLng,
     this.packageType = 'box',
     this.weight = 5,
     this.lengthCm,
@@ -519,7 +551,11 @@ class ParcelBooking {
 
   ParcelBooking copyWith({
     String? pickupLocation,
+    double? pickupLat,
+    double? pickupLng,
     String? deliveryLocation,
+    double? deliveryLat,
+    double? deliveryLng,
     String? packageType,
     double? weight,
     double? lengthCm,
@@ -532,7 +568,11 @@ class ParcelBooking {
   }) {
     return ParcelBooking(
       pickupLocation: pickupLocation ?? this.pickupLocation,
+      pickupLat: pickupLat ?? this.pickupLat,
+      pickupLng: pickupLng ?? this.pickupLng,
       deliveryLocation: deliveryLocation ?? this.deliveryLocation,
+      deliveryLat: deliveryLat ?? this.deliveryLat,
+      deliveryLng: deliveryLng ?? this.deliveryLng,
       packageType: packageType ?? this.packageType,
       weight: weight ?? this.weight,
       lengthCm: lengthCm ?? this.lengthCm,

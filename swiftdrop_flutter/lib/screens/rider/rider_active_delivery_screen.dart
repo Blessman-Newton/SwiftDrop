@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import '../../providers/merchant_providers.dart';
 import '../../providers/providers.dart';
 import '../../providers/rider_providers.dart';
+import '../../services/tomtom_service.dart';
 
 import '../../models/models.dart';
 
@@ -354,35 +357,68 @@ class _RiderActiveDeliveryScreenState
 
   Widget _buildMapSection(DeliveryState deliveryState) {
     final isCollected = deliveryState == DeliveryState.collected;
+    final activeOrder = ref.watch(riderActiveDeliveryProvider).valueOrNull;
+    final pickup = TomTomService.parseLatLng(
+      activeOrder?['pickup_lat'], activeOrder?['pickup_lng']);
+    final dropoff = TomTomService.parseLatLng(
+      activeOrder?['delivery_lat'], activeOrder?['delivery_lng']);
+    final target = isCollected ? dropoff : pickup;
+    final riderPos = TomTomService.defaultCenter;
 
     return SizedBox(
       height: 256,
       width: double.infinity,
       child: Stack(
         children: [
-          Container(
-            width: double.infinity,
-            color: const Color(0xFFE2E8F0),
-          ),
-          CustomPaint(
-            size: const Size(double.infinity, 256),
-            painter: _MapGridPainter(),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0x1A0F172A),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
+          FlutterMap(
+            options: MapOptions(
+              initialCenter: riderPos,
+              initialZoom: 14,
             ),
+            children: [
+              TileLayer(
+                urlTemplate: TomTomService.tileUrl,
+                userAgentPackageName: 'com.swiftdrop.app',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: riderPos,
+                    width: 36,
+                    height: 36,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF059669),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                        ],
+                      ),
+                      child: const Icon(Icons.local_shipping, color: Colors.white, size: 18),
+                    ),
+                  ),
+                  Marker(
+                    point: target,
+                    width: 36,
+                    height: 36,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                        ],
+                      ),
+                      child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          // Floating ETA card - bottom left
+          // ETA card
           Positioned(
             left: 16,
             bottom: 16,
@@ -391,12 +427,8 @@ class _RiderActiveDeliveryScreenState
               decoration: BoxDecoration(
                 color: const Color(0xF2FFFFFF),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x1A000000),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
                 ],
                 border: Border.all(color: const Color(0xFFF1F5F9)),
               ),
@@ -426,7 +458,7 @@ class _RiderActiveDeliveryScreenState
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        isCollected ? '6 mins' : '8 mins',
+                        'Calculating...',
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
@@ -439,12 +471,12 @@ class _RiderActiveDeliveryScreenState
               ),
             ),
           ),
-          // Recenter button - bottom right
+          // Recenter button
           Positioned(
             right: 16,
             bottom: 16,
             child: GestureDetector(
-              onTap: () => ref.read(riderToastsProvider.notifier).add('Re-centering map onto your current position...', ToastType.info),
+              onTap: () {},
               child: Container(
                 width: 44,
                 height: 44,
@@ -452,63 +484,14 @@ class _RiderActiveDeliveryScreenState
                   color: const Color(0xF2FFFFFF),
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFFF1F5F9)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0x1A000000),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
                   ],
                 ),
                 child: const Center(
                   child: Icon(Icons.navigation, size: 18, color: Color(0xFF059669)),
                 ),
               ),
-            ),
-          ),
-          // Pulsing marker - top 38% left 45%
-          Positioned(
-            top: 97,
-            left: 169,
-            child: Stack(
-              children: [
-                AnimatedBuilder(
-                  animation: _pingAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Color.fromRGBO(16, 185, 129, 0.3 * (1.0 - _pingAnimation.value)),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Color.fromRGBO(16, 185, 129, 0.6 * (1.0 - _pingAnimation.value)),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                Positioned(
-                  top: 4,
-                  left: 4,
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF059669),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0x40000000),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -1128,30 +1111,3 @@ class _RiderActiveDeliveryScreenState
   }
 }
 
-class _MapGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0x14FFFFFF)
-      ..strokeWidth = 1;
-
-    for (double x = 0; x < size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-
-    final roadPaint = Paint()
-      ..color = const Color(0x1FFFFFFF)
-      ..strokeWidth = 2;
-
-    canvas.drawLine(Offset(0, size.height * 0.3), Offset(size.width, size.height * 0.3), roadPaint);
-    canvas.drawLine(Offset(0, size.height * 0.7), Offset(size.width, size.height * 0.7), roadPaint);
-    canvas.drawLine(Offset(size.width * 0.25, 0), Offset(size.width * 0.25, size.height), roadPaint);
-    canvas.drawLine(Offset(size.width * 0.6, 0), Offset(size.width * 0.6, size.height), roadPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

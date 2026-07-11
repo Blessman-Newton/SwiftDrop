@@ -197,7 +197,11 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
           riderAvatar: o['rider_avatar'] as String?,
           riderVehicleType: o['rider_vehicle_type'] as String?,
           pickupAddress: o['pickup_address'] as String?,
+          pickupLat: (o['pickup_lat'] as num?)?.toDouble(),
+          pickupLng: (o['pickup_lng'] as num?)?.toDouble(),
           deliveryAddress: o['delivery_address'] as String?,
+          deliveryLat: (o['delivery_lat'] as num?)?.toDouble(),
+          deliveryLng: (o['delivery_lng'] as num?)?.toDouble(),
         )).toList();
         return;
       }
@@ -386,12 +390,12 @@ final parcelBookingProvider =
 class ParcelBookingNotifier extends StateNotifier<ParcelBooking> {
   ParcelBookingNotifier() : super(const ParcelBooking());
 
-  void updatePickup(String pickup) {
-    state = state.copyWith(pickupLocation: pickup);
+  void updatePickup(String pickup, {double? lat, double? lng}) {
+    state = state.copyWith(pickupLocation: pickup, pickupLat: lat, pickupLng: lng);
   }
 
-  void updateDelivery(String delivery) {
-    state = state.copyWith(deliveryLocation: delivery);
+  void updateDelivery(String delivery, {double? lat, double? lng}) {
+    state = state.copyWith(deliveryLocation: delivery, deliveryLat: lat, deliveryLng: lng);
   }
 
   void updatePackage(String type, double weight, {double? l, double? w, double? h, String? notes}) {

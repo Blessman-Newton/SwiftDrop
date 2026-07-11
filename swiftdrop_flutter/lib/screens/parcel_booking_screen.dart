@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import '../widgets/app_image.dart';
 import '../utils/validators.dart';
 import '../providers/providers.dart';
+import '../services/tomtom_service.dart';
+import 'address_selection_screen.dart';
 
 class ParcelBookingScreen extends ConsumerStatefulWidget {
   const ParcelBookingScreen({super.key});
@@ -45,11 +49,17 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
         children: [
           // Map background
           Positioned.fill(
-            child: AppImage(
-              url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDq40mtloCwbz9qXTfGNEd30GaOgO69nGKiLdeJ1ozIxCKyWuUMB8jUsU9FeMG7XaCw_qXuJM4etF19BXtb-dGs5b0BIx1hD1vA0w_It_ON22xjffgVhQih5cc4farEZCT8JnjBhpvG8Q-NMUrFzBa59f3O6OcFAY1AxAFAs3SxhA_nLdF5D0maRwYFwYKrWNkF5EosxXjD0oEkuz21el6Q_Va5yQ5rsZ8HRIamksW-dqDf7RGRgWGP_xv42cGHV9O8fdowQCh5zuU',
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
+            child: FlutterMap(
+              options: MapOptions(
+                initialCenter: TomTomService.defaultCenter,
+                initialZoom: 13,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: TomTomService.tileUrl,
+                  userAgentPackageName: 'com.swiftdrop.app',
+                ),
+              ],
             ),
           ),
           // Gradient overlay
@@ -194,6 +204,14 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                               label: 'PICKUP LOCATION',
                               controller: _pickupController,
                               hintText: 'Current Location (123 Urban St)',
+                              onMapTap: () async {
+                                final result = await context.push<AddressSelectionResult>('/address-selection');
+                                if (result != null) {
+                                  _pickupController.text = result.address;
+                                  ref.read(parcelBookingProvider.notifier).updatePickup(
+                                    result.address, lat: result.lat, lng: result.lng);
+                                }
+                              },
                             ),
                             Container(
                               height: 1,
@@ -204,6 +222,14 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                               label: 'DELIVERY LOCATION',
                               controller: _deliveryController,
                               hintText: 'Where is it going?',
+                              onMapTap: () async {
+                                final result = await context.push<AddressSelectionResult>('/address-selection');
+                                if (result != null) {
+                                  _deliveryController.text = result.address;
+                                  ref.read(parcelBookingProvider.notifier).updateDelivery(
+                                    result.address, lat: result.lat, lng: result.lng);
+                                }
+                              },
                             ),
                           ],
                         ),
@@ -233,7 +259,14 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                       Semantics(
                         label: 'Add new address',
                         child: GestureDetector(
-                          onTap: () {},
+                onTap: () async {
+                          final result = await context.push<AddressSelectionResult>('/address-selection');
+                          if (result != null) {
+                            _pickupController.text = result.address;
+                            ref.read(parcelBookingProvider.notifier).updatePickup(
+                              result.address, lat: result.lat, lng: result.lng);
+                          }
+                        },
                           child: Container(
                           width: 48,
                           height: 48,
@@ -310,6 +343,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
     required String label,
     required TextEditingController controller,
     required String hintText,
+    VoidCallback? onMapTap,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

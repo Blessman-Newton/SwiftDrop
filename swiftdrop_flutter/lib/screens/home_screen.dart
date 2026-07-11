@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../providers/restaurant_provider.dart';
+import '../services/tomtom_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 
@@ -17,7 +20,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _searchController = TextEditingController();
-  String _selectedLocation = 'San Francisco, CA';
+  String _selectedLocation = 'Accra, Ghana';
+  final TomTomService _tomtom = TomTomService();
 
   @override
   void dispose() {
@@ -87,42 +91,115 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // Location
                   GestureDetector(
                     onTap: () {
+                      final searchCtrl = TextEditingController();
+                      List<TomTomSearchResult> results = [];
+                      bool isSearching = false;
+
                       showModalBottomSheet(
                         context: context,
+                        isScrollControlled: true,
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                         ),
-                        builder: (ctx) => Container(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Select Location',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              ...['San Francisco, CA', 'New York, NY', 'Los Angeles, CA', 'Chicago, IL', 'Seattle, WA'].map(
-                                (loc) => ListTile(
-                                  leading: Icon(
-                                    Icons.location_on,
-                                    color: _selectedLocation == loc ? AppColors.primary : Colors.grey,
+                        builder: (ctx) => StatefulBuilder(
+                          builder: (ctx, setSheetState) => Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Select Location',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  title: Text(loc),
-                                  trailing: _selectedLocation == loc
-                                      ? const Icon(Icons.check, color: AppColors.primary)
-                                      : null,
-                                  onTap: () {
-                                    setState(() => _selectedLocation = loc);
+                                ),
+                                const SizedBox(height: 16),
+                                ListTile(
+                                  leading: const Icon(Icons.my_location, color: AppColors.primary),
+                                  title: Text('Use Current Location',
+                                    style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                                  onTap: () async {
                                     Navigator.pop(ctx);
+                                    try {
+                                      LocationPermission perm = await Geolocator.checkPermission();
+                                      if (perm == LocationPermission.denied) {
+                                        perm = await Geolocator.requestPermission();
+                                      }
+                                      if (perm == LocationPermission.denied ||
+                                          perm == LocationPermission.deniedForever) return;
+                                      final pos = await Geolocator.getCurrentPosition(
+                                        locationSettings: const LocationSettings(
+                                            accuracy: LocationAccuracy.high));
+                                      final result = await _tomtom.reverseGeocode(
+                                        LatLng(pos.latitude, pos.longitude));
+                                      if (mounted) {
+                                        setState(() {
+                                          _selectedLocation = result?.address ??
+                                              '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+                                        });
+                                      }
+                                    } catch (_) {}
                                   },
                                 ),
-                              ),
-                            ],
+                                const Divider(),
+                                TextField(
+                                  controller: searchCtrl,
+                                  autofocus: true,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search city or address...',
+                                    prefixIcon: const Icon(Icons.search),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onChanged: (q) async {
+                                    if (q.trim().length < 2) {
+                                      setSheetState(() => results = []);
+                                      return;
+                                    }
+                                    setSheetState(() => isSearching = true);
+                                    final r = await _tomtom.search(q);
+                                    setSheetState(() {
+                                      results = r;
+                                      isSearching = false;
+                                    });
+                                  },
+                                ),
+                                if (isSearching) const Padding(
+                                  padding: EdgeInsets.only(top: 8),
+                                  child: LinearProgressIndicator(),
+                                ),
+                                if (results.isNotEmpty)
+                                  Container(
+                                    constraints: const BoxConstraints(maxHeight: 200),
+                                    child: ListView.builder(
+                                      shrinkWrap: true,
+                                      itemCount: results.length,
+                                      itemBuilder: (ctx, i) => ListTile(
+                                        dense: true,
+                                        leading: const Icon(Icons.location_on,
+                                            color: AppColors.primary, size: 20),
+                                        title: Text(results[i].name,
+                                            style: GoogleFonts.inter(fontSize: 14)),
+                                        subtitle: Text(results[i].address,
+                                            style: GoogleFonts.inter(fontSize: 11,
+                                                color: Colors.grey[600]),
+                                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        onTap: () {
+                                          Navigator.pop(ctx);
+                                          setState(() => _selectedLocation =
+                                              results[i].address.isNotEmpty
+                                                  ? results[i].address
+                                                  : results[i].name);
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
                       );

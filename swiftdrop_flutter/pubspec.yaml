@@ -21,6 +21,10 @@ dependencies:
   crypto: ^3.0.3
   dio: ^5.7.0
   pay_with_paystack: ^1.2.0
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  geolocator: ^13.0.2
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:

@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import '../../providers/merchant_providers.dart';
+import '../../services/tomtom_service.dart';
 import '../../models/models.dart';
 
 class RiderNavigationScreen extends ConsumerStatefulWidget {
@@ -77,13 +80,37 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
 
   Widget _buildMapBackground() {
     return Positioned.fill(
-      child: Container(
-        decoration: BoxDecoration(
-          color: _isDarkMap ? const Color(0xFF0C1B14) : const Color(0xFFD1E8D5),
+      child: FlutterMap(
+        options: MapOptions(
+          initialCenter: TomTomService.defaultCenter,
+          initialZoom: 16,
         ),
-        child: CustomPaint(
-          painter: _MapGridPainter(isDark: _isDarkMap),
-        ),
+        children: [
+          TileLayer(
+            urlTemplate: TomTomService.tileUrl,
+            userAgentPackageName: 'com.swiftdrop.app',
+          ),
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: TomTomService.defaultCenter,
+                width: 36,
+                height: 36,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF059669),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                    ],
+                  ),
+                  child: const Icon(Icons.local_shipping, color: Colors.white, size: 18),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -548,73 +575,3 @@ class _MapControlButton extends StatelessWidget {
   }
 }
 
-class _MapGridPainter extends CustomPainter {
-  final bool isDark;
-  _MapGridPainter({required this.isDark});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final gridColor = isDark
-        ? const Color(0x0AFFFFFF)
-        : const Color(0xFFCBD5E1);
-    final roadColor = isDark
-        ? const Color(0x14FFFFFF)
-        : const Color(0xFF94A3B8);
-    final mainRoadColor = isDark
-        ? const Color(0x1FFFFFFF)
-        : const Color(0xFF64748B);
-
-    final gridPaint = Paint()
-      ..color = gridColor
-      ..strokeWidth = 0.5;
-
-    for (double i = 0; i < size.width; i += 24) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), gridPaint);
-    }
-    for (double i = 0; i < size.height; i += 24) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
-    }
-
-    final roadPaint = Paint()
-      ..color = roadColor
-      ..strokeWidth = 10
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(const Offset(0, 120), Offset(size.width, 120), roadPaint);
-    canvas.drawLine(const Offset(0, 300), Offset(size.width, 300), roadPaint);
-    canvas.drawLine(const Offset(0, 480), Offset(size.width, 480), roadPaint);
-    canvas.drawLine(const Offset(100, 0), Offset(100, size.height), roadPaint);
-    canvas.drawLine(const Offset(240, 0), Offset(240, size.height), roadPaint);
-    canvas.drawLine(const Offset(380, 0), Offset(380, size.height), roadPaint);
-
-    final mainPaint = Paint()
-      ..color = mainRoadColor
-      ..strokeWidth = 14
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(const Offset(0, 200), Offset(size.width, 200), mainPaint);
-    canvas.drawLine(const Offset(180, 0), Offset(180, size.height), mainPaint);
-
-    final routePaint = Paint()
-      ..color = const Color(0xFF059669)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final routePath = Path();
-    routePath.moveTo(180, 420);
-    routePath.lineTo(180, 200);
-    routePath.lineTo(360, 200);
-    routePath.lineTo(360, 100);
-
-    canvas.drawPath(routePath, routePaint);
-
-    final destPaint = Paint()..color = const Color(0xFFE11D48);
-    canvas.drawCircle(const Offset(360, 100), 10, destPaint);
-    canvas.drawCircle(
-        const Offset(360, 100), 5, Paint()..color = Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}

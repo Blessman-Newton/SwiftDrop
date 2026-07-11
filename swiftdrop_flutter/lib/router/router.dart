@@ -16,6 +16,7 @@ import '../screens/parcel_booking_screen.dart';
 import '../screens/parcel_package_details_screen.dart';
 import '../screens/parcel_service_selection_screen.dart';
 import '../screens/parcel_summary_screen.dart';
+import '../screens/address_selection_screen.dart';
 import '../screens/rider/rider_dashboard_screen.dart';
 import '../screens/rider/rider_active_delivery_screen.dart';
 import '../screens/rider/rider_navigation_screen.dart';
@@ -60,6 +61,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(path: '/map', builder: (_, __) => const MapTrackingScreen()),
+      GoRoute(
+          path: '/address-selection',
+          builder: (_, state) {
+            final extra = state.extra as Map<String, dynamic>?;
+            return AddressSelectionScreen(
+              currentAddress: extra?['address'] as String?,
+              currentLat: extra?['lat'] as double?,
+              currentLng: extra?['lng'] as double?,
+            );
+          }),
 
       // Parcel routes
       GoRoute(

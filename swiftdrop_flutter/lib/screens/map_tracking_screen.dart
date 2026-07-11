@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
+import '../services/tomtom_service.dart';
 import '../theme/app_theme.dart';
 
 class MapTrackingScreen extends ConsumerStatefulWidget {
@@ -79,14 +82,14 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   // 3D view state
   bool _is3DView = false;
 
-  // Route points for map
-  final List<Offset> _routePoints = const [
-    Offset(50, 110),
-    Offset(130, 150),
-    Offset(180, 220),
-    Offset(260, 240),
-    Offset(310, 310),
-  ];
+  // Real map state
+  final MapController _mapController = MapController();
+  final TomTomService _tomtom = TomTomService();
+  bool _mapReady = false;
+  LatLng _mapCenter = TomTomService.defaultCenter;
+  List<LatLng> _routePoints = [];
+  LatLng? _driverPosition;
+  LatLng? _destinationPosition;
 
   @override
   void initState() {
@@ -96,6 +99,42 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       duration: const Duration(seconds: 1),
     )..repeat(reverse: true);
     _startMapAnimation();
+    _loadOrderRoute();
+  }
+
+  void _loadOrderRoute() {
+    final orders = ref.read(ordersProvider);
+    final activeOrder = orders.where((o) =>
+        o.status != OrderStatus.completed
+    ).toList();
+    if (activeOrder.isNotEmpty) {
+      final order = activeOrder.first;
+      final pickup = TomTomService.parseLatLng(order.pickupLat, order.pickupLng);
+      final delivery = TomTomService.parseLatLng(order.deliveryLat, order.deliveryLng);
+      setState(() {
+        _destinationPosition = delivery;
+        _mapCenter = pickup;
+        _driverPosition = pickup;
+      });
+      _calculateRoute(pickup, delivery);
+    }
+  }
+
+  Future<void> _calculateRoute(LatLng origin, LatLng destination) async {
+    final route = await _tomtom.calculateRoute(origin, destination);
+    if (route != null && mounted) {
+      setState(() {
+        _routePoints = route.points;
+      });
+      if (_mapReady && route.points.isNotEmpty) {
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints(route.points),
+            padding: const EdgeInsets.all(60),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -477,16 +516,67 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
 
   Widget _buildMap(bool isDark) {
     return ClipRRect(
-      child: CustomPaint(
-        painter: _MapPainter(
-          routePoints: _routePoints,
-          activeStep: _activeStep,
-          isDark: isDark,
-          is3D: _is3DView,
-          pulseValue: _pulseController?.value ?? 0.5,
-          animOffset: DateTime.now().millisecondsSinceEpoch % 12000,
+      child: FlutterMap(
+        mapController: _mapController,
+        options: MapOptions(
+          initialCenter: _mapCenter,
+          initialZoom: 14,
+          onMapReady: () => _mapReady = true,
         ),
-        size: Size.infinite,
+        children: [
+          TileLayer(
+            urlTemplate: TomTomService.tileUrl,
+            userAgentPackageName: 'com.swiftdrop.app',
+          ),
+          if (_routePoints.isNotEmpty)
+            PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: _routePoints,
+                  color: AppColors.primary,
+                  strokeWidth: 5,
+                ),
+              ],
+            ),
+          MarkerLayer(
+            markers: [
+              if (_driverPosition != null)
+                Marker(
+                  point: _driverPosition!,
+                  width: 44,
+                  height: 44,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                      ],
+                    ),
+                    child: const Icon(Icons.local_shipping, color: Colors.white, size: 20),
+                  ),
+                ),
+              if (_destinationPosition != null)
+                Marker(
+                  point: _destinationPosition!,
+                  width: 44,
+                  height: 44,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 3),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                      ],
+                    ),
+                    child: const Icon(Icons.location_on, color: Colors.white, size: 22),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -498,17 +588,25 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       children: [
         _buildControlBtn(
           Icons.add_rounded, bgColor, isDark, () {
-          setState(() => _zoomLevel = min(_zoomLevel + 1, 18));
+          if (_mapReady) {
+            final zoom = _mapController.camera.zoom + 1;
+            _mapController.move(_mapController.camera.center, zoom);
+          }
         }),
         const SizedBox(height: 8),
         _buildControlBtn(
           Icons.remove_rounded, bgColor, isDark, () {
-          setState(() => _zoomLevel = max(_zoomLevel - 1, 10));
+          if (_mapReady) {
+            final zoom = _mapController.camera.zoom - 1;
+            _mapController.move(_mapController.camera.center, zoom);
+          }
         }),
         const SizedBox(height: 8),
         _buildControlBtn(
           Icons.navigation_rounded, bgColor, isDark, () {
-          setState(() => _activeStep = 2);
+          if (_mapReady && _driverPosition != null) {
+            _mapController.move(_driverPosition!, 15);
+          }
         },
             color: AppColors.primary),
       ],
@@ -2211,186 +2309,3 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 }
 
-class _MapPainter extends CustomPainter {
-  final List<Offset> routePoints;
-  final int activeStep;
-  final bool isDark;
-  final bool is3D;
-  final double pulseValue;
-  final int animOffset;
-
-  _MapPainter({
-    required this.routePoints,
-    required this.activeStep,
-    required this.isDark,
-    required this.is3D,
-    required this.pulseValue,
-    required this.animOffset,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Background
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = isDark ? const Color(0xFF0f172a) : const Color(0xFFf4fbf4),
-    );
-
-    // Grid
-    final gridPaint = Paint()
-      ..color =
-          isDark ? const Color(0xFF10b981).withOpacity(0.08) : const Color(0xFF006c49).withOpacity(0.06)
-      ..strokeWidth = 1.5;
-    for (double x = 0; x < size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (double y = 0; y < size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    if (is3D) {
-      final perspectivePaint = Paint()
-        ..color = isDark
-            ? const Color(0xFF10b981).withOpacity(0.05)
-            : const Color(0xFF006c49).withOpacity(0.03)
-        ..strokeWidth = 0.5;
-      for (double i = 0; i < size.width; i += 80) {
-        canvas.drawLine(Offset(i, 0), Offset(size.width / 2, size.height * 0.3), perspectivePaint);
-      }
-      for (double j = 0; j < size.height; j += 80) {
-        canvas.drawLine(Offset(0, j), Offset(size.width, j + 30), perspectivePaint);
-      }
-    }
-
-    // Roads
-    final roadPaint = Paint()
-      ..color = isDark
-          ? const Color(0xFF10b981).withOpacity(0.3)
-          : const Color(0xFF006c49).withOpacity(0.15)
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    canvas.drawPath(
-      Path()
-        ..moveTo(40, 100)
-        ..lineTo(150, 100)
-        ..lineTo(180, 220)
-        ..lineTo(320, 220)
-        ..lineTo(340, 360),
-      roadPaint,
-    );
-
-    roadPaint.strokeWidth = 3.5;
-    canvas.drawPath(
-      Path()
-        ..moveTo(180, 220)
-        ..lineTo(100, 320)
-        ..lineTo(250, 320),
-      roadPaint,
-    );
-
-    // Route path (green, glowing)
-    final routePaint = Paint()
-      ..color = const Color(0xFF10b981)
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final routePath = Path()..moveTo(routePoints[0].dx, routePoints[0].dy);
-    for (int i = 1; i < routePoints.length; i++) {
-      routePath.lineTo(routePoints[i].dx, routePoints[i].dy);
-    }
-    canvas.drawPath(routePath, routePaint);
-
-    // Destination pin (red)
-    final dest = routePoints.last;
-    canvas.drawCircle(
-      dest,
-      5,
-      Paint()..color = const Color(0xFFba1a1a),
-    );
-
-    // Pulsing rings
-    final pulseRadius = 8.0 + pulseValue * 6;
-    canvas.drawCircle(
-      dest,
-      pulseRadius,
-      Paint()
-        ..color = const Color(0xFFba1a1a).withOpacity(0.3)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
-    );
-
-    // Driver position
-    double localProg;
-    if (activeStep == 0) {
-      localProg = 0.0;
-    } else if (activeStep == 1) {
-      localProg = 0.15;
-    } else if (activeStep == 3) {
-      localProg = 1.0;
-    } else {
-      localProg = 0.2 + (animOffset / 12000) * 0.65;
-    }
-
-    final idx = min(
-      (localProg * (routePoints.length - 1)).floor(),
-      routePoints.length - 2,
-    );
-    final subProg = (localProg * (routePoints.length - 1)) - idx;
-    final driverX =
-        routePoints[idx].dx + (routePoints[idx + 1].dx - routePoints[idx].dx) * subProg;
-    final driverY =
-        routePoints[idx].dy + (routePoints[idx + 1].dy - routePoints[idx].dy) * subProg;
-
-    // Driver vehicle (moped icon)
-    canvas.drawCircle(
-      Offset(driverX, driverY),
-      10,
-      Paint()..color = const Color(0xFF10b981).withOpacity(0.2),
-    );
-    canvas.drawCircle(
-      Offset(driverX, driverY),
-      7,
-      Paint()..color = const Color(0xFF10b981),
-    );
-    // Vehicle body
-    final vAngle = atan2(
-      routePoints[min(idx + 1, routePoints.length - 1)].dy - routePoints[idx].dy,
-      routePoints[min(idx + 1, routePoints.length - 1)].dx - routePoints[idx].dx,
-    );
-    canvas.save();
-    canvas.translate(driverX, driverY);
-    canvas.rotate(vAngle);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-8, -4, 16, 8), const Radius.circular(3)),
-      Paint()..color = const Color(0xFF006C49),
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(-4, -6, 8, 4), const Radius.circular(2)),
-      Paint()..color = Colors.white,
-    );
-    canvas.restore();
-
-    // Arrow
-    final angle = atan2(
-      routePoints[idx + 1].dy - routePoints[idx].dy,
-      routePoints[idx + 1].dx - routePoints[idx].dx,
-    );
-    canvas.save();
-    canvas.translate(driverX, driverY);
-    canvas.rotate(angle);
-    canvas.drawPath(
-      Path()
-        ..moveTo(-3, -3)
-        ..lineTo(5, 0)
-        ..lineTo(-3, 3),
-      Paint()..color = Colors.white,
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _MapPainter oldDelegate) => true;
-}
