@@ -84,6 +84,8 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
         options: MapOptions(
           initialCenter: TomTomService.defaultCenter,
           initialZoom: 16,
+          maxZoom: 19,
+          minZoom: 1,
         ),
         children: [
           TileLayer(

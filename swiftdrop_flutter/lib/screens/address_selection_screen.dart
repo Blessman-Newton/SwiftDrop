@@ -349,6 +349,8 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
               options: MapOptions(
                 initialCenter: _center,
                 initialZoom: 14,
+                maxZoom: 19,
+                minZoom: 1,
                 onTap: _onMapTap,
                 onMapReady: () => _mapReady = true,
               ),

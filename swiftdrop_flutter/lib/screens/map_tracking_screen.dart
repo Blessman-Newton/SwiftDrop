@@ -521,6 +521,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         options: MapOptions(
           initialCenter: _mapCenter,
           initialZoom: 14,
+          maxZoom: 19,
+          minZoom: 1,
           onMapReady: () => _mapReady = true,
         ),
         children: [

@@ -49,17 +49,21 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
         children: [
           // Map background
           Positioned.fill(
-            child: FlutterMap(
-              options: MapOptions(
-                initialCenter: TomTomService.defaultCenter,
-                initialZoom: 13,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: TomTomService.tileUrl,
-                  userAgentPackageName: 'com.swiftdrop.app',
+            child: ClipRect(
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: TomTomService.defaultCenter,
+                  initialZoom: 13,
+                  maxZoom: 19,
+                  minZoom: 1,
                 ),
-              ],
+                children: [
+                  TileLayer(
+                    urlTemplate: TomTomService.tileUrl,
+                    userAgentPackageName: 'com.swiftdrop.app',
+                  ),
+                ],
+              ),
             ),
           ),
           // Gradient overlay

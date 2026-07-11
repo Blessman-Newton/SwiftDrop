@@ -374,6 +374,8 @@ class _RiderActiveDeliveryScreenState
             options: MapOptions(
               initialCenter: riderPos,
               initialZoom: 14,
+              maxZoom: 19,
+              minZoom: 1,
             ),
             children: [
               TileLayer(
