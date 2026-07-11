@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, Header, Request
+import hashlib
+import hmac
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user_dep
@@ -32,8 +35,18 @@ async def payment_webhook(
     db: AsyncSession = Depends(get_db),
 ):
     body = await request.body()
-    payload = await request.json()
+    signature = request.headers.get("X-Paystack-Signature", "")
 
+    expected = hmac.new(
+        settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
+        body,
+        hashlib.sha512,
+    ).hexdigest()
+
+    if not hmac.compare_digest(signature, expected):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    payload = await request.json()
     event = payload.get("event", "")
     data = payload.get("data", {})
 

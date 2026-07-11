@@ -4,9 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../utils/validators.dart';
 import '../providers/providers.dart';
-import '../models/models.dart';
-import '../services/order_service.dart';
-import '../services/api_client.dart';
+import '../providers/auth_provider.dart';
+import 'checkout_screen.dart';
 
 
 class ParcelSummaryScreen extends ConsumerStatefulWidget {
@@ -19,8 +18,6 @@ class ParcelSummaryScreen extends ConsumerStatefulWidget {
 class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
   final _promoController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isProcessing = false;
-  bool _orderSuccess = false;
 
   @override
   void dispose() {
@@ -572,61 +569,30 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                         ],
                       ),
                       child: ElevatedButton(
-                        onPressed: _isProcessing
-                            ? null
-                            : () async {
-                                setState(() => _isProcessing = true);
-                                await Future.delayed(const Duration(seconds: 2));
+                        onPressed: () async {
                                 final booking = ref.read(parcelBookingProvider);
-                                final orderId = 'PARCEL-${DateTime.now().millisecondsSinceEpoch}';
+                                final user = ref.read(currentUserProvider);
 
-                                // Save order locally
-                                ref.read(ordersProvider.notifier).addOrder(Order(
-                                  id: orderId,
-                                  restaurantId: 'swiftdrop-parcel',
-                                  restaurantName: 'SwiftDrop Parcel',
-                                  items: const [],
-                                  totalPrice: booking.total,
-                                  status: OrderStatus.pending,
-                                  createdAt: DateTime.now(),
-                                  trackingStep: 0,
-                                  orderType: 'parcel',
-                                  parcelPickupLocation: booking.pickupLocation,
-                                  parcelDeliveryLocation: booking.deliveryLocation,
-                                ));
-
-                                // Also call backend API (fire and forget)
-                                if (ApiClient().isAuthenticated) {
-                                  OrderService().createOrder(
-                                    orderType: 'parcel',
-                                    restaurantName: 'SwiftDrop Parcel',
-                                    pickupAddress: booking.pickupLocation,
-                                    deliveryAddress: booking.deliveryLocation,
-                                    subtotal: booking.deliveryFee + booking.serviceFee,
-                                    deliveryFee: booking.deliveryFee,
-                                    tax: 0,
-                                    discount: booking.discount,
-                                    total: booking.total,
-                                    promoCode: booking.promoCode,
-                                  );
-                                }
-
-                                setState(() {
-                                  _isProcessing = false;
-                                  _orderSuccess = true;
-                                });
-                                await Future.delayed(const Duration(seconds: 1));
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Parcel order confirmed! Tracking: $orderId',
-                                        style: GoogleFonts.inter(),
-                                      ),
-                                      backgroundColor: const Color(0xFF006C49),
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CheckoutScreen(
+                                      restaurantId: 'swiftdrop-parcel',
+                                      restaurantName: 'SwiftDrop Parcel',
+                                      cartItems: const [],
+                                      subtotal: booking.deliveryFee + booking.serviceFee,
+                                      deliveryFee: booking.deliveryFee,
+                                      tax: 0,
+                                      discount: booking.discount,
+                                      total: booking.total,
+                                      deliveryAddress: booking.deliveryLocation,
+                                      promoCode: booking.promoCode,
+                                      orderType: 'parcel',
+                                      parcelPickup: booking.pickupLocation,
+                                      parcelDelivery: booking.deliveryLocation,
+                                      userEmail: user?.email ?? 'customer@test.com',
                                     ),
-                                  );
-                                }
+                                  ),
+                                );
                               },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
@@ -636,58 +602,21 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: _isProcessing
-                            ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    'Processing...',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : _orderSuccess
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(Icons.check_circle, color: Colors.white, size: 28),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Success!',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'Confirm Order',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                       const Icon(Icons.chevron_right, size: 28),
-                                     ],
-                                   ),
-                       ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.lock_outline, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Pay GHS ${booking.total.toStringAsFixed(2)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                      ),
                    ),
                  ],

@@ -6,10 +6,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../providers/providers.dart';
+import '../providers/auth_provider.dart';
 import '../providers/restaurant_provider.dart';
 import '../widgets/app_image.dart';
 import '../services/order_service.dart';
 import '../services/api_client.dart';
+import 'checkout_screen.dart';
 
 class RestaurantDetailScreen extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -922,42 +924,27 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                         onTap: cart.isEmpty
                             ? null
                             : () async {
-                                final orderItems = cart
-                                    .map((ci) => {
-                                          'name': ci.foodItem.name,
-                                          'quantity': ci.quantity,
-                                          'price': ci.foodItem.price,
-                                        })
-                                    .toList();
-
-                                // Save order locally
-                                ref.read(ordersProvider.notifier).placeOrder(
-                                      widget.restaurantId,
-                                      _restaurant.name,
-                                      cart,
-                                      total,
-                                    );
-                                ref.read(cartProvider.notifier).clearCart();
-
-                                // Also call backend API (fire and forget)
-                                if (ApiClient().isAuthenticated) {
-                                  OrderService().createOrder(
-                                    orderType: 'food',
-                                    restaurantName: _restaurant.name,
-                                    pickupAddress: _restaurant.name,
-                                    deliveryAddress: _selectedAddress,
-                                    subtotal: subtotal,
-                                    deliveryFee: deliveryFeeVal,
-                                    tax: tax,
-                                    discount: discount,
-                                    total: total,
-                                    promoCode: _appliedPromo,
-                                    items: orderItems,
-                                  );
-                                }
-
                                 setState(() => _showCheckout = false);
-                                _showOrderConfirmation(total);
+
+                                final user = ref.read(currentUserProvider);
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CheckoutScreen(
+                                      restaurantId: widget.restaurantId,
+                                      restaurantName: _restaurant.name,
+                                      cartItems: cart,
+                                      subtotal: subtotal,
+                                      deliveryFee: deliveryFeeVal,
+                                      tax: tax,
+                                      discount: discount,
+                                      total: total,
+                                      deliveryAddress: _selectedAddress,
+                                      promoCode: _appliedPromo,
+                                      orderType: 'food',
+                                      userEmail: user?.email ?? 'customer@test.com',
+                                    ),
+                                  ),
+                                );
                               },
                         child: Container(
                           width: double.infinity,

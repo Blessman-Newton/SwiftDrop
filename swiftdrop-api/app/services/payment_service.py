@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.models.order import Order
+from app.models.payment import Payment
 from app.payments.paystack import paystack_provider
 from app.schemas.payment import (
     InitializePaymentRequest,
@@ -45,6 +46,17 @@ async def initialize_payment(
         metadata=metadata,
     )
 
+    payment = Payment(
+        order_id=order.id,
+        user_id=order.customer_id,
+        reference=reference,
+        amount=request.amount,
+        currency=request.currency,
+        status="pending",
+        provider="paystack",
+    )
+    db.add(payment)
+
     order.payment_ref = reference
     await db.flush()
 
@@ -76,6 +88,16 @@ async def handle_webhook(
             return {"status": "already_processed"}
 
         order.payment_status = "paid"
+
+        payment_result = await db.execute(
+            select(Payment).where(Payment.reference == reference)
+        )
+        payment = payment_result.scalar_one_or_none()
+        if payment:
+            payment.status = "success"
+            payment.verified_at = datetime.now(timezone.utc)
+            payment.provider_response = data
+
         await update_order_status(db, order.id, "CONFIRMED")
 
         return {"status": "success", "order_id": str(order.id)}
@@ -92,6 +114,21 @@ async def verify_payment(db: AsyncSession, reference: str) -> PaymentVerifyRespo
         raise NotFoundException("Payment not found")
 
     verification = await paystack_provider.verify_transaction(reference)
+
+    pay_status = verification.get("status", "unknown")
+    if pay_status == "success" and order.payment_status != "paid":
+        order.payment_status = "paid"
+
+        payment_result = await db.execute(
+            select(Payment).where(Payment.reference == reference)
+        )
+        payment = payment_result.scalar_one_or_none()
+        if payment:
+            payment.status = "success"
+            payment.verified_at = datetime.now(timezone.utc)
+            payment.provider_response = verification
+
+        await update_order_status(db, order.id, "CONFIRMED")
 
     return PaymentVerifyResponse(
         reference=reference,
