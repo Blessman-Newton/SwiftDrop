@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/providers.dart';
@@ -11,6 +12,7 @@ import '../screens/restaurant_detail_screen.dart';
 import '../screens/map_tracking_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/orders_screen.dart';
+import '../screens/cart_screen.dart';
 import '../screens/role_selection_screen.dart';
 import '../screens/parcel_booking_screen.dart';
 import '../screens/parcel_package_details_screen.dart';
@@ -29,6 +31,7 @@ import '../models/models.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
+    errorBuilder: (context, state) => _RouteErrorScreen(uri: state.uri.toString()),
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(
@@ -50,6 +53,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(
               path: '/orders', builder: (_, __) => const OrdersScreen()),
+          GoRoute(path: '/cart', builder: (_, __) => const CartScreen()),
         ],
       ),
 
@@ -156,3 +160,46 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
   );
 });
+
+class _RouteErrorScreen extends StatelessWidget {
+  final String uri;
+  const _RouteErrorScreen({required this.uri});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.explore_off_rounded,
+                  size: 64, color: Color(0xFF9AA5B1)),
+              const SizedBox(height: 16),
+              Text(
+                'Page not found',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'We couldn\'t open "$uri".',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF6C7A71),
+                    ),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => context.go('/home'),
+                child: const Text('Back to Home'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

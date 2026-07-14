@@ -1,6 +1,170 @@
 enum FoodCategory { popular, combos, burgers, sides, drinks }
 
-enum OrderStatus { pending, accepted, outForDelivery, completed }
+/// Mirrors the backend order state machine
+/// CREATED → CONFIRMED → PREPARING → READY_FOR_PICKUP → PICKED_UP → EN_ROUTE → DELIVERED
+/// (+ CANCELLED before pickup)
+enum OrderStatus {
+  created,
+  confirmed,
+  preparing,
+  readyForPickup,
+  pickedUp,
+  enRoute,
+  delivered,
+  cancelled,
+}
+
+/// A single stage on the customer-facing tracking timeline. Several backend
+/// statuses can collapse onto one stage (e.g. created + confirmed → "Confirmed").
+class OrderTimelineStage {
+  final String label;
+  final String description;
+  const OrderTimelineStage(this.label, this.description);
+}
+
+extension OrderStatusX on OrderStatus {
+  /// User-facing short label for chips/badges.
+  String get label {
+    switch (this) {
+      case OrderStatus.created:
+        return 'Placed';
+      case OrderStatus.confirmed:
+        return 'Confirmed';
+      case OrderStatus.preparing:
+        return 'Preparing';
+      case OrderStatus.readyForPickup:
+        return 'Ready for pickup';
+      case OrderStatus.pickedUp:
+        return 'Picked up';
+      case OrderStatus.enRoute:
+        return 'On the way';
+      case OrderStatus.delivered:
+        return 'Delivered';
+      case OrderStatus.cancelled:
+        return 'Cancelled';
+    }
+  }
+
+  bool get isTerminal =>
+      this == OrderStatus.delivered || this == OrderStatus.cancelled;
+
+  bool get isActive => !isTerminal;
+
+  bool get isCancelled => this == OrderStatus.cancelled;
+
+  /// Index of the current stage on [timelineStages] (0-based).
+  /// Returns -1 for cancelled orders.
+  int get timelineIndex {
+    switch (this) {
+      case OrderStatus.created:
+      case OrderStatus.confirmed:
+        return 0;
+      case OrderStatus.preparing:
+        return 1;
+      case OrderStatus.readyForPickup:
+        return 2;
+      case OrderStatus.pickedUp:
+        return 3;
+      case OrderStatus.enRoute:
+        return 4;
+      case OrderStatus.delivered:
+        return 5;
+      case OrderStatus.cancelled:
+        return -1;
+    }
+  }
+
+  /// The ordered set of stages shown on the tracking timeline.
+  static const List<OrderTimelineStage> timelineStages = [
+    OrderTimelineStage('Confirmed', 'Order received by the restaurant'),
+    OrderTimelineStage('Preparing', 'Your order is being prepared'),
+    OrderTimelineStage('Ready', 'Ready and waiting for a rider'),
+    OrderTimelineStage('Picked up', 'Rider has collected your order'),
+    OrderTimelineStage('On the way', 'Your rider is heading to you'),
+    OrderTimelineStage('Delivered', 'Enjoy! Order delivered'),
+  ];
+
+  /// Parcel orders skip the restaurant "preparing" stages.
+  static const List<OrderTimelineStage> parcelTimelineStages = [
+    OrderTimelineStage('Confirmed', 'Booking confirmed'),
+    OrderTimelineStage('Preparing', 'Assigning a rider'),
+    OrderTimelineStage('Ready', 'Rider heading to pickup'),
+    OrderTimelineStage('Picked up', 'Parcel collected'),
+    OrderTimelineStage('On the way', 'Rider heading to drop-off'),
+    OrderTimelineStage('Delivered', 'Parcel delivered'),
+  ];
+
+  /// Backend string value for this status.
+  String get apiValue {
+    switch (this) {
+      case OrderStatus.created:
+        return 'CREATED';
+      case OrderStatus.confirmed:
+        return 'CONFIRMED';
+      case OrderStatus.preparing:
+        return 'PREPARING';
+      case OrderStatus.readyForPickup:
+        return 'READY_FOR_PICKUP';
+      case OrderStatus.pickedUp:
+        return 'PICKED_UP';
+      case OrderStatus.enRoute:
+        return 'EN_ROUTE';
+      case OrderStatus.delivered:
+        return 'DELIVERED';
+      case OrderStatus.cancelled:
+        return 'CANCELLED';
+    }
+  }
+
+  static OrderStatus fromApi(String? value) {
+    switch (value) {
+      case 'CREATED':
+        return OrderStatus.created;
+      case 'CONFIRMED':
+        return OrderStatus.confirmed;
+      case 'PREPARING':
+        return OrderStatus.preparing;
+      case 'READY_FOR_PICKUP':
+        return OrderStatus.readyForPickup;
+      case 'PICKED_UP':
+        return OrderStatus.pickedUp;
+      case 'EN_ROUTE':
+        return OrderStatus.enRoute;
+      case 'DELIVERED':
+        return OrderStatus.delivered;
+      case 'CANCELLED':
+        return OrderStatus.cancelled;
+      default:
+        return OrderStatus.created;
+    }
+  }
+
+  /// Parse from local persistence, tolerating the legacy 4-value index scheme.
+  static OrderStatus fromStored(dynamic raw) {
+    if (raw is String) {
+      for (final s in OrderStatus.values) {
+        if (s.name == raw) return s;
+      }
+      return OrderStatusX.fromApi(raw);
+    }
+    if (raw is int) {
+      // Legacy indices: 0=pending, 1=accepted, 2=outForDelivery, 3=completed
+      switch (raw) {
+        case 0:
+          return OrderStatus.created;
+        case 1:
+          return OrderStatus.confirmed;
+        case 2:
+          return OrderStatus.enRoute;
+        case 3:
+          return OrderStatus.delivered;
+        default:
+          return OrderStatus.created;
+      }
+    }
+    return OrderStatus.created;
+  }
+}
 
 enum UserRole { customer, rider, guest }
 
@@ -326,7 +490,7 @@ class Order {
         'restaurantName': restaurantName,
         'items': items.map((ci) => ci.toMap()).toList(),
         'totalPrice': totalPrice,
-        'status': status.index,
+        'status': status.name,
         'createdAt': createdAt.toIso8601String(),
         'trackingStep': trackingStep,
         'courierId': courierId,
@@ -354,7 +518,7 @@ class Order {
             ?.map((e) => CartItem.fromMap(e as Map<String, dynamic>))
             .toList() ?? [],
         totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0,
-        status: OrderStatus.values[map['status'] as int? ?? 0],
+        status: OrderStatusX.fromStored(map['status']),
         createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
         trackingStep: map['trackingStep'] as int?,
         courierId: map['courierId'] as String?,

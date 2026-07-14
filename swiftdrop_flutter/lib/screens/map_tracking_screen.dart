@@ -106,9 +106,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
 
   void _loadOrderRoute() {
     final orders = ref.read(ordersProvider);
-    final activeOrder = orders.where((o) =>
-        o.status != OrderStatus.completed
-    ).toList();
+    final activeOrder = orders.where((o) => o.status.isActive).toList();
     if (activeOrder.isNotEmpty) {
       final order = activeOrder.first;
       final pickup = TomTomService.parseLatLng(order.pickupLat, order.pickupLng);
@@ -343,10 +341,86 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     return '$mins:${rem < 10 ? '0' : ''}$rem';
   }
 
+  Widget _buildNoActiveOrder(bool isDark) {
+    return Scaffold(
+      backgroundColor: AppColors.background(isDark),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.map_outlined,
+                    size: 44, color: AppColors.primary),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'No active deliveries',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary(isDark),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'When you place an order, live tracking will show up here.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  color: AppColors.textSecondary(isDark),
+                ),
+              ),
+              const SizedBox(height: 28),
+              FilledButton.icon(
+                onPressed: () => context.go('/home'),
+                icon: const Icon(Icons.restaurant_menu, size: 18),
+                label: const Text('Browse & order'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => context.go('/orders'),
+                child: Text(
+                  'View order history',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final stepDetails = _getStepDetails(_activeStep);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeOrder = ref.watch(activeOrderProvider);
+
+    // No active delivery — show an honest empty state instead of a fake track.
+    if (activeOrder == null) {
+      return _buildNoActiveOrder(isDark);
+    }
+
+    final stepDetails = _getStepDetails(_activeStep);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,

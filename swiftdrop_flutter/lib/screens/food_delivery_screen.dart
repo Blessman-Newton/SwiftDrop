@@ -27,6 +27,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final favorites = ref.watch(favoritesProvider);
     final searchQuery = _searchController.text.toLowerCase();
     final restaurantsAsync = ref.watch(restaurantsProvider);
@@ -44,17 +45,19 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
     const categories = [
       'All',
-      'Burgers',
-      'Sushi',
+      'Local',
+      'Jollof',
+      'Grill',
+      'Fast Food',
       'Pizza',
       'Healthy',
-      'Desserts'
+      'Continental',
     ];
 
     return SafeArea(
       child: Container(
       height: double.infinity,
-      color: const Color(0xFFF4FBF4),
+      color: AppColors.background(isDark),
       child: RefreshIndicator(
         onRefresh: () async {},
         child: SingleChildScrollView(
@@ -63,7 +66,9 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
           children: [
             // Header
             Container(
-              color: Colors.white.withOpacity(0.8),
+              color: isDark
+                  ? AppColors.darkBackground.withOpacity(0.8)
+                  : Colors.white.withOpacity(0.8),
               padding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: Row(
@@ -474,7 +479,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: Colors.black87,
+                          color: AppColors.textPrimary(isDark),
                         ),
                       ),
                       Semantics(

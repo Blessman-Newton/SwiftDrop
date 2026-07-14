@@ -31,6 +31,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = ref.watch(currentUserProvider);
     final favorites = ref.watch(favoritesProvider);
     final searchQuery = _searchController.text.toLowerCase();
@@ -43,6 +44,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     final favoritedRestaurants =
         restaurants.where((r) => favorites.contains(r.id)).toList();
+
+    // Cuisine chips derived from real restaurant tags, Ghana-first ordering.
+    const ghanaCuisines = [
+      'Local', 'Jollof', 'Waakye', 'Banku', 'Grill', 'Fast Food',
+      'Pizza', 'Chinese', 'Continental', 'Healthy', 'Snacks', 'Drinks',
+    ];
+    final availableTags = <String>{for (final r in restaurants) ...r.tags};
+    final derivedChips = [
+      ...ghanaCuisines.where(availableTags.contains),
+      ...availableTags.where((t) => !ghanaCuisines.contains(t)),
+    ].take(10).toList();
+    final cuisineChips =
+        derivedChips.isNotEmpty ? derivedChips : ghanaCuisines.take(8).toList();
 
     var filteredRestaurants = restaurants.where((r) {
       final matchesSearch = r.name.toLowerCase().contains(searchQuery) ||
@@ -73,7 +87,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Container(
       height: double.infinity,
-      color: const Color(0xFFF4FBF4),
+      color: AppColors.background(isDark),
       child: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {},
@@ -83,7 +97,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               // Sticky header
               Container(
-                color: Colors.white.withOpacity(0.8),
+                color: isDark
+                    ? AppColors.darkBackground.withOpacity(0.8)
+                    : Colors.white.withOpacity(0.8),
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -228,7 +244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.black87,
+                                    color: AppColors.textPrimary(isDark),
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -523,27 +539,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ref.read(selectedCuisinesProvider.notifier).state =
                               {};
                         }),
-                        _buildCuisineChip('American', selectedCuisines.contains('American'), () {
-                          _toggleCuisine('American');
-                        }),
-                        _buildCuisineChip('Italian', selectedCuisines.contains('Italian'), () {
-                          _toggleCuisine('Italian');
-                        }),
-                        _buildCuisineChip('Japanese', selectedCuisines.contains('Japanese'), () {
-                          _toggleCuisine('Japanese');
-                        }),
-                        _buildCuisineChip('Healthy', selectedCuisines.contains('Healthy'), () {
-                          _toggleCuisine('Healthy');
-                        }),
-                        _buildCuisineChip('Steakhouse', selectedCuisines.contains('Steakhouse'), () {
-                          _toggleCuisine('Steakhouse');
-                        }),
-                        _buildCuisineChip('Pizza', selectedCuisines.contains('Pizza'), () {
-                          _toggleCuisine('Pizza');
-                        }),
-                        _buildCuisineChip('Sushi', selectedCuisines.contains('Sushi'), () {
-                          _toggleCuisine('Sushi');
-                        }),
+                        for (final cuisine in cuisineChips)
+                          _buildCuisineChip(
+                            cuisine,
+                            selectedCuisines.contains(cuisine),
+                            () => _toggleCuisine(cuisine),
+                          ),
                       ],
                     ),
                   ),
@@ -891,7 +892,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: Colors.black87,
+                              color: AppColors.textPrimary(isDark),
                             ),
                           ),
                         ],
@@ -1121,7 +1122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: Colors.black87,
+                          color: AppColors.textPrimary(isDark),
                         ),
                       ),
                       GestureDetector(

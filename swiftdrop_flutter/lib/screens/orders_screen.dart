@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+import '../widgets/order_timeline.dart';
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
@@ -250,7 +251,7 @@ class OrdersScreen extends ConsumerWidget {
                 ),
                 GestureDetector(
                   onTap: order.orderType == 'parcel'
-                      ? () => context.go('/tracking')
+                      ? () => context.push('/map')
                       : () {
                           ref.read(ordersProvider.notifier).reorder(
                                 order.items,
@@ -364,6 +365,19 @@ class OrdersScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 20),
+              // Live tracking timeline
+              Text('TRACKING',
+                  style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade500,
+                      letterSpacing: 1)),
+              const SizedBox(height: 12),
+              OrderTimeline(order: order, isDark: isDark),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(),
+              ),
               if (order.orderType == 'parcel') ...[
                 _detailRow('Pickup', order.parcelPickupLocation ?? 'N/A'),
                 _detailRow('Drop-off', order.parcelDeliveryLocation ?? 'N/A'),
@@ -416,29 +430,7 @@ class OrdersScreen extends ConsumerWidget {
     return '${months[date.month - 1]} ${date.day}, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  Color _getStatusColor(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return Colors.amber.shade600;
-      case OrderStatus.accepted:
-        return AppColors.primary;
-      case OrderStatus.outForDelivery:
-        return AppColors.primary;
-      case OrderStatus.completed:
-        return Colors.grey.shade500;
-    }
-  }
+  Color _getStatusColor(OrderStatus status) => AppColors.status(status);
 
-  String _getStatusLabel(OrderStatus status) {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Preparing';
-      case OrderStatus.accepted:
-        return 'Accepted';
-      case OrderStatus.outForDelivery:
-        return 'Out for Delivery';
-      case OrderStatus.completed:
-        return 'Delivered';
-    }
-  }
+  String _getStatusLabel(OrderStatus status) => status.label;
 }

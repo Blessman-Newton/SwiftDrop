@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../utils/validators.dart';
 import '../providers/providers.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_theme.dart';
 import 'checkout_screen.dart';
 
 
@@ -573,6 +574,22 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                                 final booking = ref.read(parcelBookingProvider);
                                 final user = ref.read(currentUserProvider);
 
+                                if (user == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                          'Please sign in to confirm your parcel booking'),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: AppColors.primary,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                    ),
+                                  );
+                                  context.go('/auth');
+                                  return;
+                                }
+
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => CheckoutScreen(
@@ -589,7 +606,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                                       orderType: 'parcel',
                                       parcelPickup: booking.pickupLocation,
                                       parcelDelivery: booking.deliveryLocation,
-                                      userEmail: user?.email ?? 'customer@test.com',
+                                      userEmail: user.email,
                                     ),
                                   ),
                                 );

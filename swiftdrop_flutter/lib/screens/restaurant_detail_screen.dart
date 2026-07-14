@@ -920,9 +920,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                         onTap: cart.isEmpty
                             ? null
                             : () async {
+                                final user = ref.read(currentUserProvider);
+                                if (user == null) {
+                                  setState(() => _showCheckout = false);
+                                  _promptSignIn(context);
+                                  return;
+                                }
                                 setState(() => _showCheckout = false);
 
-                                final user = ref.read(currentUserProvider);
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => CheckoutScreen(
@@ -937,7 +942,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                       deliveryAddress: _selectedAddress,
                                       promoCode: _appliedPromo,
                                       orderType: 'food',
-                                      userEmail: user?.email ?? 'customer@test.com',
+                                      userEmail: user.email,
                                     ),
                                   ),
                                 );
@@ -969,6 +974,78 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           ),
         ),
       ],
+    );
+  }
+
+  void _promptSignIn(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.of(ctx).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_outline, color: AppColors.primary),
+            ),
+            const SizedBox(height: 16),
+            Text('Sign in to place your order',
+                style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary(isDark))),
+            const SizedBox(height: 6),
+            Text(
+                'Your cart is saved. Sign in or create an account to check out and track your delivery.',
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: AppColors.textSecondary(isDark))),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.go('/auth');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                child: Text('Sign in to continue',
+                    style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Keep browsing',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary(isDark))),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

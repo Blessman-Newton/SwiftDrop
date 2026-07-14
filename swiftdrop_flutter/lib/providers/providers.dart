@@ -209,19 +209,7 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
     _loadFromLocal();
   }
 
-  OrderStatus _mapStatus(String? apiStatus) {
-    switch (apiStatus) {
-      case 'CREATED': return OrderStatus.pending;
-      case 'CONFIRMED':
-      case 'PREPARING':
-      case 'READY_FOR_PICKUP': return OrderStatus.accepted;
-      case 'PICKED_UP':
-      case 'EN_ROUTE': return OrderStatus.outForDelivery;
-      case 'DELIVERED': return OrderStatus.completed;
-      case 'CANCELLED': return OrderStatus.completed;
-      default: return OrderStatus.pending;
-    }
-  }
+  OrderStatus _mapStatus(String? apiStatus) => OrderStatusX.fromApi(apiStatus);
 
   Future<void> _loadFromLocal() async {
     final prefs = await SharedPreferences.getInstance();
@@ -254,7 +242,7 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
       restaurantName: restaurantName,
       items: List.from(items),
       totalPrice: totalPrice,
-      status: OrderStatus.pending,
+      status: OrderStatus.created,
       createdAt: DateTime.now(),
       trackingStep: 0,
     );
@@ -310,7 +298,7 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
   Order? getActiveOrder() {
     try {
       return state.firstWhere(
-        (o) => o.status != OrderStatus.completed,
+        (o) => o.status.isActive,
       );
     } catch (_) {
       return null;
@@ -324,7 +312,7 @@ final activeOrderProvider = Provider<Order?>((ref) {
   final orders = ref.watch(ordersProvider);
   try {
     return orders.firstWhere(
-      (o) => o.status != OrderStatus.completed,
+      (o) => o.status.isActive,
     );
   } catch (_) {
     return null;
@@ -338,8 +326,9 @@ final riderAssignedOrderProvider = Provider<Order?>((ref) {
   try {
     return orders.firstWhere(
       (o) =>
-          o.status == OrderStatus.outForDelivery ||
-          o.status == OrderStatus.accepted,
+          o.status == OrderStatus.readyForPickup ||
+          o.status == OrderStatus.pickedUp ||
+          o.status == OrderStatus.enRoute,
     );
   } catch (_) {
     return null;

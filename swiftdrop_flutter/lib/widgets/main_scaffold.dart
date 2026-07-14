@@ -10,11 +10,12 @@ class MainScaffold extends ConsumerWidget {
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/orders') || location.startsWith('/food-delivery')) {
-      return 1;
+    if (location.startsWith('/home') ||
+        location.startsWith('/food-delivery')) {
+      return 0;
     }
-    if (location.startsWith('/map')) return 2;
+    if (location.startsWith('/cart')) return 1;
+    if (location.startsWith('/orders')) return 2;
     if (location.startsWith('/profile')) return 3;
     return 0;
   }
@@ -34,10 +35,10 @@ class MainScaffold extends ConsumerWidget {
               context.go('/home');
               break;
             case 1:
-              context.go('/orders');
+              context.go('/cart');
               break;
             case 2:
-              context.go('/map');
+              context.go('/orders');
               break;
             case 3:
               context.go('/profile');
@@ -54,21 +55,21 @@ class MainScaffold extends ConsumerWidget {
             icon: cartCount > 0
                 ? Badge(
                     label: Text('$cartCount', style: const TextStyle(fontSize: 9)),
-                    child: const Icon(Icons.receipt_outlined),
+                    child: const Icon(Icons.shopping_bag_outlined),
                   )
-                : const Icon(Icons.receipt_outlined),
+                : const Icon(Icons.shopping_bag_outlined),
             activeIcon: cartCount > 0
                 ? Badge(
                     label: Text('$cartCount', style: const TextStyle(fontSize: 9)),
-                    child: const Icon(Icons.receipt),
+                    child: const Icon(Icons.shopping_bag),
                   )
-                : const Icon(Icons.receipt),
-            label: 'Orders',
+                : const Icon(Icons.shopping_bag),
+            label: 'Cart',
           ),
           const BottomNavigationBarItem(
-            icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
-            label: 'Map',
+            icon: Icon(Icons.receipt_long_outlined),
+            activeIcon: Icon(Icons.receipt_long),
+            label: 'Orders',
           ),
           const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
