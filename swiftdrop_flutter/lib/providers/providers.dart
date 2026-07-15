@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/order_service.dart';
+import '../services/customer_service.dart';
+import 'auth_provider.dart';
 
 // ==================== CART (with persistence) ====================
 
@@ -148,10 +150,45 @@ final ordersProvider =
 });
 
 class OrdersNotifier extends StateNotifier<List<Order>> {
-  OrdersNotifier() : super([]) {
-    _loadFromApi();
-    _startPolling();
+  OrdersNotifier() : super([_demoOrder]) {
+    // TEMP DEMO: seeded active order to showcase tracking. Revert after.
+    // _loadFromApi();
+    // _startPolling();
   }
+
+  // TEMP DEMO order — remove.
+  static final Order _demoOrder = Order(
+    id: 'ord_demo_track',
+    restaurantId: 'demo',
+    restaurantName: "Amina's Locals",
+    items: [
+      CartItem(
+        foodItem: const FoodItem(
+          id: 'demo_jollof',
+          name: 'Jollof Rice',
+          description: 'hot meal',
+          price: 80,
+          imageUrl: '',
+          category: FoodCategory.popular,
+        ),
+        quantity: 1,
+      ),
+    ],
+    totalPrice: 86.40,
+    status: OrderStatus.enRoute,
+    createdAt: DateTime.now(),
+    trackingStep: 4,
+    riderName: 'Kwame Mensah',
+    riderPhone: '+233200000000',
+    riderVehicleType: 'Motorbike',
+    orderType: 'food',
+    pickupAddress: "Amina's Locals, Sunyani",
+    pickupLat: 7.3399,
+    pickupLng: -2.3269,
+    deliveryAddress: 'Home: 123 Oak Street, Sunyani',
+    deliveryLat: 7.3350,
+    deliveryLng: -2.3300,
+  );
 
   final _orderService = OrderService();
   Timer? _pollTimer;
@@ -202,6 +239,8 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
           deliveryAddress: o['delivery_address'] as String?,
           deliveryLat: (o['delivery_lat'] as num?)?.toDouble(),
           deliveryLng: (o['delivery_lng'] as num?)?.toDouble(),
+          deliveryPin: o['delivery_pin'] as String?,
+          trackingUrl: o['tracking_url'] as String?,
         )).toList();
         return;
       }
@@ -453,7 +492,10 @@ class UserProfile {
 }
 
 class UserProfileNotifier extends StateNotifier<UserProfile> {
-  UserProfileNotifier() : super(const UserProfile()) {
+  final Ref _ref;
+  final _customerService = CustomerService();
+
+  UserProfileNotifier(this._ref) : super(const UserProfile()) {
     _load();
   }
 
@@ -474,9 +516,36 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     await prefs.setString(_key, jsonEncode(state.toMap()));
   }
 
-  void topUp(double amount) {
-    state = state.copyWith(walletBalance: state.walletBalance + amount);
+  void updateFromUser(User user) {
+    state = state.copyWith(
+      walletBalance: user.walletBalance,
+      points: user.loyaltyPoints,
+      membershipTier: user.membershipTier,
+    );
     _save();
+  }
+
+  Future<bool> topUp(double amount) async {
+    final result = await _customerService.topUpWallet(amount);
+    if (result != null) {
+      state = state.copyWith(
+        walletBalance: (result['wallet_balance'] as num).toDouble(),
+        points: result['loyalty_points'] as int,
+        membershipTier: result['membership_tier'] as String,
+      );
+      _save();
+      // Also update currentUserProvider
+      final currentUser = _ref.read(currentUserProvider);
+      if (currentUser != null) {
+        _ref.read(currentUserProvider.notifier).state = currentUser.copyWith(
+          walletBalance: state.walletBalance,
+          loyaltyPoints: state.points,
+          membershipTier: state.membershipTier,
+        );
+      }
+      return true;
+    }
+    return false;
   }
 
   void deduct(double amount) {
@@ -489,9 +558,25 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     _save();
   }
 
-  void redeemPoints(int pts) {
-    state = state.copyWith(points: state.points - pts);
-    _save();
+  Future<bool> redeemPoints(int pts) async {
+    final result = await _customerService.redeemPoints(pts);
+    if (result != null) {
+      state = state.copyWith(
+        walletBalance: (result['wallet_balance'] as num).toDouble(),
+        points: result['loyalty_points'] as int,
+      );
+      _save();
+      // Also update currentUserProvider
+      final currentUser = _ref.read(currentUserProvider);
+      if (currentUser != null) {
+        _ref.read(currentUserProvider.notifier).state = currentUser.copyWith(
+          walletBalance: state.walletBalance,
+          loyaltyPoints: state.points,
+        );
+      }
+      return true;
+    }
+    return false;
   }
 
   void setMembership(String tier) {
@@ -502,5 +587,11 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
 
 final userProfileProvider =
     StateNotifierProvider<UserProfileNotifier, UserProfile>((ref) {
-  return UserProfileNotifier();
+  final user = ref.watch(currentUserProvider);
+  final notifier = UserProfileNotifier(ref);
+  if (user != null) {
+    // Run after build cycle to avoid Riverpod modify-during-build exception
+    Future.microtask(() => notifier.updateFromUser(user));
+  }
+  return notifier;
 });

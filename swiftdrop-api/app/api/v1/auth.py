@@ -59,4 +59,8 @@ async def get_me(
         role=current_user.role,
         avatar_url=current_user.avatar_url,
         is_verified=current_user.is_verified,
+        onboarding_completed=current_user.onboarding_completed,
+        wallet_balance=float(current_user.wallet_balance or 0.0),
+        loyalty_points=current_user.loyalty_points or 0,
+        membership_tier=current_user.membership_tier or "Bronze",
     )

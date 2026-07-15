@@ -34,6 +34,15 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("androidx.browser:browser:1.8.0")
+        force("androidx.core:core-ktx:1.16.0")
+        force("androidx.core:core:1.16.0")
+        force("androidx.annotation:annotation:1.9.1")
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17

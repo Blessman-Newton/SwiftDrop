@@ -99,7 +99,7 @@ class RiderService {
   }
 
   /// Update active delivery status
-  Future<bool> updateDeliveryStatus(String status, {double? latitude, double? longitude}) async {
+  Future<bool> updateDeliveryStatus(String status, {double? latitude, double? longitude, String? deliveryPin}) async {
     try {
       final response = await _api.dio.put(
         ApiEndpoints.riderDeliveryStatus,
@@ -107,6 +107,7 @@ class RiderService {
           'status': status,
           if (latitude != null) 'latitude': latitude,
           if (longitude != null) 'longitude': longitude,
+          if (deliveryPin != null) 'delivery_pin': deliveryPin,
         },
       );
       return response.statusCode == 200;

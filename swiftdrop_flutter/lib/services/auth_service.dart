@@ -159,6 +159,9 @@ class AuthService {
       displayName: data['name'] as String?,
       phoneNumber: data['phone'] as String?,
       avatarUrl: data['avatar_url'] as String?,
+      walletBalance: (data['wallet_balance'] as num?)?.toDouble() ?? 0.0,
+      loyaltyPoints: data['loyalty_points'] as int? ?? 0,
+      membershipTier: data['membership_tier'] as String? ?? 'Bronze',
     );
   }
 

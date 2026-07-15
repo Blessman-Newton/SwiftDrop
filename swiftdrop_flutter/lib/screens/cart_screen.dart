@@ -45,16 +45,10 @@ class CartScreen extends ConsumerWidget {
                               child: SizedBox(
                                 width: 56,
                                 height: 56,
-                                child: item.foodItem.imageUrl.isNotEmpty
-                                    ? AppImage(
-                                        url: item.foodItem.imageUrl,
-                                        fit: BoxFit.cover)
-                                    : Container(
-                                        color: AppColors.primary
-                                            .withOpacity(0.1),
-                                        child: const Icon(Icons.fastfood,
-                                            color: AppColors.primary),
-                                      ),
+                                child: AppImage(
+                                    url: item.foodItem.imageUrl,
+                                    fit: BoxFit.cover,
+                                    fallbackSeed: item.foodItem.name),
                               ),
                             ),
                             const SizedBox(width: AppSpacing.md),

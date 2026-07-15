@@ -99,6 +99,11 @@ async def handle_webhook(
             payment.provider_response = data
 
         await update_order_status(db, order.id, "CONFIRMED")
+        from app.services.dispatch_service import auto_match_rider
+        try:
+            await auto_match_rider(db, order.id)
+        except Exception:
+            pass
 
         return {"status": "success", "order_id": str(order.id)}
 
@@ -129,6 +134,11 @@ async def verify_payment(db: AsyncSession, reference: str) -> PaymentVerifyRespo
             payment.provider_response = verification
 
         await update_order_status(db, order.id, "CONFIRMED")
+        from app.services.dispatch_service import auto_match_rider
+        try:
+            await auto_match_rider(db, order.id)
+        except Exception:
+            pass
 
     return PaymentVerifyResponse(
         reference=reference,

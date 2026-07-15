@@ -56,3 +56,13 @@ class EarningsSummaryResponse(BaseModel):
     pending_payouts: float
     deliveries_count: int
     average_rating: float
+
+
+class TopUpRequest(BaseModel):
+    amount: float = Field(..., gt=0)
+    payment_method: str = Field("paystack", min_length=1)
+
+
+class RedeemPointsRequest(BaseModel):
+    points: int = Field(..., gt=0)
+

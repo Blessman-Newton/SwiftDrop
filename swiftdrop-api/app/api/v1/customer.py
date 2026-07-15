@@ -14,6 +14,8 @@ from app.schemas.customer import (
     AddressResponse,
     CustomerProfileUpdateRequest,
     OrderHistoryResponse,
+    TopUpRequest,
+    RedeemPointsRequest,
 )
 
 router = APIRouter(prefix="/customer", tags=["customer"])
@@ -144,3 +146,53 @@ async def order_history(
         ],
         total_count=total,
     )
+
+
+@router.post("/wallet/topup")
+async def topup_wallet(
+    request: TopUpRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
+):
+    current_user.wallet_balance = (current_user.wallet_balance or 0.0) + request.amount
+    # Give loyalty points: 10 points per 1 GHS topup
+    points_earned = int(request.amount * 10)
+    current_user.loyalty_points = (current_user.loyalty_points or 0) + points_earned
+    
+    # Calculate membership tier
+    if current_user.loyalty_points >= 5000:
+        current_user.membership_tier = "Gold"
+    elif current_user.loyalty_points >= 2000:
+        current_user.membership_tier = "Silver"
+    else:
+        current_user.membership_tier = "Bronze"
+
+    await db.flush()
+    return {
+        "message": f"Successfully topped up GHS {request.amount:.2f}",
+        "wallet_balance": float(current_user.wallet_balance),
+        "loyalty_points": current_user.loyalty_points,
+        "membership_tier": current_user.membership_tier,
+    }
+
+
+@router.post("/wallet/redeem-points")
+async def redeem_points(
+    request: RedeemPointsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
+):
+    if (current_user.loyalty_points or 0) < request.points:
+        raise HTTPException(status_code=400, detail="Insufficient loyalty points")
+    
+    # Redeem rate: 100 points = 1 GHS
+    cash_value = request.points / 100.0
+    current_user.loyalty_points -= request.points
+    current_user.wallet_balance = (current_user.wallet_balance or 0.0) + cash_value
+    await db.flush()
+    return {
+        "message": f"Redeemed {request.points} points for GHS {cash_value:.2f}",
+        "wallet_balance": float(current_user.wallet_balance),
+        "loyalty_points": current_user.loyalty_points,
+    }
+

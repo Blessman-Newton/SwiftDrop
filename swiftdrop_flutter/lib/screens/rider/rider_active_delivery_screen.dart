@@ -159,15 +159,100 @@ class _RiderActiveDeliveryScreenState
         }
         break;
       case DeliveryState.collected:
-        final success = await service.updateDeliveryStatus('delivered', latitude: lat, longitude: lng);
-        if (mounted && success) {
-          ref.read(riderToastsProvider.notifier).add('Delivery completed! GPS Navigation Guide finished.', ToastType.success);
-          ref.invalidate(riderActiveDeliveryProvider);
-          ref.invalidate(riderDashboardProvider);
-          context.go('/rider/dashboard');
-        }
+        _promptForDeliveryPin();
         break;
     }
+  }
+
+  void _promptForDeliveryPin() {
+    final pinController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Verify Delivery PIN',
+            style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Please ask the customer for their 4-digit security PIN to complete delivery.',
+                style: GoogleFonts.inter(fontSize: 14, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: pinController,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: '0000',
+                  hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, letterSpacing: 0),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  counterText: "",
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text('Cancel', style: GoogleFonts.inter(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final pin = pinController.text.trim();
+                if (pin.length < 4) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please enter the 4-digit PIN', style: GoogleFonts.inter())),
+                  );
+                  return;
+                }
+                
+                final service = ref.read(riderServiceProvider);
+                final lat = _riderPosition.latitude;
+                final lng = _riderPosition.longitude;
+                
+                final success = await service.updateDeliveryStatus(
+                  'delivered', 
+                  latitude: lat, 
+                  longitude: lng, 
+                  deliveryPin: pin
+                );
+                
+                if (mounted) {
+                  if (success) {
+                    Navigator.pop(dialogContext);
+                    ref.read(riderToastsProvider.notifier).add('Delivery completed securely!', ToastType.success);
+                    ref.invalidate(riderActiveDeliveryProvider);
+                    ref.invalidate(riderDashboardProvider);
+                    context.go('/rider/dashboard');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Incorrect delivery PIN code. Please verify and try again.', style: GoogleFonts.inter()),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF006C49),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: Text('Complete', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   DeliveryInfo _getDeliveryInfo() {

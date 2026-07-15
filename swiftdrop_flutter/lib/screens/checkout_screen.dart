@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pay_with_paystack/pay_with_paystack.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../services/order_service.dart';
 import '../services/api_client.dart';
@@ -54,6 +55,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   late String _deliveryAddress;
   MoMoPaymentResult? _momoPayment;
 
+  // 'doorstep' = deliver to address, 'pickup' = collect from restaurant.
+  String _deliveryMethod = 'doorstep';
+
+  bool get _isPickup => _deliveryMethod == 'pickup';
+  bool get _isFood => widget.orderType == 'food';
+
+  double get _effectiveDeliveryFee =>
+      (_isFood && _isPickup) ? 0.0 : widget.deliveryFee;
+  double get _effectiveTotal =>
+      widget.total - widget.deliveryFee + _effectiveDeliveryFee;
+
   @override
   void initState() {
     super.initState();
@@ -95,8 +107,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildDeliveryAddress(surfaceColor, textColor, subtextColor),
-                  const SizedBox(height: 12),
+                  if (_isFood) ...[
+                    _buildDeliveryMethod(surfaceColor, textColor, subtextColor),
+                    const SizedBox(height: 12),
+                  ],
+                  if (!_isPickup || !_isFood)
+                    _buildDeliveryAddress(
+                        surfaceColor, textColor, subtextColor),
+                  if (!_isPickup || !_isFood) const SizedBox(height: 12),
                   _buildOrderSummary(surfaceColor, textColor, subtextColor),
                   const SizedBox(height: 12),
                   _buildPaymentMethod(surfaceColor, textColor, subtextColor),
@@ -110,6 +128,109 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           _buildPayButton(),
         ],
+      ),
+    );
+  }
+
+  // ─── Delivery Method Section ─────────────────────────────────────────────────
+  Widget _buildDeliveryMethod(Color surface, Color text, Color subtext) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.04),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Delivery Method',
+              style: GoogleFonts.inter(
+                  fontSize: 15, fontWeight: FontWeight.w700, color: text)),
+          const SizedBox(height: 12),
+          _deliveryOption(
+            value: 'doorstep',
+            icon: Icons.delivery_dining,
+            title: 'Deliver to my doorstep',
+            subtitle: widget.deliveryFee == 0
+                ? 'Free delivery'
+                : 'GHS ${widget.deliveryFee.toStringAsFixed(2)} delivery fee',
+            text: text,
+            subtext: subtext,
+          ),
+          const SizedBox(height: 8),
+          _deliveryOption(
+            value: 'pickup',
+            icon: Icons.storefront,
+            title: 'Pick up from restaurant',
+            subtitle: 'No delivery fee • collect it yourself',
+            text: text,
+            subtext: subtext,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _deliveryOption({
+    required String value,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color text,
+    required Color subtext,
+  }) {
+    final selected = _deliveryMethod == value;
+    return GestureDetector(
+      onTap: () => setState(() => _deliveryMethod = value),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary.withOpacity(0.06)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary
+                : const Color.fromRGBO(128, 128, 128, 0.2),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                color: selected ? AppColors.primary : subtext, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: text)),
+                  Text(subtitle,
+                      style: GoogleFonts.inter(fontSize: 11, color: subtext)),
+                ],
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: selected ? AppColors.primary : subtext,
+              size: 22,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -251,7 +372,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _buildPriceRow('Subtotal', widget.subtotal, text),
           if (widget.discount > 0)
             _buildPriceRow('Discount', -widget.discount, AppColors.primary, isDiscount: true),
-          _buildPriceRow('Delivery', widget.deliveryFee, text),
+          _buildPriceRow(
+              _isPickup && _isFood ? 'Delivery (Pickup)' : 'Delivery',
+              _effectiveDeliveryFee,
+              text),
           _buildPriceRow('Tax', widget.tax, text),
           const Divider(height: 16),
           Row(
@@ -259,7 +383,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             children: [
               Text('Total', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: text)),
               Text(
-                'GHS ${widget.total.toStringAsFixed(2)}',
+                'GHS ${_effectiveTotal.toStringAsFixed(2)}',
                 style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary),
               ),
             ],
@@ -478,7 +602,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         const Icon(Icons.lock_outline, size: 18),
                         const SizedBox(width: 8),
                         Text(
-                          'Pay GHS ${widget.total.toStringAsFixed(2)}',
+                          'Pay GHS ${_effectiveTotal.toStringAsFixed(2)}',
                           style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                       ],
@@ -576,12 +700,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       orderType: widget.orderType,
       restaurantName: widget.restaurantName,
       pickupAddress: widget.orderType == 'food' ? widget.restaurantName : (widget.parcelPickup ?? ''),
-      deliveryAddress: _deliveryAddress,
+      deliveryAddress: _isPickup && _isFood
+          ? 'Pickup at ${widget.restaurantName}'
+          : _deliveryAddress,
       subtotal: widget.subtotal,
-      deliveryFee: widget.deliveryFee,
+      deliveryFee: _effectiveDeliveryFee,
       tax: widget.tax,
       discount: widget.discount,
-      total: widget.total,
+      total: _effectiveTotal,
       promoCode: widget.promoCode,
       items: widget.orderType == 'food' ? orderItems : null,
     );
@@ -602,7 +728,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final paymentResult = await OrderService().initializePayment(
       orderId: orderId,
       email: widget.userEmail,
-      amount: widget.total,
+      amount: _effectiveTotal,
     );
 
     if (paymentResult == null || paymentResult['access_code'] == null) {
@@ -614,75 +740,206 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     // Step 3: Launch Paystack checkout (MoMo is accessed through Paystack's mobile money channel)
-    setState(() => _statusMessage = 'Opening payment...');
+    // Step 3: Launch Paystack hosted secure page
+    setState(() => _statusMessage = 'Opening secure payment gateway...');
+
+    final authUrl = paymentResult['authorization_url'] as String;
+    final reference = paymentResult['reference'] as String;
 
     try {
-      final reference = PayWithPayStack().generateUuidV4();
-
-      await PayWithPayStack().now(
-        context: context,
-        secretKey: 'sk_test_18e607bd21de019b1407a895b4a8b0c6c0bc6c36',
-        customerEmail: widget.userEmail,
-        customerFirstName: _momoPayment!.displayName.split(' ').first,
-        customerLastName: _momoPayment!.displayName.split(' ').last,
-        customerPhone: '+233${_momoPayment!.phoneNumber}',
-        reference: reference,
-        currency: 'GHS',
-        amount: widget.total,
-        callbackUrl: 'https://swiftdrop-fvcd.onrender.com/api/v1/payments/webhook',
-        channels: [
-          PaystackChannel.mobileMoney,
-          PaystackChannel.card,
-          PaystackChannel.bankTransfer,
-        ],
-        customFields: [
-          PaystackCustomField(
-            displayName: 'Order ID',
-            variableName: 'order_id',
-            value: orderId,
-          ),
-          PaystackCustomField(
-            displayName: 'MoMo Provider',
-            variableName: 'momo_provider',
-            value: _getProviderName(_momoPayment!.provider),
-          ),
-        ],
-        transactionCompleted: (PaymentData data) async {
-          if (data.reference != null) {
-            await _handlePaymentSuccess(data.reference!);
-          }
-        },
-        transactionNotCompleted: (String reason) {
-          setState(() {
-            _isProcessing = false;
-            _statusMessage = 'Payment failed: $reason';
-          });
-        },
-      );
+      final uri = Uri.parse(authUrl);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (mounted) {
+        _showPaymentVerificationDialog(reference);
+      }
     } catch (e) {
       setState(() {
         _isProcessing = false;
-        _statusMessage = 'Payment error: $e';
+        _statusMessage = 'Failed to open payment gateway: $e';
       });
     }
   }
 
-  Future<void> _handlePaymentSuccess(String reference) async {
-    setState(() => _statusMessage = 'Verifying payment...');
+  void _showPaymentVerificationDialog(String reference) {
+    bool isVerifying = false;
+    Timer? verificationTimer;
+    int checkCount = 0;
 
-    final verifyResult = await OrderService().verifyPayment(reference);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            if (verificationTimer == null) {
+              verificationTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+                checkCount++;
+                if (checkCount > 15) {
+                  timer.cancel();
+                  if (mounted) {
+                    setDialogState(() => isVerifying = false);
+                  }
+                  return;
+                }
+                
+                try {
+                  final verifyResult = await OrderService().verifyPayment(reference);
+                  if (verifyResult != null && verifyResult['status'] == 'success') {
+                    timer.cancel();
+                    Navigator.of(dialogContext).pop();
+                    _showOrderPlaced();
+                  }
+                } catch (_) {}
+              });
+            }
 
-    if (verifyResult != null && verifyResult['status'] == 'success') {
-      setState(() => _statusMessage = 'Payment confirmed!');
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) context.go('/orders');
-    } else {
-      setState(() {
-        _isProcessing = false;
-        _statusMessage = 'Payment verification pending. Your order has been placed.';
-      });
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) context.go('/orders');
-    }
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Complete Payment',
+                style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  const CircularProgressIndicator(color: AppColors.primary),
+                  const SizedBox(height: 20),
+                  Text(
+                    'We launched the Paystack secure checkout page. Please complete payment there, then return to the app.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF4B5563)),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Waiting for payment confirmation...',
+                    style: GoogleFonts.inter(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    verificationTimer?.cancel();
+                    Navigator.of(dialogContext).pop();
+                    setState(() {
+                      _isProcessing = false;
+                      _statusMessage = 'Payment pending check. You can verify it in your orders list.';
+                    });
+                  },
+                  child: Text('Cancel', style: GoogleFonts.inter(color: Colors.red)),
+                ),
+                ElevatedButton(
+                  onPressed: isVerifying ? null : () async {
+                    setDialogState(() => isVerifying = true);
+                    try {
+                      final verifyResult = await OrderService().verifyPayment(reference);
+                      if (verifyResult != null && verifyResult['status'] == 'success') {
+                        verificationTimer?.cancel();
+                        Navigator.of(dialogContext).pop();
+                        _showOrderPlaced();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Payment not completed yet or pending. Try again soon.', style: GoogleFonts.inter()),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    } catch (_) {}
+                    setDialogState(() => isVerifying = false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: isVerifying 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('Verify Now', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    ).then((_) {
+      verificationTimer?.cancel();
+    });
+  }
+
+  void _showOrderPlaced() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEEF6EE),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_rounded,
+                    color: AppColors.primary, size: 44),
+              ),
+              const SizedBox(height: 16),
+              Text('Order placed!',
+                  style: GoogleFonts.inter(
+                      fontSize: 22, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Text(
+                _isPickup && _isFood
+                    ? 'Your order from ${widget.restaurantName} is confirmed. We\'ll let you know when it\'s ready for pickup.'
+                    : 'Your order from ${widget.restaurantName} is confirmed and on its way. You can track it live.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: const Color(0xFF6C7A71)),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.go('/map');
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text('Track my order',
+                      style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.go('/home');
+                },
+                child: Text('Continue shopping',
+                    style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF6C7A71))),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

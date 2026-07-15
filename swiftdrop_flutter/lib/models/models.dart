@@ -180,6 +180,9 @@ class User {
   final String? displayName;
   final String? phoneNumber;
   final String? avatarUrl;
+  final double walletBalance;
+  final int loyaltyPoints;
+  final String membershipTier;
 
   const User({
     required this.uid,
@@ -187,6 +190,9 @@ class User {
     this.displayName,
     this.phoneNumber,
     this.avatarUrl,
+    this.walletBalance = 0.0,
+    this.loyaltyPoints = 0,
+    this.membershipTier = 'Bronze',
   });
 
   User copyWith({
@@ -195,6 +201,9 @@ class User {
     String? displayName,
     String? phoneNumber,
     String? avatarUrl,
+    double? walletBalance,
+    int? loyaltyPoints,
+    String? membershipTier,
   }) {
     return User(
       uid: uid ?? this.uid,
@@ -202,6 +211,9 @@ class User {
       displayName: displayName ?? this.displayName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      walletBalance: walletBalance ?? this.walletBalance,
+      loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
+      membershipTier: membershipTier ?? this.membershipTier,
     );
   }
 
@@ -211,6 +223,9 @@ class User {
         'displayName': displayName,
         'phoneNumber': phoneNumber,
         'avatarUrl': avatarUrl,
+        'walletBalance': walletBalance,
+        'loyaltyPoints': loyaltyPoints,
+        'membershipTier': membershipTier,
       };
 
   factory User.fromMap(Map<String, dynamic> map) => User(
@@ -219,6 +234,9 @@ class User {
         displayName: map['displayName'] as String?,
         phoneNumber: map['phoneNumber'] as String?,
         avatarUrl: map['avatarUrl'] as String?,
+        walletBalance: (map['walletBalance'] as num?)?.toDouble() ?? 0.0,
+        loyaltyPoints: map['loyaltyPoints'] as int? ?? 0,
+        membershipTier: map['membershipTier'] as String? ?? 'Bronze',
       );
 }
 
@@ -405,6 +423,8 @@ class Order {
   final double? deliveryLng;
   final String? parcelPickupLocation;
   final String? parcelDeliveryLocation;
+  final String? deliveryPin;
+  final String? trackingUrl;
 
   const Order({
     required this.id,
@@ -430,6 +450,8 @@ class Order {
     this.deliveryLng,
     this.parcelPickupLocation,
     this.parcelDeliveryLocation,
+    this.deliveryPin,
+    this.trackingUrl,
   });
 
   Order copyWith({
@@ -456,6 +478,8 @@ class Order {
     double? deliveryLng,
     String? parcelPickupLocation,
     String? parcelDeliveryLocation,
+    String? deliveryPin,
+    String? trackingUrl,
   }) {
     return Order(
       id: id ?? this.id,
@@ -481,6 +505,8 @@ class Order {
       deliveryLng: deliveryLng ?? this.deliveryLng,
       parcelPickupLocation: parcelPickupLocation ?? this.parcelPickupLocation,
       parcelDeliveryLocation: parcelDeliveryLocation ?? this.parcelDeliveryLocation,
+      deliveryPin: deliveryPin ?? this.deliveryPin,
+      trackingUrl: trackingUrl ?? this.trackingUrl,
     );
   }
 
@@ -508,6 +534,8 @@ class Order {
         'deliveryLng': deliveryLng,
         'parcelPickupLocation': parcelPickupLocation,
         'parcelDeliveryLocation': parcelDeliveryLocation,
+        'deliveryPin': deliveryPin,
+        'trackingUrl': trackingUrl,
       };
 
   factory Order.fromMap(Map<String, dynamic> map) => Order(
@@ -536,6 +564,8 @@ class Order {
         deliveryLng: (map['deliveryLng'] as num?)?.toDouble(),
         parcelPickupLocation: map['parcelPickupLocation'] as String?,
         parcelDeliveryLocation: map['parcelDeliveryLocation'] as String?,
+        deliveryPin: map['deliveryPin'] as String?,
+        trackingUrl: map['trackingUrl'] as String?,
       );
 }
 

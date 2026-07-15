@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import '../models/models.dart';
 import '../providers/providers.dart';
 import '../providers/restaurant_provider.dart';
 import '../theme/app_theme.dart';
@@ -470,6 +471,14 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
                   const SizedBox(height: 24),
 
+                  // Restaurant rails
+                  _buildRail(
+                      'Popular Restaurants', _popular(restaurants), isDark),
+                  _buildRail('Recommended for you',
+                      restaurants.take(8).toList(), isDark),
+                  _buildRail('Most Popular', _mostPopular(restaurants), isDark),
+                  _buildMenuOptions(isDark),
+
                   // All Restaurants heading
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -545,218 +554,17 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                       ),
                     )
                   else
-                    ...filteredRestaurants.map((restaurant) {
-                    final isFav = favorites.contains(restaurant.id);
-                    return Semantics(
-                      label: '${restaurant.name}, ${restaurant.tags.join(', ')}, rating ${restaurant.rating}, delivery time ${restaurant.deliveryTime}',
-                      child: GestureDetector(
-                        onTap: () =>
-                            context.push('/restaurant/${restaurant.id}'),
-                        child: Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Image
-                            Container(
-                              height: (MediaQuery.of(context).size.height * 0.24).clamp(120.0, 176.0),
-                              decoration: BoxDecoration(
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(16)),
-                                image: DecorationImage(
-                                  image:
-                                      NetworkImage(
-                                        restaurant.imageUrl.isNotEmpty
-                                            ? restaurant.imageUrl
-                                            : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-                                      ),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              child: Stack(
-                                children: [
-                                  // Badges
-                                  Positioned(
-                                    top: 16,
-                                    left: 16,
-                                    child: Row(
-                                      children: [
-                                        if (restaurant.isPopular)
-                                          _badge('Popular',
-                                              AppColors.primary),
-                                        if (restaurant.isNew)
-                                          _badge('New', Colors.blue[600]!),
-                                        if (restaurant.isTrending)
-                                          _badge('Trending',
-                                              const Color(0xFF9D4300)),
-                                      ],
-                                    ),
-                                  ),
-                                  // Heart
-                                  Positioned(
-                                    top: 16,
-                                    right: 16,
-                                    child: Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.white.withOpacity(0.8),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.favorite,
-                                        size: 16,
-                                        color: isFav
-                                            ? Colors.red
-                                            : const Color(0xFF3C4A42)
-                                                .withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Info
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          restaurant.name,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.black87,
-                                          ),
-                                          maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              Colors.grey[100],
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize:
-                                              MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.star,
-                                              size: 12,
-                                              color: AppColors.accent,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '${restaurant.rating}',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 10,
-                                                fontWeight:
-                                                    FontWeight.bold,
-                                                color: Colors.black87,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    restaurant.tags.join(' \u2022 '),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: const Color(0xFF3C4A42)
-                                          .withOpacity(0.6),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  // Bottom info
-                                  Container(
-                                    padding: const EdgeInsets.only(
-                                        top: 12),
-                                    decoration: BoxDecoration(
-                                      border: Border(
-                                        top: BorderSide(
-                                          color: Colors.grey[100]!,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.access_time,
-                                            size: 14,
-                                            color: Colors.grey[400]),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          restaurant.deliveryTime,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(
-                                                    0xFF3C4A42)
-                                                .withOpacity(0.6),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Icon(Icons.pedal_bike,
-                                            size: 14,
-                                            color: AppColors.primary),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          restaurant.deliveryFee ==
-                                                  'Free'
-                                              ? 'Free delivery'
-                                              : restaurant
-                                                  .deliveryFee,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            fontWeight:
-                                                FontWeight.w600,
-                                            color:
-                                                AppColors.primary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        ),
-                      ),
-                    );
-                  }),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: filteredRestaurants
+                          .map((restaurant) => _buildRestaurantGridCard(
+                                restaurant,
+                                favorites.contains(restaurant.id),
+                                isDark,
+                              ))
+                          .toList(),
+                    ),
 
                   const SizedBox(height: 32),
                 ],
@@ -770,29 +578,352 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
     );
   }
 
-  Widget _badge(String label, Color color) {
-    return Container(
-      margin: const EdgeInsets.only(right: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(99),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 4,
-          ),
-        ],
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          fontSize: 9,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          letterSpacing: 0.5,
+  /// Restaurant grid card (QuickBite layout, SwiftDrop green palette):
+  /// image with heart, a bottom overlay showing delivery time + fee and a
+  /// rating pill, then name + cuisine below.
+  Widget _buildRestaurantGridCard(
+      Restaurant restaurant, bool isFav, bool isDark) {
+    final cardWidth = (MediaQuery.of(context).size.width - 56) / 2;
+    final fee = restaurant.deliveryFee.isEmpty ? 'Free' : restaurant.deliveryFee;
+    final time = restaurant.deliveryTime.isEmpty
+        ? '20-30 min'
+        : restaurant.deliveryTime;
+
+    return GestureDetector(
+      onTap: () => context.push('/restaurant/${restaurant.id}'),
+      child: SizedBox(
+        width: cardWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 156 / 192,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppImage(
+                      url: restaurant.imageUrl,
+                      fit: BoxFit.cover,
+                      fallbackSeed: restaurant.name,
+                    ),
+                    // Heart
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: GestureDetector(
+                        onTap: () => ref
+                            .read(favoritesProvider.notifier)
+                            .toggle(restaurant.id),
+                        child: Icon(
+                          isFav ? Icons.favorite : Icons.favorite_border,
+                          size: 22,
+                          color: isFav ? Colors.red : Colors.white,
+                          shadows: const [
+                            Shadow(
+                                blurRadius: 4,
+                                color: Color.fromRGBO(0, 0, 0, 0.4)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Bottom overlay: delivery info + rating
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Color(0x00000000),
+                              Color(0x99000000),
+                            ],
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _overlayInfo(Icons.schedule, time,
+                                      FontWeight.w600),
+                                  const SizedBox(height: 2),
+                                  _overlayInfo(Icons.pedal_bike, fee,
+                                      FontWeight.w500),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.star,
+                                      size: 12, color: Color(0xFFFFCB11)),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    restaurant.rating.toStringAsFixed(1),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              restaurant.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+                color: AppColors.textPrimary(isDark),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              restaurant.tags.take(2).join(' • '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+                color: const Color(0xFF868686),
+              ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _overlayInfo(IconData icon, String text, FontWeight weight) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: Colors.white),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: weight,
+              color: Colors.white,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Restaurant> _popular(List<Restaurant> all) {
+    final flagged = all.where((r) => r.isPopular).toList();
+    return flagged.isNotEmpty ? flagged : all.take(8).toList();
+  }
+
+  List<Restaurant> _mostPopular(List<Restaurant> all) {
+    final sorted = [...all]..sort((a, b) => b.rating.compareTo(a.rating));
+    return sorted.take(8).toList();
+  }
+
+  // ── Horizontal restaurant rail (Popular / Recommended / Most Popular) ──
+  Widget _buildRail(String title, List<Restaurant> items, bool isDark) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary(isDark),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 168,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, i) => _buildRailCard(items[i], isDark),
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildRailCard(Restaurant restaurant, bool isDark) {
+    final fee = restaurant.deliveryFee.isEmpty ? 'Free' : restaurant.deliveryFee;
+    final time =
+        restaurant.deliveryTime.isEmpty ? '20-30 min' : restaurant.deliveryTime;
+    return GestureDetector(
+      onTap: () => context.push('/restaurant/${restaurant.id}'),
+      child: SizedBox(
+        width: 160,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AspectRatio(
+              aspectRatio: 16 / 11,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppImage(
+                      url: restaurant.imageUrl,
+                      fit: BoxFit.cover,
+                      fallbackSeed: restaurant.name,
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star,
+                                size: 11, color: Color(0xFFFFCB11)),
+                            const SizedBox(width: 2),
+                            Text(
+                              restaurant.rating.toStringAsFixed(1),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              restaurant.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary(isDark),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$time • $fee',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                  fontSize: 12, color: const Color(0xFF868686)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Menu Options (food categories) ──
+  Widget _buildMenuOptions(bool isDark) {
+    const opts = [
+      {'label': 'Jollof', 'seed': 'Jollof Rice'},
+      {'label': 'Grills', 'seed': 'Chicken'},
+      {'label': 'Local', 'seed': 'Banku'},
+      {'label': 'Rice', 'seed': 'Fried Rice'},
+      {'label': 'Fast Food', 'seed': 'Burger'},
+      {'label': 'Pasta', 'seed': 'Spaghetti'},
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Menu Options',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary(isDark),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: opts.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            itemBuilder: (_, i) {
+              final o = opts[i];
+              return Column(
+                children: [
+                  ClipOval(
+                    child: SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: AppImage(
+                        url: '',
+                        fit: BoxFit.cover,
+                        fallbackSeed: o['seed'],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    o['label']!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary(isDark),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 }

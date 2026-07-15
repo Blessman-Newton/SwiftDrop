@@ -38,6 +38,9 @@ class UserResponse(BaseModel):
     avatar_url: str | None = None
     is_verified: bool = False
     onboarding_completed: bool = False
+    wallet_balance: float = 0.0
+    loyalty_points: int = 0
+    membership_tier: str = "Bronze"
 
     model_config = {"from_attributes": True}
 

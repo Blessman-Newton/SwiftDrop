@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/order_timeline.dart';
+import '../widgets/order_rating_sheet.dart';
 
 class OrdersScreen extends ConsumerWidget {
   const OrdersScreen({super.key});
@@ -374,6 +376,63 @@ class OrdersScreen extends ConsumerWidget {
                       letterSpacing: 1)),
               const SizedBox(height: 12),
               OrderTimeline(order: order, isDark: isDark),
+              if (order.status != OrderStatus.delivered && order.status != OrderStatus.cancelled && order.deliveryPin != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F4F6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE5E7EB)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.lock_outline, color: Color(0xFF4B5563), size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Delivery PIN (Share with rider)',
+                            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF4B5563)),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        order.deliveryPin!,
+                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF10B981), letterSpacing: 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if (order.trackingUrl != null) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: order.trackingUrl!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Tracking link copied to clipboard!', style: GoogleFonts.inter()),
+                          backgroundColor: const Color(0xFF006C49),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_rounded, size: 16, color: Color(0xFF006C49)),
+                    label: Text(
+                      'Copy Tracking Link to Share',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF006C49), fontSize: 13),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF006C49)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Divider(),
@@ -406,6 +465,31 @@ class OrdersScreen extends ConsumerWidget {
                   Text('GHS ${order.totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF006C49))),
                 ],
               ),
+              if (order.status == OrderStatus.delivered ||
+                  (order.riderName ?? '').isNotEmpty) ...[
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      showOrderRatingSheet(context, order);
+                    },
+                    icon: const Icon(Icons.star_rounded,
+                        color: AppColors.primary, size: 18),
+                    label: Text('Rate your order',
+                        style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

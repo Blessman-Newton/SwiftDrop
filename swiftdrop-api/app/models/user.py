@@ -25,6 +25,9 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     onboarding_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    wallet_balance: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0, nullable=True)
+    loyalty_points: Mapped[int] = mapped_column(default=0, nullable=True)
+    membership_tier: Mapped[str] = mapped_column(String(20), default="Bronze", nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

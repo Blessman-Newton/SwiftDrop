@@ -66,6 +66,7 @@ class UpdateDeliveryStatusRequest(BaseModel):
     status: str = Field(..., pattern=r"^(en_route|arrived|picked_up|delivered)$")
     latitude: float | None = None
     longitude: float | None = None
+    delivery_pin: str | None = None
 
 
 class RiderOnlineRequest(BaseModel):

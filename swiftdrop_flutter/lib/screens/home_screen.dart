@@ -4,7 +4,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../providers/restaurant_provider.dart';
 import '../services/tomtom_service.dart';
@@ -23,6 +22,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String _selectedLocation = 'Sunyani, Ghana';
   final TomTomService _tomtom = TomTomService();
 
+  // Popular foods near you (images resolve via FoodImages keyword match).
+  static const List<Map<String, String>> _popularFoods = [
+    {'name': 'Jollof Rice', 'price': 'GHS 80'},
+    {'name': 'Waakye', 'price': 'GHS 35'},
+    {'name': 'Banku & Tilapia', 'price': 'GHS 60'},
+    {'name': 'Fried Rice & Chicken', 'price': 'GHS 70'},
+    {'name': 'Shawarma', 'price': 'GHS 45'},
+    {'name': 'Chicken & Chips', 'price': 'GHS 55'},
+  ];
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -32,7 +41,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final user = ref.watch(currentUserProvider);
     final favorites = ref.watch(favoritesProvider);
     final searchQuery = _searchController.text.toLowerCase();
     final selectedCuisines = ref.watch(selectedCuisinesProvider);
@@ -41,9 +49,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final restaurantsAsync = ref.watch(restaurantsProvider);
 
     final restaurants = restaurantsAsync.value ?? [];
-
-    final favoritedRestaurants =
-        restaurants.where((r) => favorites.contains(r.id)).toList();
 
     // Cuisine chips derived from real restaurant tags, Ghana-first ordering.
     const ghanaCuisines = [
@@ -259,47 +264,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ],
                     ),
                   ),
-                  // Title
-                  Text(
-                    'SwiftDrop',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  // Profile
-                  Semantics(
-                    label: 'View cart',
-                    child: GestureDetector(
-                      onTap: () => context.push('/profile'),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primaryLight,
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 4,
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: AppImage(
-                            url: user?.avatarUrl ??
-                                'https://lh3.googleusercontent.com/aida-public/AB6AXuBkG79QXoo75uCpdkkf2rDP5CfaIcNLlQYuMaIWU93UT62ErvGV7R4UQnxkK60CovYxLIkn1A2EwEmFIkX_g4vFnbd8deHXJzEBzVbVNF63TLdZbsFiYOEYoHy5AGF7gJu7XNw2CyWhpvLef1mAxRtxHy1DwqsPk-uI3ajQRtUt65H877cJKm28AokjH66FjpqMuBj44o5a8bIQMTyltIl2ISZdbI8g5AZm01aFuJkPjKnTfYY8NVIxvwRgHVyaKoDTw8hH9MFDxSo',
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -411,120 +375,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             ),
                           ),
-                          Container(
-                            margin: const EdgeInsets.only(right: 12),
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.tune,
-                              color: Colors.white,
-                              size: 16,
+                          GestureDetector(
+                            onTap: _showFilterSheet,
+                            child: Container(
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.tune,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Sort + Price filter row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<SortOption>(
-                              value: sortOption,
-                              isExpanded: true,
-                              icon: const Icon(Icons.unfold_more, size: 16),
-                              style: GoogleFonts.inter(
-                                  fontSize: 12, color: Colors.black87),
-                              onChanged: (v) {
-                                if (v != null) {
-                                  ref.read(sortOptionProvider.notifier).state =
-                                      v;
-                                }
-                              },
-                              items: const [
-                                DropdownMenuItem(
-                                    value: SortOption.rating,
-                                    child: Text('Top Rated')),
-                                DropdownMenuItem(
-                                    value: SortOption.distance,
-                                    child: Text('Nearest First')),
-                                DropdownMenuItem(
-                                    value: SortOption.deliveryTime,
-                                    child: Text('Fastest Delivery')),
-                                DropdownMenuItem(
-                                    value: SortOption.priceLow,
-                                    child: Text('Price: Low to High')),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          final current = ref.read(maxPriceLevelProvider);
-                          ref.read(maxPriceLevelProvider.notifier).state =
-                              current >= 3 ? 1 : current + 1;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '\$' * maxPrice,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '/${'\$' * (3 - maxPrice)}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: Colors.grey[400],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ),
 
                   const SizedBox(height: 12),
@@ -873,243 +742,106 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                   const SizedBox(height: 24),
 
-                  // Favorites
+                  // Popular Foods
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.favorite,
-                            size: 20,
-                            color: favoritedRestaurants.isNotEmpty
-                                ? Colors.red
-                                : Colors.grey,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Your Go-To Favorites',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary(isDark),
-                            ),
-                          ),
-                        ],
+                      Text(
+                        'Popular Foods',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary(isDark),
+                        ),
                       ),
-                      if (favoritedRestaurants.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${favoritedRestaurants.length} saved',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[400],
-                            ),
+                      GestureDetector(
+                        onTap: () => context.push('/food-delivery'),
+                        child: Text(
+                          'See All',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
                           ),
                         ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  if (favoritedRestaurants.isNotEmpty)
-                    SizedBox(
-                      height: (MediaQuery.of(context).size.height * 0.22).clamp(120.0, 160.0),
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: favoritedRestaurants.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 16),
-                        itemBuilder: (context, index) {
-                          final restaurant = favoritedRestaurants[index];
-                          return GestureDetector(
-                            onTap: () => context
-                                .push('/restaurant/${restaurant.id}'),
-                            child: Container(
-                              width: 208,
-                              clipBehavior: Clip.hardEdge,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Image
-                                  Container(
-                                    height: (MediaQuery.of(context).size.height * 0.15).clamp(80.0, 104.0),
-                                      decoration: BoxDecoration(
-                                        borderRadius: const BorderRadius.vertical(
-                                            top: Radius.circular(24)),
-                                        image: DecorationImage(
-                                          image: NetworkImage(
-                                            restaurant.imageUrl.isNotEmpty
-                                                ? restaurant.imageUrl
-                                                : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-                                          ),
-                                          fit: BoxFit.cover,
+                  SizedBox(
+                    height: 170,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _popularFoods.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 16),
+                      itemBuilder: (context, index) {
+                        final food = _popularFoods[index];
+                        return GestureDetector(
+                          onTap: () => context.push('/food-delivery'),
+                          child: Container(
+                            width: 150,
+                            clipBehavior: Clip.hardEdge,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface(isDark),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withOpacity(isDark ? 0.2 : 0.05),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                  height: 100,
+                                  width: double.infinity,
+                                  child: AppImage(
+                                    url: '',
+                                    fit: BoxFit.cover,
+                                    fallbackSeed: food['name'],
+                                  ),
+                                ),
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        food['name']!,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color:
+                                              AppColors.textPrimary(isDark),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        food['price']!,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
                                         ),
                                       ),
-                                      child: Stack(
-                                        children: [
-                                          // Heart
-                                          Positioned(
-                                            top: 10,
-                                            right: 10,
-                                            child: Container(
-                                            width: 28,
-                                            height: 28,
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  Colors.white.withOpacity(0.95),
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.1),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
-                                            ),
-                                            child: const Icon(
-                                              Icons.favorite,
-                                              size: 14,
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        ),
-                                        // Rating
-                                        Positioned(
-                                          top: 10,
-                                          left: 10,
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color:
-                                                  Colors.white.withOpacity(0.9),
-                                              borderRadius:
-                                                  BorderRadius.circular(99),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                const Icon(
-                                                  Icons.star,
-                                                  size: 10,
-                                                  color: AppColors.accent,
-                                                ),
-                                                const SizedBox(width: 2),
-                                                Text(
-                                                  '${restaurant.rating}',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.black87,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                    ],
                                   ),
-                                  // Info
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          restaurant.name,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          restaurant.tags
-                                              .take(2)
-                                              .join(' • '),
-                                          style: GoogleFonts.inter(
-                                            fontSize: 10,
-                                            color: const Color(0xFF3C4A42)
-                                                .withOpacity(0.6),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  else
-                    // Empty state
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.grey[200]!,
-                          style: BorderStyle.solid,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.favorite,
-                              size: 20,
-                              color: Colors.red,
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 10),
-                          Text(
-                            'No favorites saved yet',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[700],
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tap the heart button on any restaurant details page or card to quickly access your go-to food places here.',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: Colors.grey[400],
-                              height: 1.4,
-                            ),
-                          ),
-                         ],
-                         ),
-                        ),
+                        );
+                      },
+                    ),
+                  ),
 
                      const SizedBox(height: 24),
 
@@ -1169,20 +901,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 // Image
                                 Container(
                                   height: (MediaQuery.of(context).size.height * 0.19).clamp(100.0, 140.0),
-                                  decoration: BoxDecoration(
-                                    borderRadius: const BorderRadius.vertical(
+                                  clipBehavior: Clip.antiAlias,
+                                  decoration: const BoxDecoration(
+                                    borderRadius: BorderRadius.vertical(
                                         top: Radius.circular(24)),
-                                    image: DecorationImage(
-                                      image: NetworkImage(
-                                        restaurant.imageUrl.isNotEmpty
-                                            ? restaurant.imageUrl
-                                            : 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800',
-                                      ),
-                                      fit: BoxFit.cover,
-                                    ),
                                   ),
                                   child: Stack(
                                     children: [
+                                      Positioned.fill(
+                                        child: AppImage(
+                                          url: restaurant.imageUrl,
+                                          fit: BoxFit.cover,
+                                          fallbackSeed: restaurant.name,
+                                        ),
+                                      ),
                                       // Heart
                                       Positioned(
                                         top: 12,
@@ -1367,6 +1099,138 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       updated.add(cuisine);
     }
     ref.read(selectedCuisinesProvider.notifier).state = updated;
+  }
+
+  void _showFilterSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface(isDark),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Consumer(
+        builder: (ctx, sheetRef, _) {
+          final sort = sheetRef.watch(sortOptionProvider);
+          final maxPrice = sheetRef.watch(maxPriceLevelProvider);
+          const sorts = {
+            SortOption.rating: 'Top Rated',
+            SortOption.distance: 'Nearest First',
+            SortOption.deliveryTime: 'Fastest Delivery',
+            SortOption.priceLow: 'Price: Low to High',
+          };
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+                20, 16, 20, 20 + MediaQuery.of(ctx).padding.bottom),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border(isDark),
+                      borderRadius: BorderRadius.circular(9999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Filter & Sort', style: AppText.heading(isDark)),
+                const SizedBox(height: 16),
+                Text('SORT BY', style: AppText.label(isDark)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: sorts.entries.map((e) {
+                    final active = sort == e.key;
+                    return GestureDetector(
+                      onTap: () => sheetRef
+                          .read(sortOptionProvider.notifier)
+                          .state = e.key,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.primary
+                              : AppColors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(9999),
+                        ),
+                        child: Text(
+                          e.value,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: active ? Colors.white : AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                Text('MAX PRICE', style: AppText.label(isDark)),
+                const SizedBox(height: 8),
+                Row(
+                  children: List.generate(3, (i) {
+                    final level = i + 1;
+                    final active = maxPrice >= level;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => sheetRef
+                            .read(maxPriceLevelProvider.notifier)
+                            .state = level,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppColors.primary
+                                : AppColors.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '\$' * level,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: active ? Colors.white : AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    child: Text('Show results',
+                        style: GoogleFonts.inter(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget _buildCuisineChip(String label, bool selected, VoidCallback onTap) {

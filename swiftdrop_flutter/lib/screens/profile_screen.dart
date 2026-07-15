@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../widgets/app_image.dart';
+import '../services/notification_service.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -191,14 +192,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   Row(
                                     children: [
                                       _buildWalletAction(
-                                          Icons.add_circle, 'Top Up', () {
-                                        ref.read(userProfileProvider.notifier).topUp(25.0);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Added GHS 25.00 to SwiftBalance', style: GoogleFonts.inter()),
-                                            backgroundColor: const Color(0xFF006C49),
-                                          ),
-                                        );
+                                          Icons.add_circle, 'Top Up', () async {
+                                        final success = await ref.read(userProfileProvider.notifier).topUp(25.0);
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(success 
+                                                ? 'Added GHS 25.00 to SwiftBalance' 
+                                                : 'Failed to top up wallet balance. Try again.',
+                                                style: GoogleFonts.inter()),
+                                              backgroundColor: success ? const Color(0xFF006C49) : Colors.red,
+                                            ),
+                                          );
+                                        }
                                       }),
                                       const SizedBox(width: 8),
                                       _buildWalletAction(Icons.send, 'Send', () {}),
@@ -385,11 +391,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   ),
                                 ),
                               ),
-                              onTap: () => _showPlaceholderSheet('Notifications', Icons.notifications_active, [
-                                'Order updates: ON',
-                                'Promotions: ON',
-                                'New restaurants: OFF',
-                              ]),
+                              onTap: () => _showRealNotificationsSheet(),
                             ),
                             _buildSettingsItem(
                               icon: Icons.group_add,
@@ -845,6 +847,156 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showRealNotificationsSheet() {
+    final notificationService = NotificationService();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.4,
+              maxChildSize: 0.9,
+              expand: false,
+              builder: (context, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFBBCABF),
+                            borderRadius: BorderRadius.circular(9999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.notifications_active, color: Color(0xFF006C49), size: 24),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Notifications',
+                                style: GoogleFonts.inter(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF161D19),
+                                ),
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              await notificationService.markAllRead();
+                              setDialogState(() {});
+                            },
+                            child: Text(
+                              'Clear All',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: const Color(0xFF006C49),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: FutureBuilder<Map<String, dynamic>>(
+                          future: notificationService.listNotifications(),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator(color: Color(0xFF006C49)));
+                            }
+                            if (snapshot.hasError || !snapshot.hasData) {
+                              return Center(
+                                child: Text('Failed to load notifications', style: GoogleFonts.inter()),
+                              );
+                            }
+
+                            final data = snapshot.data!;
+                            final List notifications = data['notifications'] ?? [];
+                            if (notifications.isEmpty) {
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey),
+                                    const SizedBox(height: 12),
+                                    Text('No notifications found', style: GoogleFonts.inter(color: Colors.grey)),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            return ListView.builder(
+                              controller: scrollController,
+                              itemCount: notifications.length,
+                              itemBuilder: (context, index) {
+                                final notif = notifications[index] as Map<String, dynamic>;
+                                final isRead = notif['is_read'] ?? false;
+                                return Card(
+                                  color: isRead ? Colors.white : const Color(0xFFEEF6EE),
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    title: Text(
+                                      notif['title'] ?? 'Notification',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                        fontSize: 15,
+                                        color: const Color(0xFF161D19),
+                                      ),
+                                    ),
+                                    subtitle: Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        notif['body'] ?? '',
+                                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4B5563)),
+                                      ),
+                                    ),
+                                    trailing: !isRead 
+                                        ? IconButton(
+                                            icon: const Icon(Icons.mark_email_read, color: Color(0xFF006C49)),
+                                            onPressed: () async {
+                                              await notificationService.markRead(notif['id']);
+                                              setDialogState(() {});
+                                            },
+                                          )
+                                        : null,
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 

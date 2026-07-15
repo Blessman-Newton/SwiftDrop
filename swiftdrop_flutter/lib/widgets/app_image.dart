@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../utils/food_images.dart';
 
 class AppImage extends StatelessWidget {
   final String url;
@@ -11,6 +12,11 @@ class AppImage extends StatelessWidget {
   final Widget? errorWidget;
   final Color? backgroundColor;
 
+  /// When set, a missing/broken network image falls back to a bundled food
+  /// photo chosen from this seed (usually the dish or restaurant name) instead
+  /// of a broken-image icon.
+  final String? fallbackSeed;
+
   const AppImage({
     super.key,
     required this.url,
@@ -21,6 +27,7 @@ class AppImage extends StatelessWidget {
     this.placeholder,
     this.errorWidget,
     this.backgroundColor,
+    this.fallbackSeed,
   });
 
   Widget _buildPlaceholder() {
@@ -40,19 +47,32 @@ class AppImage extends StatelessWidget {
   }
 
   Widget _buildError() {
-    return errorWidget ??
-        Container(
-          width: width,
-          height: height,
-          color: backgroundColor ?? const Color(0xFFF4FBF4),
-          child: const Center(
-            child: Icon(
-              Icons.broken_image_rounded,
-              color: Color(0xFF9CA3AF),
-              size: 28,
-            ),
-          ),
-        );
+    // Prefer a bundled food photo when a seed is provided.
+    if (fallbackSeed != null) {
+      return Image.asset(
+        FoodImages.forName(fallbackSeed),
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (_, __, ___) => _buildIconError(),
+      );
+    }
+    return errorWidget ?? _buildIconError();
+  }
+
+  Widget _buildIconError() {
+    return Container(
+      width: width,
+      height: height,
+      color: backgroundColor ?? const Color(0xFFF4FBF4),
+      child: const Center(
+        child: Icon(
+          Icons.broken_image_rounded,
+          color: Color(0xFF9CA3AF),
+          size: 28,
+        ),
+      ),
+    );
   }
 
   @override

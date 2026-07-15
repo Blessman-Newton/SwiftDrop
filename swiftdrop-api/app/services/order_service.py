@@ -9,6 +9,9 @@ from app.core.exceptions import BadRequestException, ForbiddenException, NotFoun
 from app.models.order import Order, OrderItem
 from app.models.user import User
 from app.schemas.order import CreateOrderRequest, OrderResponse
+from app.config import get_settings
+
+settings = get_settings()
 
 
 VALID_TRANSITIONS = {
@@ -34,6 +37,8 @@ def _validate_transition(current_status: str, new_status: str) -> None:
 async def create_order(
     db: AsyncSession, customer_id: UUID, request: CreateOrderRequest
 ) -> OrderResponse:
+    import random
+    delivery_pin = "".join([str(random.randint(0, 9)) for _ in range(4)])
     order = Order(
         customer_id=customer_id,
         order_type=request.order_type,
@@ -51,6 +56,7 @@ async def create_order(
         total=request.total,
         promo_code=request.promo_code,
         status="CREATED",
+        metadata_={"delivery_pin": delivery_pin},
     )
     db.add(order)
     await db.flush()
@@ -214,6 +220,8 @@ def _order_to_response(order: Order, items: list[OrderItem] | None = None) -> Or
         cancelled_at=order.cancelled_at,
         rider_lat=rider_lat,
         rider_lng=rider_lng,
+        delivery_pin=order.metadata_.get("delivery_pin") if order.metadata_ else None,
+        tracking_url=f"{settings.APP_BASE_URL}/api/v1/orders/{order.id}/tracking",
         items=[
             {
                 "id": str(item.id),
