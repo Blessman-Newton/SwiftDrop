@@ -116,7 +116,7 @@ async def public_tracking_page(
                                         iconAnchor: [18, 18]
                                     }})
                                 }}).addTo(map).bindPopup('Rider Current Location').openPopup();
-                            } else {{
+                            }} else {{
                                 riderMarker.setLatLng(pos);
                             }}
                             map.panTo(pos);
