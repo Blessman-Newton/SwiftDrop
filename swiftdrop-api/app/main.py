@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.config import get_settings
 from app.core.database import engine, Base
+from app.api.v1.setup import run_migrations
 # Import models to register them with Base.metadata
 from app.models import (
     User, RiderProfile, OTPCode,
@@ -25,8 +26,18 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("Database tables ensured")
+    # Run column/table migrations automatically
+    try:
+        done = await run_migrations()
+        if done:
+            print(f"Auto-migrations applied: {', '.join(done)}")
+        else:
+            print("Auto-migrations: nothing new to apply")
+    except Exception as exc:
+        print(f"Auto-migration error (non-fatal): {exc}")
     yield
     print(f"Shutting down {settings.APP_NAME} API...")
+
 
 
 app = FastAPI(
