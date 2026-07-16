@@ -130,4 +130,13 @@ export const api = {
     request<any>(`/admin/cosmetics/${id}/toggle`, {
       method: 'PATCH',
     }),
+
+  // Gas settings
+  getGasPrices: () => request<Record<string, number>>('/admin/settings/gas-prices'),
+
+  updateGasPrices: (prices: Record<string, number>) =>
+    request<any>('/admin/settings/gas-prices', {
+      method: 'POST',
+      body: JSON.stringify(prices),
+    }),
 }

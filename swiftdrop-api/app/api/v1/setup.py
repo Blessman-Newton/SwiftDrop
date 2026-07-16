@@ -126,6 +126,20 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
                 """))
                 migrations_done.append("rider_location_columns")
             
+            # Check if delivery_pin column exists on orders
+            result = await conn.execute(text("""
+                SELECT column_name 
+                FROM information_schema.columns 
+                WHERE table_name = 'orders' AND column_name = 'delivery_pin'
+            """))
+            
+            if not result.fetchone():
+                await conn.execute(text("""
+                    ALTER TABLE orders 
+                    ADD COLUMN delivery_pin VARCHAR(10)
+                """))
+                migrations_done.append("delivery_pin_column")
+
             # Check if cosmetics table exists
             result = await conn.execute(text("""
                 SELECT EXISTS (

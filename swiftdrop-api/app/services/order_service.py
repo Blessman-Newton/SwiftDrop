@@ -56,6 +56,7 @@ async def create_order(
         total=request.total,
         promo_code=request.promo_code,
         status="CREATED",
+        delivery_pin=delivery_pin,
         metadata_={"delivery_pin": delivery_pin},
     )
     db.add(order)

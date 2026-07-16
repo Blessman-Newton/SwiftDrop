@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -434,12 +435,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
           ),
           Positioned(
             right: 16,
-            bottom: MediaQuery.of(context).size.height * 0.38,
+            bottom: MediaQuery.of(context).size.height * 0.48 + 56,
             child: _buildZoomControls(isDark),
           ),
           Positioned(
             right: 16,
-            bottom: MediaQuery.of(context).size.height * 0.38 - 56,
+            bottom: MediaQuery.of(context).size.height * 0.48,
             child: _buildViewToggleFAB(isDark),
           ),
           Positioned(
@@ -880,6 +881,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             _buildStepper(isDark),
             const SizedBox(height: 14),
             _buildCourierInfo(stepDetails, isDark),
+            _buildDeliveryPinCard(isDark),
             const SizedBox(height: 12),
             _buildContactButtons(isDark),
           ],
@@ -1091,6 +1093,88 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     );
   }
 
+  Widget _buildDeliveryPinCard(bool isDark) {
+    final activeOrder = ref.watch(activeOrderProvider);
+    final pin = activeOrder?.deliveryPin;
+    if (pin == null || _activeStep >= 3) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Delivery Confirmation Code',
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade400,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Share this 4-digit PIN with your rider',
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    color: Colors.grey.shade500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Text(
+              pin,
+              style: GoogleFonts.inter(
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 6,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildContactButtons(bool isDark) {
     final activeOrder = ref.watch(activeOrderProvider);
     final riderName = activeOrder?.riderName ?? 'Assigned Rider';
@@ -1175,7 +1259,19 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 Semantics(
                   label: 'Chat with rider',
                   child: GestureDetector(
-                    onTap: () => setState(() => _isChatOpen = true),
+                    onTap: () async {
+                      final phone = activeOrder?.riderPhone ?? '+233240000000';
+                      final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                      final Uri whatsappUri = Uri.parse('https://wa.me/${cleanPhone.replaceAll('+', '')}');
+                      if (await canLaunchUrl(whatsappUri)) {
+                        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+                      } else {
+                        final Uri smsUri = Uri.parse('sms:$cleanPhone');
+                        if (await canLaunchUrl(smsUri)) {
+                          await launchUrl(smsUri);
+                        }
+                      }
+                    },
                     child: Container(
                       padding:
                           const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -1205,7 +1301,14 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 Semantics(
                   label: 'Call rider',
                   child: GestureDetector(
-                    onTap: _startCall,
+                    onTap: () async {
+                      final phone = activeOrder?.riderPhone ?? '+233240000000';
+                      final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                      final Uri telUri = Uri.parse('tel:$cleanPhone');
+                      if (await canLaunchUrl(telUri)) {
+                        await launchUrl(telUri);
+                      }
+                    },
                     child: Container(
                       padding:
                           const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

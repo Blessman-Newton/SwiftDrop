@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_theme.dart';
 import '../services/order_service.dart';
+import '../services/customer_service.dart';
 
 class GasBookingScreen extends ConsumerStatefulWidget {
   const GasBookingScreen({super.key});
@@ -26,24 +27,34 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
 
   final List<String> _sizes = ['6 kg', '12.5 kg', '14 kg', '22 kg', '50 kg'];
 
+  Map<String, double> _gasPrices = {
+    '6 kg': 75.0,
+    '12.5 kg': 150.0,
+    '14 kg': 180.0,
+    '22 kg': 280.0,
+    '50 kg': 600.0,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGasPrices();
+  }
+
+  Future<void> _loadGasPrices() async {
+    final prices = await CustomerService().getGasPrices();
+    if (prices != null && prices.isNotEmpty && mounted) {
+      setState(() {
+        _gasPrices = prices;
+      });
+    }
+  }
+
   double get _basePrice {
     if (_fillType == 'Customize Fill') {
       return double.tryParse(_customAmountController.text) ?? 0.0;
     }
-    switch (_selectedSize) {
-      case '6 kg':
-        return 75.0;
-      case '12.5 kg':
-        return 150.0;
-      case '14 kg':
-        return 180.0;
-      case '22 kg':
-        return 280.0;
-      case '50 kg':
-        return 600.0;
-      default:
-        return 150.0;
-    }
+    return _gasPrices[_selectedSize] ?? 150.0;
   }
 
   double get _deliveryFee => 15.0;

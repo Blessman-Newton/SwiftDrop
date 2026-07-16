@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from './api'
 import type { DashboardStats, User, Rider, Restaurant, AdminOrder, AnalyticsData, AdminMenuItem } from './types'
 import CosmeticsView from './components/CosmeticsView'
+import GasSettingsView from './components/GasSettingsView'
 
-type View = 'dashboard' | 'users' | 'riders' | 'orders' | 'restaurants' | 'analytics' | 'cosmetics'
+type View = 'dashboard' | 'users' | 'riders' | 'orders' | 'restaurants' | 'analytics' | 'cosmetics' | 'gas_pricing'
 
 const STATUS_COLORS: Record<string, string> = {
   CREATED: 'bg-yellow-100 text-yellow-800',
@@ -248,6 +249,7 @@ function Sidebar({ view, setView }: { view: View; setView: (v: View) => void }) 
     { key: 'orders', label: 'Orders', icon: '📦' },
     { key: 'restaurants', label: 'Restaurants', icon: '🍽️' },
     { key: 'cosmetics', label: 'Cosmetics', icon: '💄' },
+    { key: 'gas_pricing', label: 'Gas Pricing', icon: '⛽' },
     { key: 'analytics', label: 'Analytics', icon: '📈' },
   ]
 
@@ -906,6 +908,7 @@ export default function App() {
         {view === 'orders' && <OrdersView token={token} />}
         {view === 'restaurants' && <RestaurantsView token={token} />}
         {view === 'cosmetics' && <CosmeticsView />}
+        {view === 'gas_pricing' && <GasSettingsView />}
         {view === 'analytics' && <AnalyticsView token={token} />}
       </main>
     </div>

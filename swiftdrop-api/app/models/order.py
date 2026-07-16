@@ -56,6 +56,7 @@ class Order(Base):
     total: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     promo_code: Mapped[str | None] = mapped_column(String(20))
     payment_ref: Mapped[str | None] = mapped_column(String(100), index=True)
+    delivery_pin: Mapped[str | None] = mapped_column(String(10))
     payment_status: Mapped[str] = mapped_column(
         Enum("pending", "paid", "failed", "refunded", name="payment_status_enum"),
         default="pending",

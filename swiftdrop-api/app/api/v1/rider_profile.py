@@ -173,7 +173,7 @@ async def update_delivery_status(
     new_status = status_map.get(request.status, request.status.upper())
     
     if new_status == "DELIVERED":
-        expected_pin = order.metadata_.get("delivery_pin") if order.metadata_ else None
+        expected_pin = (order.metadata_.get("delivery_pin") if order.metadata_ else None) or order.delivery_pin
         if expected_pin and expected_pin != request.delivery_pin:
             raise HTTPException(status_code=400, detail="Invalid delivery PIN code. Verification failed.")
 

@@ -49,4 +49,18 @@ class CustomerService {
       return null;
     }
   }
+
+  /// Fetch LPG gas cylinder size to price mapping dynamically from the backend settings
+  Future<Map<String, double>?> getGasPrices() async {
+    try {
+      final response = await _api.dio.get('/api/v1/customer/settings/gas-prices');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = response.data;
+        return data.map((key, value) => MapEntry(key, (value as num).toDouble()));
+      }
+      return null;
+    } on DioException catch (_) {
+      return null;
+    }
+  }
 }

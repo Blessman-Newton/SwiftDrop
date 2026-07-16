@@ -10,6 +10,7 @@ from app.models.address import Address
 from app.models.order import Order
 from app.models.user import User
 from app.models.cosmetic import CosmeticProduct
+from app.models.settings import PlatformSetting
 from app.schemas.customer import (
     AddressCreateRequest,
     AddressResponse,
@@ -217,4 +218,17 @@ async def list_customer_cosmetics(
         }
         for c in cosmetics
     ]
+
+
+@router.get("/settings/gas-prices")
+async def get_gas_prices(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
+):
+    query = select(PlatformSetting).where(PlatformSetting.key == "gas_refill_prices")
+    result = await db.execute(query)
+    setting = result.scalar_one_or_none()
+    if not setting:
+        return {"6 kg": 75.0, "12.5 kg": 150.0, "14 kg": 180.0, "22 kg": 280.0, "50 kg": 600.0}
+    return setting.value
 

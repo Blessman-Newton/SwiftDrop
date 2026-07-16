@@ -213,6 +213,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _pageController = PageController();
     _scrollController = ScrollController();
+    _initializeCurrentLocation();
+  }
+
+  Future<void> _initializeCurrentLocation() async {
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high));
+      final result = await _tomtom.reverseGeocode(
+        LatLng(pos.latitude, pos.longitude));
+      if (mounted) {
+        setState(() {
+          _selectedLocation = result?.address ??
+              '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+        });
+      }
+    } catch (_) {}
   }
 
   @override

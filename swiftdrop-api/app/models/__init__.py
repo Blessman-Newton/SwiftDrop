@@ -9,6 +9,7 @@ from app.models.notification import Notification
 from app.models.review import Review
 from app.models.address import Address
 from app.models.cosmetic import CosmeticProduct
+from app.models.settings import PlatformSetting
 
 __all__ = [
     "User",
@@ -28,4 +29,5 @@ __all__ = [
     "Review",
     "Address",
     "CosmeticProduct",
+    "PlatformSetting",
 ]

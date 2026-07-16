@@ -13,6 +13,7 @@ from app.models.restaurant import Restaurant, MenuItem
 from app.models.user import User, RiderProfile
 from app.models.audit import AuditLog
 from app.models.cosmetic import CosmeticProduct
+from app.models.settings import PlatformSetting
 from app.schemas.admin import (
     AdminDashboardStatsResponse,
     AdminUserResponse,
@@ -554,3 +555,50 @@ async def toggle_admin_cosmetic(
     await db.flush()
 
     return {"message": f"Cosmetic {'activated' if cosmetic.is_available else 'deactivated'}", "is_available": cosmetic.is_available}
+
+
+@router.get("/settings/gas-prices")
+async def get_admin_gas_prices(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_dep),
+):
+    query = select(PlatformSetting).where(PlatformSetting.key == "gas_refill_prices")
+    result = await db.execute(query)
+    setting = result.scalar_one_or_none()
+    if not setting:
+        return {"6 kg": 75.0, "12.5 kg": 150.0, "14 kg": 180.0, "22 kg": 280.0, "50 kg": 600.0}
+    return setting.value
+
+
+@router.post("/settings/gas-prices")
+async def update_admin_gas_prices(
+    prices: dict[str, float],
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_dep),
+):
+    query = select(PlatformSetting).where(PlatformSetting.key == "gas_refill_prices")
+    result = await db.execute(query)
+    setting = result.scalar_one_or_none()
+    if not setting:
+        setting = PlatformSetting(
+            key="gas_refill_prices",
+            value=prices,
+            description="Cylinder size to GHS price mapping for scheduled LPG refill delivery services.",
+            updated_by=admin.id,
+        )
+        db.add(setting)
+    else:
+        setting.value = prices
+        setting.updated_by = admin.id
+        setting.updated_at = datetime.now(timezone.utc)
+
+    log = AuditLog(
+        admin_id=admin.id,
+        action="update_gas_prices",
+        entity_type="settings",
+        entity_id="gas_refill_prices",
+        new_value=prices,
+    )
+    db.add(log)
+    await db.flush()
+    return {"message": "Gas prices updated successfully", "prices": prices}
