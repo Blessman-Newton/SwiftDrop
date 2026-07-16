@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field
 
 
@@ -116,7 +117,7 @@ class PlatformAnalyticsResponse(BaseModel):
 
 
 class AdminCosmeticResponse(BaseModel):
-    id: str
+    id: UUID
     name: str
     description: str | None = None
     price: float
