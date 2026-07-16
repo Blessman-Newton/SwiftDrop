@@ -18,17 +18,21 @@ class PaystackProvider(PaymentProvider):
         }
 
     async def initialize_transaction(
-        self, email: str, amount: float, currency: str = "GHS", metadata: dict | None = None
+        self, email: str, amount: float, currency: str = "GHS", metadata: dict | None = None, reference: str | None = None
     ) -> dict:
+        payload = {
+            "email": email,
+            "amount": int(amount * 100),
+            "currency": currency,
+            "metadata": metadata or {},
+        }
+        if reference:
+            payload["reference"] = reference
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/transaction/initialize",
-                json={
-                    "email": email,
-                    "amount": int(amount * 100),
-                    "currency": currency,
-                    "metadata": metadata or {},
-                },
+                json=payload,
                 headers=self.headers,
                 timeout=30.0,
             )

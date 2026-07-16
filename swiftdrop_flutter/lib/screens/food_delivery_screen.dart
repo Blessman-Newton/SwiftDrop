@@ -474,7 +474,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
                   // Restaurant rails
                   _buildRail(
-                      'Popular Restaurants', _popular(restaurants), isDark),
+                      'Featured Restaurants', _popular(restaurants), isDark),
                   ref.watch(recommendedFoodProvider).when(
                         data: (foods) => _buildRecommendedFoodSection(foods.take(6).toList(), isDark),
                         loading: () => const Center(

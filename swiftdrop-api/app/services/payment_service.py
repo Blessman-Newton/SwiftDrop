@@ -44,6 +44,7 @@ async def initialize_payment(
         amount=request.amount,
         currency=request.currency,
         metadata=metadata,
+        reference=reference,
     )
 
     payment = Payment(
@@ -82,6 +83,15 @@ async def handle_webhook(
         )
         order = result.scalar_one_or_none()
         if not order:
+            payment_q = select(Payment).where(Payment.reference == reference)
+            payment_res = await db.execute(payment_q)
+            payment = payment_res.scalar_one_or_none()
+            if payment:
+                order_q = select(Order).options(selectinload(Order.items)).where(Order.id == payment.order_id)
+                order_res = await db.execute(order_q)
+                order = order_res.scalar_one_or_none()
+
+        if not order:
             return {"status": "error", "message": "Order not found"}
 
         if order.payment_status == "paid":
@@ -115,6 +125,15 @@ async def verify_payment(db: AsyncSession, reference: str) -> PaymentVerifyRespo
         select(Order).where(Order.payment_ref == reference)
     )
     order = result.scalar_one_or_none()
+    if not order:
+        payment_q = select(Payment).where(Payment.reference == reference)
+        payment_res = await db.execute(payment_q)
+        payment = payment_res.scalar_one_or_none()
+        if payment:
+            order_q = select(Order).where(Order.id == payment.order_id)
+            order_res = await db.execute(order_q)
+            order = order_res.scalar_one_or_none()
+
     if not order:
         raise NotFoundException("Payment not found")
 
