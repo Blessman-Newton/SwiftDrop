@@ -23,6 +23,15 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
   late final TextEditingController _deliveryController;
   final _formKey = GlobalKey<FormState>();
 
+  final MapController _mapController = MapController();
+  bool _mapReady = false;
+
+  double? _lastPickupLat;
+  double? _lastPickupLng;
+  double? _lastDeliveryLat;
+  double? _lastDeliveryLng;
+  List<LatLng> _routePoints = [];
+
   @override
   void initState() {
     super.initState();
@@ -39,11 +48,66 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
   void dispose() {
     _pickupController.dispose();
     _deliveryController.dispose();
+    _mapController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateRoute(LatLng origin, LatLng destination) async {
+    try {
+      final route = await TomTomService().calculateRoute(origin, destination);
+      if (route != null && mounted) {
+        setState(() {
+          _routePoints = route.points;
+        });
+      }
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
+    final booking = ref.watch(parcelBookingProvider);
+
+    if (booking.pickupLat != _lastPickupLat ||
+        booking.pickupLng != _lastPickupLng ||
+        booking.deliveryLat != _lastDeliveryLat ||
+        booking.deliveryLng != _lastDeliveryLng) {
+      _lastPickupLat = booking.pickupLat;
+      _lastPickupLng = booking.pickupLng;
+      _lastDeliveryLat = booking.deliveryLat;
+      _lastDeliveryLng = booking.deliveryLng;
+
+      if (booking.pickupLat != null && booking.pickupLng != null &&
+          booking.deliveryLat != null && booking.deliveryLng != null) {
+        _updateRoute(
+          LatLng(booking.pickupLat!, booking.pickupLng!),
+          LatLng(booking.deliveryLat!, booking.deliveryLng!),
+        );
+      } else {
+        _routePoints = [];
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_mapReady) {
+          if (booking.pickupLat != null && booking.pickupLng != null &&
+              booking.deliveryLat != null && booking.deliveryLng != null) {
+            _mapController.fitCamera(
+              CameraFit.bounds(
+                bounds: LatLngBounds.fromPoints([
+                  LatLng(booking.pickupLat!, booking.pickupLng!),
+                  LatLng(booking.deliveryLat!, booking.deliveryLng!),
+                ]),
+                padding: const EdgeInsets.only(top: 180, bottom: 280, left: 50, right: 50),
+              ),
+            );
+          } else if (booking.pickupLat != null && booking.pickupLng != null) {
+            _mapController.move(LatLng(booking.pickupLat!, booking.pickupLng!), 14);
+          } else if (booking.deliveryLat != null && booking.deliveryLng != null) {
+            _mapController.move(LatLng(booking.deliveryLat!, booking.deliveryLng!), 14);
+          }
+        }
+      });
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4FBF4),
       body: Stack(
@@ -52,16 +116,82 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
           Positioned.fill(
             child: ClipRect(
               child: FlutterMap(
+                mapController: _mapController,
                 options: MapOptions(
                   initialCenter: TomTomService.defaultCenter,
                   initialZoom: 13,
                   maxZoom: 19,
                   minZoom: 1,
+                  onMapReady: () {
+                    _mapReady = true;
+                    if (booking.pickupLat != null && booking.pickupLng != null &&
+                        booking.deliveryLat != null && booking.deliveryLng != null) {
+                      _mapController.fitCamera(
+                        CameraFit.bounds(
+                          bounds: LatLngBounds.fromPoints([
+                            LatLng(booking.pickupLat!, booking.pickupLng!),
+                            LatLng(booking.deliveryLat!, booking.deliveryLng!),
+                          ]),
+                          padding: const EdgeInsets.only(top: 180, bottom: 280, left: 50, right: 50),
+                        ),
+                      );
+                    } else if (booking.pickupLat != null && booking.pickupLng != null) {
+                      _mapController.move(LatLng(booking.pickupLat!, booking.pickupLng!), 14);
+                    }
+                  },
                 ),
                 children: [
                   TileLayer(
                     urlTemplate: TomTomService.tileUrl,
                     userAgentPackageName: 'com.swiftdrop.app',
+                  ),
+                  if (_routePoints.isNotEmpty)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _routePoints,
+                          color: const Color(0xFF10B981),
+                          strokeWidth: 4,
+                        ),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: [
+                      if (booking.pickupLat != null && booking.pickupLng != null)
+                        Marker(
+                          point: LatLng(booking.pickupLat!, booking.pickupLng!),
+                          width: 36,
+                          height: 36,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF006C49),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                              ],
+                            ),
+                            child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                          ),
+                        ),
+                      if (booking.deliveryLat != null && booking.deliveryLng != null)
+                        Marker(
+                          point: LatLng(booking.deliveryLat!, booking.deliveryLng!),
+                          width: 36,
+                          height: 36,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF7E2D),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                              ],
+                            ),
+                            child: const Icon(Icons.location_on, color: Colors.white, size: 18),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

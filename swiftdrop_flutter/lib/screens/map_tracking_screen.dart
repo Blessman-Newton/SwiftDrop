@@ -93,6 +93,40 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   LatLng? _driverPosition;
   LatLng? _destinationPosition;
 
+  int _riderProgressIndex = 0;
+  Timer? _simulationTimer;
+
+  void _startRiderSimulation() {
+    _simulationTimer?.cancel();
+    _riderProgressIndex = 0;
+    if (_routePoints.isEmpty) return;
+
+    _simulationTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final activeOrder = ref.read(activeOrderProvider);
+      if (activeOrder == null) {
+        timer.cancel();
+        return;
+      }
+
+      final isMoving = activeOrder.status == OrderStatus.pickedUp ||
+                       activeOrder.status == OrderStatus.enRoute;
+      if (!isMoving) return;
+
+      if (_riderProgressIndex < _routePoints.length - 1) {
+        setState(() {
+          _riderProgressIndex++;
+          _driverPosition = _routePoints[_riderProgressIndex];
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -127,6 +161,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       setState(() {
         _routePoints = route.points;
       });
+      _startRiderSimulation();
       if (_mapReady && route.points.isNotEmpty) {
         _mapController.fitCamera(
           CameraFit.bounds(
@@ -171,6 +206,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             if ((active['status'] == 'PICKED_UP' || active['status'] == 'EN_ROUTE') &&
                 _riderLocationTimer == null) {
               _startRiderLocationPolling();
+              _startRiderSimulation();
             }
           }
         }
@@ -208,6 +244,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   void dispose() {
     _orderPollTimer?.cancel();
     _riderLocationTimer?.cancel();
+    _simulationTimer?.cancel();
     _mapTimer?.cancel();
     _callTimer?.cancel();
     _pulseController?.dispose();
