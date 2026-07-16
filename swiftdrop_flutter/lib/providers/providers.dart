@@ -58,22 +58,38 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   /// Adds an item for a specific restaurant. If the cart has items from a
   /// different restaurant, clears the cart first.
   void addItem(FoodItem item, {String? restaurantId}) {
+    addCustomItem(item, const [], 1, restaurantId: restaurantId);
+  }
+
+  void addCustomItem(FoodItem item, List<CartExtra> extras, int quantity, {String? restaurantId}) {
     if (restaurantId != null && _restaurantId != null && _restaurantId != restaurantId) {
       state = [];
     }
     if (restaurantId != null) _restaurantId = restaurantId;
 
-    final index = state.indexWhere((ci) => ci.foodItem.id == item.id);
+    final index = state.indexWhere((ci) {
+      if (ci.foodItem.id != item.id) return false;
+      if (ci.extras.length != extras.length) return false;
+      for (final ext in extras) {
+        final match = ci.extras.firstWhere(
+          (ce) => ce.name == ext.name && ce.price == ext.price,
+          orElse: () => const CartExtra(name: '', price: 0, quantity: -1),
+        );
+        if (match.quantity != ext.quantity) return false;
+      }
+      return true;
+    });
+
     if (index >= 0) {
       state = [
         for (int i = 0; i < state.length; i++)
           if (i == index)
-            state[i].copyWith(quantity: state[i].quantity + 1)
+            state[i].copyWith(quantity: state[i].quantity + quantity)
           else
             state[i],
       ];
     } else {
-      state = [...state, CartItem(foodItem: item, quantity: 1)];
+      state = [...state, CartItem(foodItem: item, quantity: quantity, extras: extras)];
     }
     _save();
   }
@@ -97,6 +113,42 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     _save();
   }
 
+  void increaseQuantity(CartItem target) {
+    final index = state.indexOf(target);
+    if (index >= 0) {
+      state = [
+        for (int i = 0; i < state.length; i++)
+          if (i == index)
+            state[i].copyWith(quantity: state[i].quantity + 1)
+          else
+            state[i],
+      ];
+      _save();
+    }
+  }
+
+  void decreaseQuantity(CartItem target) {
+    final index = state.indexOf(target);
+    if (index >= 0) {
+      if (state[index].quantity > 1) {
+        state = [
+          for (int i = 0; i < state.length; i++)
+            if (i == index)
+              state[i].copyWith(quantity: state[i].quantity - 1)
+            else
+              state[i],
+        ];
+      } else {
+        state = [
+          for (int i = 0; i < state.length; i++)
+            if (i != index) state[i],
+        ];
+        if (state.isEmpty) _restaurantId = null;
+      }
+      _save();
+    }
+  }
+
   void clearCart() {
     state = [];
     _restaurantId = null;
@@ -106,7 +158,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   int get itemCount => state.fold(0, (sum, ci) => sum + ci.quantity);
 
   double get subtotal =>
-      state.fold(0, (sum, ci) => sum + ci.foodItem.price * ci.quantity);
+      state.fold(0, (sum, ci) => sum + ci.totalPrice);
 }
 
 final selectedRestaurantProvider = StateProvider<Restaurant?>((ref) => null);

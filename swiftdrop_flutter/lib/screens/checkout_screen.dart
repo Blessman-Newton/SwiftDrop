@@ -689,11 +689,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     // Step 1: Create order
     final orderItems = widget.cartItems
-        .map((ci) => {
-              'name': ci.foodItem.name,
-              'quantity': ci.quantity,
-              'price': ci.foodItem.price,
-            })
+        .map((ci) {
+          final extrasText = ci.extras.isEmpty
+              ? ''
+              : ' (${ci.extras.map((e) => '${e.quantity}x ${e.name}').join(', ')})';
+          final finalPrice = ci.foodItem.price +
+              ci.extras.fold(0.0, (sum, ext) => sum + ext.price * ext.quantity);
+          return {
+            'name': '${ci.foodItem.name}$extrasText',
+            'quantity': ci.quantity,
+            'price': finalPrice,
+          };
+        })
         .toList();
 
     final orderResult = await OrderService().createOrder(

@@ -84,3 +84,38 @@ export interface AnalyticsData {
   top_riders: { name: string; deliveries: number }[]
   user_growth: { date: string; count: number }[]
 }
+
+export type Screen = 'fleet' | 'dashboard' | 'wallet' | 'reports' | 'security' | 'cosmetics';
+
+export interface AuditLog {
+  id: string;
+  user: string;
+  avatarText?: string;
+  avatarUrl?: string;
+  action: string;
+  resource: string;
+  severity: 'critical' | 'warning' | 'info' | 'success';
+  timestamp: string;
+  ip: string;
+  details: Record<string, any>;
+}
+
+export interface Payout {
+  id: string;
+  recipient: string;
+  recipientId: string;
+  avatarText: string;
+  type: string;
+  status: 'completed' | 'processing' | 'failed';
+  amount: number;
+}
+
+export interface Hub {
+  id: string;
+  name: string;
+  status: 'peak' | 'congested' | 'normal' | 'low';
+  statusText: string;
+  rating: number;
+  capacity: number;
+  pendingOrders: number;
+}

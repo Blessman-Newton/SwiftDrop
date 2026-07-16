@@ -7,6 +7,7 @@ import '../providers/providers.dart';
 import '../providers/restaurant_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
+import '../widgets/food_detail_sheet.dart';
 
 class FoodDeliveryScreen extends ConsumerStatefulWidget {
   const FoodDeliveryScreen({super.key});
@@ -474,9 +475,16 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                   // Restaurant rails
                   _buildRail(
                       'Popular Restaurants', _popular(restaurants), isDark),
-                  _buildRail('Recommended for you',
-                      restaurants.take(8).toList(), isDark),
-                  _buildRail('Most Popular', _mostPopular(restaurants), isDark),
+                  ref.watch(recommendedFoodProvider).when(
+                        data: (foods) => _buildRecommendedFoodSection(foods.take(6).toList(), isDark),
+                        loading: () => const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        error: (err, stack) => const SizedBox.shrink(),
+                      ),
                   _buildMenuOptions(isDark),
 
                   // All Restaurants heading
@@ -923,6 +931,140 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
           ),
         ),
         const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildRecommendedFoodSection(List<Map<String, dynamic>> items, bool isDark) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final cardWidth = (MediaQuery.of(context).size.width - 52) / 2;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Recommended for you',
+          style: GoogleFonts.inter(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary(isDark),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: items.map((data) {
+            final FoodItem item = data['foodItem'] as FoodItem;
+            final Restaurant restaurant = data['restaurant'] as Restaurant;
+
+            return GestureDetector(
+              onTap: () {
+                showFoodDetailSheet(
+                  context: context,
+                  ref: ref,
+                  item: item,
+                  restaurant: restaurant,
+                  onFeedback: (msg) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(msg),
+                        backgroundColor: AppColors.primary,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                );
+              },
+              child: Container(
+                width: cardWidth,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkCard : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 11,
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: AppImage(
+                          url: item.imageUrl,
+                          fit: BoxFit.cover,
+                          fallbackSeed: item.name,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : const Color(0xFF161D19),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            restaurant.name,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'GHS ${item.price.toStringAsFixed(2)}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.add,
+                                  size: 14,
+                                  color: Color(0xFF00422B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }

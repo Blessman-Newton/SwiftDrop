@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/providers.dart';
+import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 
@@ -60,9 +61,20 @@ class CartScreen extends ConsumerWidget {
                                       style: AppText.title(isDark),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis),
-                                  const SizedBox(height: 2),
+                                  if (item.extras.isNotEmpty) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item.extras.map((e) => '${e.quantity}x ${e.name}').join(', '),
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 4),
                                   Text(
-                                    'GHS ${item.foodItem.price.toStringAsFixed(2)}',
+                                    'GHS ${(item.totalPrice / item.quantity).toStringAsFixed(2)} each',
                                     style: GoogleFonts.inter(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
@@ -72,8 +84,7 @@ class CartScreen extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            _qtyStepper(item.foodItem.id, item.quantity,
-                                cartNotifier, ref, isDark, item.foodItem),
+                            _qtyStepper(item, cartNotifier, ref, isDark),
                           ],
                         ),
                       );
@@ -87,8 +98,8 @@ class CartScreen extends ConsumerWidget {
     );
   }
 
-  Widget _qtyStepper(String id, int qty, CartNotifier notifier, WidgetRef ref,
-      bool isDark, dynamic foodItem) {
+  Widget _qtyStepper(CartItem item, CartNotifier notifier, WidgetRef ref,
+      bool isDark) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.primary.withOpacity(0.08),
@@ -101,17 +112,17 @@ class CartScreen extends ConsumerWidget {
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(),
             padding: const EdgeInsets.all(6),
-            onPressed: () => notifier.removeItem(id),
+            onPressed: () => notifier.decreaseQuantity(item),
             icon: const Icon(Icons.remove, size: 16, color: AppColors.primary),
           ),
-          Text('$qty',
+          Text('${item.quantity}',
               style: GoogleFonts.inter(
                   fontSize: 13, fontWeight: FontWeight.w800)),
           IconButton(
             visualDensity: VisualDensity.compact,
             constraints: const BoxConstraints(),
             padding: const EdgeInsets.all(6),
-            onPressed: () => notifier.addItem(foodItem, restaurantId: notifier.restaurantId),
+            onPressed: () => notifier.increaseQuantity(item),
             icon: const Icon(Icons.add, size: 16, color: AppColors.primary),
           ),
         ],

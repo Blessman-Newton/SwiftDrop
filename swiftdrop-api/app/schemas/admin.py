@@ -113,3 +113,22 @@ class PlatformAnalyticsResponse(BaseModel):
     top_restaurants: list[dict]
     top_riders: list[dict]
     user_growth: list[dict]
+
+
+class AdminCosmeticResponse(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+    price: float
+    image_url: str | None = None
+    is_available: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class CreateCosmeticRequest(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    image_url: str | None = None

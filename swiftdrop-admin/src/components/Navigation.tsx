@@ -21,6 +21,7 @@ export default function Navigation({ activeScreen, setActiveScreen, isDarkMode }
   const navItems = [
     { id: 'fleet' as Screen, label: 'Fleet Map', icon: Map, desc: 'Real-time telemetry & hubs' },
     { id: 'dashboard' as Screen, label: 'Dashboard', icon: LayoutDashboard, desc: 'Overview & system KPIs' },
+    { id: 'cosmetics' as Screen, label: 'Cosmetics', icon: Sparkles, desc: 'Manage cosmetics inventory' },
     { id: 'wallet' as Screen, label: 'Financials', icon: Wallet, desc: 'Revenue, payouts & audits' },
     { id: 'reports' as Screen, label: 'Analytics', icon: LineChart, desc: 'SLA, retention & performance' },
     { id: 'security' as Screen, label: 'Audit Logs', icon: ShieldAlert, desc: 'Security, changes & entries' },

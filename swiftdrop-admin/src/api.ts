@@ -116,4 +116,18 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ user_id: userId, title, body, type }),
     }),
+
+  // Cosmetics
+  getAdminCosmetics: () => request<any[]>('/admin/cosmetics'),
+
+  createAdminCosmetic: (body: { name: string; description?: string; price: number; image_url?: string }) =>
+    request<any>('/admin/cosmetics', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+
+  toggleAdminCosmetic: (id: string) =>
+    request<any>(`/admin/cosmetics/${id}/toggle`, {
+      method: 'PATCH',
+    }),
 }

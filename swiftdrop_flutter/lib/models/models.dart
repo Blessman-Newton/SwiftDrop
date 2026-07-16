@@ -373,29 +373,63 @@ class Restaurant {
   }
 }
 
+class CartExtra {
+  final String name;
+  final double price;
+  final int quantity;
+
+  const CartExtra({required this.name, required this.price, required this.quantity});
+
+  double get totalPrice => price * quantity;
+
+  Map<String, dynamic> toMap() => {
+        'name': name,
+        'price': price,
+        'quantity': quantity,
+      };
+
+  factory CartExtra.fromMap(Map<String, dynamic> map) => CartExtra(
+        name: map['name'] as String,
+        price: (map['price'] as num).toDouble(),
+        quantity: map['quantity'] as int,
+      );
+}
+
 class CartItem {
   final FoodItem foodItem;
   final int quantity;
+  final List<CartExtra> extras;
 
-  const CartItem({required this.foodItem, this.quantity = 1});
+  const CartItem({
+    required this.foodItem,
+    this.quantity = 1,
+    this.extras = const [],
+  });
 
-  CartItem copyWith({FoodItem? foodItem, int? quantity}) {
+  CartItem copyWith({FoodItem? foodItem, int? quantity, List<CartExtra>? extras}) {
     return CartItem(
       foodItem: foodItem ?? this.foodItem,
       quantity: quantity ?? this.quantity,
+      extras: extras ?? this.extras,
     );
   }
 
-  double get totalPrice => foodItem.price * quantity;
+  double get totalPrice =>
+      (foodItem.price + extras.fold(0.0, (sum, e) => sum + e.totalPrice)) * quantity;
 
   Map<String, dynamic> toMap() => {
         'foodItem': foodItem.toMap(),
         'quantity': quantity,
+        'extras': extras.map((e) => e.toMap()).toList(),
       };
 
   factory CartItem.fromMap(Map<String, dynamic> map) => CartItem(
         foodItem: FoodItem.fromMap(map['foodItem'] as Map<String, dynamic>),
         quantity: map['quantity'] as int,
+        extras: (map['extras'] as List?)
+                ?.map((e) => CartExtra.fromMap(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
       );
 }
 

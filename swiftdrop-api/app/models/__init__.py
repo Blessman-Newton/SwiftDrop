@@ -8,6 +8,7 @@ from app.models.payout import Payout
 from app.models.notification import Notification
 from app.models.review import Review
 from app.models.address import Address
+from app.models.cosmetic import CosmeticProduct
 
 __all__ = [
     "User",
@@ -26,4 +27,5 @@ __all__ = [
     "Notification",
     "Review",
     "Address",
+    "CosmeticProduct",
 ]

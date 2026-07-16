@@ -30,6 +30,7 @@ export default function Header({ activeScreen, isDarkMode, toggleDarkMode, userE
     switch (activeScreen) {
       case 'fleet': return 'Fleet Monitoring';
       case 'dashboard': return 'SwiftDrop Dashboard';
+      case 'cosmetics': return 'Cosmetics Inventory';
       case 'wallet': return 'Financial Reports';
       case 'reports': return 'System Analytics';
       case 'security': return 'Audit & Security';

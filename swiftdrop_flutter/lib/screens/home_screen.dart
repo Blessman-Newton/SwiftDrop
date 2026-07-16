@@ -9,6 +9,7 @@ import '../providers/restaurant_provider.dart';
 import '../services/tomtom_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
+import '../models/models.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -32,8 +33,192 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     {'name': 'Chicken & Chips', 'price': 'GHS 55'},
   ];
 
+  late PageController _pageController;
+  int _currentBannerPage = 0;
+
+  final List<Map<String, dynamic>> _banners = [
+    {
+      'tag': 'LIMITED TIME',
+      'title': '20% OFF Your First Order',
+      'subtitle': 'Use code SWIFT20 at checkout',
+      'button': 'Claim Offer',
+      'route': '/food-delivery',
+      'imageUrl': 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600',
+      'colors': [const Color(0xE6064E3B), const Color(0xCC065F46)],
+    },
+    {
+      'tag': 'GAS SERVICES',
+      'title': 'Book us to refill your gas now',
+      'subtitle': 'Schedule refills, safe, reliable & fast delivery',
+      'button': 'Book a Refill',
+      'route': '/parcel-delivery',
+      'imageUrl': 'https://images.unsplash.com/photo-1628102428189-6c4538be649f?w=600',
+      'colors': [const Color(0xE61E3A8A), const Color(0xCC3B82F6)],
+    },
+    {
+      'tag': 'HEALTHCARE',
+      'title': 'Medicine Pharmacy Delivery',
+      'subtitle': 'Prescriptions & OTC drugs safely delivered',
+      'button': 'Buy Medicine',
+      'route': '/parcel-delivery',
+      'imageUrl': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600',
+      'colors': [const Color(0xE64C1D95), const Color(0xCC8B5CF6)],
+    },
+    {
+      'tag': 'PARCEL EXPRESS',
+      'title': 'Send Parcels City-Wide',
+      'subtitle': 'Fast and secure courier dispatch',
+      'button': 'Send Package',
+      'route': '/parcel-delivery',
+      'imageUrl': 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600',
+      'colors': [const Color(0xE60F766E), const Color(0xCC14B8A6)],
+    },
+  ];
+
+  static const List<Map<String, dynamic>> _cosmetics = [
+    {
+      'id': 'cos_1',
+      'name': 'Cocoa Butter Lotion',
+      'price': 45.0,
+      'image': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400',
+      'desc': 'Rich nourishing body cream for smooth skin.',
+    },
+    {
+      'id': 'cos_2',
+      'name': 'Shea Moisture Hair Oil',
+      'price': 60.0,
+      'image': 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400',
+      'desc': 'Pure Ghanaian raw shea butter infusion.',
+    },
+    {
+      'id': 'cos_3',
+      'name': 'Matte Lipstick (Ruby)',
+      'price': 35.0,
+      'image': 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400',
+      'desc': 'Long-lasting vibrant matte lip color.',
+    },
+    {
+      'id': 'cos_4',
+      'name': 'Aloe Vera Facial Gel',
+      'price': 25.0,
+      'image': 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400',
+      'desc': 'Soothes and hydrates skin naturally.',
+    },
+    {
+      'id': 'cos_5',
+      'name': 'Coconut Oil Lip Balm',
+      'price': 12.0,
+      'image': 'https://images.unsplash.com/photo-1617897903246-719242758050?w=400',
+      'desc': 'Protects lips against dryness and wind.',
+    },
+  ];
+
+  void _addCosmeticToCart(Map<String, dynamic> c) {
+    final foodItem = FoodItem(
+      id: c['id'] as String,
+      name: c['name'] as String,
+      price: c['price'] as double,
+      description: c['desc'] as String,
+      imageUrl: c['image'] as String,
+      category: FoodCategory.sides,
+    );
+    ref.read(cartProvider.notifier).addItem(
+      foodItem,
+      restaurantId: 'cosmetics_store',
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added ${c['name']} to cart'),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildCircularNavRow(bool isDark) {
+    final items = [
+      {
+        'label': 'Food',
+        'icon': Icons.fastfood_rounded,
+        'color': const Color(0xFF10B981),
+        'onTap': () => context.push('/food-delivery'),
+      },
+      {
+        'label': 'Pickup',
+        'icon': Icons.delivery_dining_rounded,
+        'color': const Color(0xFF6366F1),
+        'onTap': () => context.push('/parcel/booking'),
+      },
+      {
+        'label': 'Gas Refill',
+        'icon': Icons.gas_meter_rounded,
+        'color': const Color(0xFFF59E0B),
+        'onTap': () => context.push('/gas-booking'),
+      },
+      {
+        'label': 'Cosmetics',
+        'icon': Icons.face_retouching_natural_rounded,
+        'color': const Color(0xFFEC4899),
+        'onTap': () => context.push('/cosmetics-list'),
+      },
+    ];
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: items.map((item) {
+        final Color color = item['color'] as Color;
+        return GestureDetector(
+          onTap: item['onTap'] as VoidCallback,
+          child: Column(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: color.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    item['icon'] as IconData,
+                    color: color,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                item['label'] as String,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  late ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    _scrollController = ScrollController();
+  }
+
   @override
   void dispose() {
+    _pageController.dispose();
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -97,7 +282,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: RefreshIndicator(
           onRefresh: () async {},
           child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 24),
+            controller: _scrollController,
+            padding: const EdgeInsets.only(bottom: 24),
           child: Column(
             children: [
               // Sticky header
@@ -273,70 +459,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 16),
-
-                  // Active order banner
-                  Consumer(builder: (context, ref, _) {
-                    final activeOrder = ref.watch(activeOrderProvider);
-                    if (activeOrder == null) return const SizedBox.shrink();
-                    return GestureDetector(
-                      onTap: () => context.push('/map'),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.local_shipping,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Active Order',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Track your ${activeOrder.restaurantName} order',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              color: Colors.white.withOpacity(0.7),
-                              size: 14,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-
                   // Search bar
                   Semantics(
                     label: 'Search restaurants',
@@ -395,37 +517,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Cuisine filter chips
-                  SizedBox(
-                    height: 36,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _buildCuisineChip('All', selectedCuisines.isEmpty, () {
-                          ref.read(selectedCuisinesProvider.notifier).state =
-                              {};
-                        }),
-                        for (final cuisine in cuisineChips)
-                          _buildCuisineChip(
-                            cuisine,
-                            selectedCuisines.contains(cuisine),
-                            () => _toggleCuisine(cuisine),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-                   Container(
-                     height: (MediaQuery.of(context).size.height * 0.22).clamp(100.0, 164.0),
-                     decoration: BoxDecoration(
+                  const SizedBox(height: 20),
+                  _buildCircularNavRow(isDark),
+                  const SizedBox(height: 20),
+                  Container(
+                      height: (MediaQuery.of(context).size.height * 0.22).clamp(144.0, 172.0),
+                      decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF064E3B).withOpacity(0.05),
+                            color: Colors.black.withOpacity(0.05),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -434,264 +535,138 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
                         child: Stack(
-                          fit: StackFit.expand,
                           children: [
-                            AppImage(
-                              url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDNBK_IsWI0V2kfET0GK3y2sPZBDmkxXB29o74YLS45LCunvNzGHrNrsLuBTH3xqRjc4Z3Idv0zkCS6Uz1Dx3mzWEvnFRbiFVGqExzAzhhl-QriMTepUQMKCJBqJuZfdHTcdb2W9g3dqCqpm34avYn9lQdDUnDCrg20RBs8r1SqcRZCyjFLKqSGFnJ4p8KQEPTiGyfWKCpiN20M9e9ZSMB-ROms4qmZrs24i2pkZF2xu94XtafTcdudN30ZHc8vULn_8xJ6A6rsqjw',
-                              fit: BoxFit.cover,
-                            ),
-                          Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                                colors: [
-                                  const Color(0xE6064E3B),
-                                  const Color(0xCC065F46),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(99),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.1),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'LIMITED TIME',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '20% OFF Your First Order',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    height: 1.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text.rich(
-                                  TextSpan(
-                                    text: 'Use code ',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      color: Colors.white.withOpacity(0.8),
-                                    ),
+                            PageView.builder(
+                              controller: _pageController,
+                              onPageChanged: (int index) {
+                                setState(() {
+                                  _currentBannerPage = index;
+                                });
+                              },
+                              itemCount: _banners.length,
+                              itemBuilder: (context, index) {
+                                final b = _banners[index];
+                                final gradientColors = b['colors'] as List<Color>;
+
+                                return GestureDetector(
+                                  onTap: () => context.push(b['route'] as String),
+                                  child: Stack(
+                                    fit: StackFit.expand,
                                     children: [
-                                      TextSpan(
-                                        text: 'SWIFT20',
-                                        style: GoogleFonts.inter(
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF6FFBBE),
+                                      AppImage(
+                                        url: b['imageUrl'] as String,
+                                        fit: BoxFit.cover,
+                                      ),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                            colors: [
+                                              gradientColors[0],
+                                              gradientColors[1],
+                                              Colors.transparent,
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                      const TextSpan(
-                                          text: ' at checkout'),
+                                      Padding(
+                                        padding: const EdgeInsets.all(24),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 10, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.15),
+                                                borderRadius: BorderRadius.circular(99),
+                                                border: Border.all(
+                                                  color: Colors.white.withOpacity(0.15),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                b['tag'] as String,
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 1,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              b['title'] as String,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w900,
+                                                color: Colors.white,
+                                                height: 1.2,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              b['subtitle'] as String,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 11,
+                                                color: Colors.white.withOpacity(0.9),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 16, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(99),
+                                              ),
+                                              child: Text(
+                                                b['button'] as String,
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: gradientColors[0],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
-                                ),
-                                const SizedBox(height: 12),
-                                GestureDetector(
-                                  onTap: () => context.push('/food-delivery'),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 6),
+                                );
+                              },
+                            ),
+                            // Indicators
+                            Positioned(
+                              bottom: 12,
+                              left: 0,
+                              right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  _banners.length,
+                                  (index) => AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                                    width: _currentBannerPage == index ? 16 : 6,
+                                    height: 6,
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(99),
-                                    ),
-                                    child: Text(
-                                      'Order Now',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
+                                      color: _currentBannerPage == index ? Colors.white : Colors.white54,
+                                      borderRadius: BorderRadius.circular(3),
                                     ),
                                   ),
                                 ),
-                           ],
-                         ),
-                       ),
-                       ],
-                     ),
-                     ),
-                     ),
-
-                     const SizedBox(height: 24),
-
-                   // Bento grid
-                  Row(
-                    children: [
-                      // Food Delivery
-                      Expanded(
-                        child: Semantics(
-                          label: 'Food Delivery',
-                          child: GestureDetector(
-                            onTap: () => context.push('/food-delivery'),
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              ),
                             ),
-                            child: Stack(
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primaryLight
-                                            .withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(
-                                        Icons.restaurant,
-                                        color: AppColors.primary,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Food Delivery',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'From local gems',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Positioned(
-                                  right: -8,
-                                  bottom: -8,
-                                  child: Icon(
-                                    Icons.restaurant,
-                                    size: 80,
-                                    color: Colors.grey[100],
-                                  ),
-                                ),
-                               ],
-                             ),
-                           ),
-                         ),
-                       ),
-                       ),
-                      const SizedBox(width: 16),
-                      // Parcel Courier
-                      Expanded(
-                        child: Semantics(
-                          label: 'Parcel Courier',
-                          child: GestureDetector(
-                            onTap: () => context.push('/parcel/booking'),
-                          child: Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Colors.indigo.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(
-                                        Icons.inventory_2,
-                                        color: Colors.indigo,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Parcel Courier',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Safe and prompt',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        color: Colors.grey[400],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Positioned(
-                                  right: -8,
-                                  bottom: -8,
-                                  child: Icon(
-                                    Icons.inventory_2,
-                                    size: 80,
-                                    color: Colors.grey[100],
-                                  ),
-                                ),
-                               ],
-                             ),
-                           ),
-                         ),
-                       ),
-                       ),
-                       ],
-                     ),
+                          ],
+                        ),
+                      ),
+                    ),
 
-                     const SizedBox(height: 24),
-                    // Quick Actions
+                     // Quick Actions
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
@@ -845,8 +820,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                      const SizedBox(height: 24),
 
-                    // Popular Near You
-                  Row(
+
+                  if (false) Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
@@ -873,195 +848,139 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                        ),
                      ],
                   ),
+                  // Popular Cosmetics
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Popular Cosmetics',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary(isDark),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
 
                   SizedBox(
-                    height: (MediaQuery.of(context).size.height * 0.32).clamp(180.0, 240.0),
+                    height: 220,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: filteredRestaurants.length,
+                      itemCount: _cosmetics.length,
                       separatorBuilder: (_, __) => const SizedBox(width: 16),
                       itemBuilder: (context, index) {
-                        final restaurant = filteredRestaurants[index];
-                        final isFav = favorites.contains(restaurant.id);
-                        return Semantics(
-                          label: '${restaurant.name}, ${restaurant.tags.join(', ')}, rating ${restaurant.rating}, delivery time ${restaurant.deliveryTime}, ${restaurant.deliveryFee == 'Free' ? 'free delivery' : restaurant.deliveryFee + ' delivery fee'}, ${restaurant.distance}',
-                          child: GestureDetector(
-                            onTap: () =>
-                                context.push('/restaurant/${restaurant.id}'),
-                            child: Container(
-                            width: 256,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Image
-                                Container(
-                                  height: (MediaQuery.of(context).size.height * 0.19).clamp(100.0, 140.0),
-                                  clipBehavior: Clip.antiAlias,
-                                  decoration: const BoxDecoration(
-                                    borderRadius: BorderRadius.vertical(
-                                        top: Radius.circular(24)),
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Positioned.fill(
-                                        child: AppImage(
-                                          url: restaurant.imageUrl,
-                                          fit: BoxFit.cover,
-                                          fallbackSeed: restaurant.name,
-                                        ),
-                                      ),
-                                      // Heart
-                                      Positioned(
-                                        top: 12,
-                                        right: 12,
-                                        child: GestureDetector(
-                                          onTap: () => ref.read(favoritesProvider.notifier).toggle(restaurant.id),
-                                          child: Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withOpacity(0.9),
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.1),
-                                                  blurRadius: 4,
-                                                ),
-                                              ],
-                                            ),
-                                            child: Icon(
-                                              Icons.favorite,
-                                              size: 16,
-                                              color: isFav
-                                                  ? Colors.red
-                                                  : Colors.grey[600],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Rating
-                                      Positioned(
-                                        top: 12,
-                                        left: 12,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.9),
-                                            borderRadius:
-                                                BorderRadius.circular(99),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.star,
-                                                size: 12,
-                                                color: AppColors.accent,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                '${restaurant.rating}',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.black87,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      // Delivery time
-                                      Positioned(
-                                        bottom: 12,
-                                        left: 12,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary
-                                                .withOpacity(0.9),
-                                            borderRadius:
-                                                BorderRadius.circular(99),
-                                          ),
-                                          child: Text(
-                                            restaurant.deliveryTime,
-                                            style: GoogleFonts.inter(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                        final cos = _cosmetics[index];
+                        return Container(
+                          width: 170,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Product Image
+                              Container(
+                                height: 110,
+                                decoration: const BoxDecoration(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                                 ),
-                                // Info
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
+                                clipBehavior: Clip.antiAlias,
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    AppImage(
+                                      url: cos['image'] as String,
+                                      fit: BoxFit.cover,
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      left: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.9),
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          'Beauty',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.purple.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              // Product details
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        restaurant.name,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black87,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        restaurant.tags.join(' • '),
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11,
-                                          color: const Color(0xFF3C4A42)
-                                              .withOpacity(0.6),
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            restaurant.deliveryFee == 'Free'
-                                                ? 'Free delivery'
-                                                : '${restaurant.deliveryFee} delivery',
+                                            cos['name'] as String,
                                             style: GoogleFonts.inter(
-                                              fontSize: 10,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black87,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            cos['desc'] as String,
+                                            style: GoogleFonts.inter(
+                                              fontSize: 9,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            '₵${cos['price'].toStringAsFixed(2)}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
                                               fontWeight: FontWeight.bold,
                                               color: AppColors.primary,
                                             ),
                                           ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '•',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10,
-                                              color: Colors.grey[300],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            restaurant.distance,
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.primary,
+                                          GestureDetector(
+                                            onTap: () => _addCosmeticToCart(cos),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: const BoxDecoration(
+                                                color: AppColors.primary,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.add,
+                                                size: 14,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
                                         ],
@@ -1069,9 +988,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            ],
                           ),
                         );
                       },

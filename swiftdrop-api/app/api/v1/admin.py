@@ -12,6 +12,7 @@ from app.models.order import Order, OrderItem
 from app.models.restaurant import Restaurant, MenuItem
 from app.models.user import User, RiderProfile
 from app.models.audit import AuditLog
+from app.models.cosmetic import CosmeticProduct
 from app.schemas.admin import (
     AdminDashboardStatsResponse,
     AdminUserResponse,
@@ -21,6 +22,8 @@ from app.schemas.admin import (
     AdminMenuItemResponse,
     BanUserRequest,
     PlatformAnalyticsResponse,
+    AdminCosmeticResponse,
+    CreateCosmeticRequest,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -485,3 +488,69 @@ async def get_analytics(
         top_riders=top_riders,
         user_growth=user_growth,
     )
+
+
+@router.get("/cosmetics", response_model=list[AdminCosmeticResponse])
+async def list_admin_cosmetics(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_dep),
+):
+    query = select(CosmeticProduct).order_by(CosmeticProduct.created_at.desc())
+    result = await db.execute(query)
+    cosmetics = result.scalars().all()
+    return cosmetics
+
+
+@router.post("/cosmetics", response_model=AdminCosmeticResponse)
+async def create_admin_cosmetic(
+    request: CreateCosmeticRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_dep),
+):
+    cosmetic = CosmeticProduct(
+        name=request.name,
+        description=request.description,
+        price=request.price,
+        image_url=request.image_url,
+    )
+    db.add(cosmetic)
+    await db.flush()
+
+    log = AuditLog(
+        admin_id=admin.id,
+        action="create_cosmetic",
+        entity_type="cosmetic",
+        entity_id=str(cosmetic.id),
+        new_value={"name": cosmetic.name, "price": cosmetic.price},
+    )
+    db.add(log)
+    await db.flush()
+
+    return cosmetic
+
+
+@router.patch("/cosmetics/{cosmetic_id}/toggle")
+async def toggle_admin_cosmetic(
+    cosmetic_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_dep),
+):
+    query = select(CosmeticProduct).where(CosmeticProduct.id == cosmetic_id)
+    result = await db.execute(query)
+    cosmetic = result.scalar_one_or_none()
+    if not cosmetic:
+        raise HTTPException(status_code=404, detail="Cosmetic product not found")
+
+    cosmetic.is_available = not cosmetic.is_available
+
+    log = AuditLog(
+        admin_id=admin.id,
+        action="toggle_cosmetic",
+        entity_type="cosmetic",
+        entity_id=str(cosmetic_id),
+        new_value={"is_available": cosmetic.is_available},
+    )
+    db.add(log)
+    await db.flush()
+
+    return {"message": f"Cosmetic {'activated' if cosmetic.is_available else 'deactivated'}", "is_available": cosmetic.is_available}

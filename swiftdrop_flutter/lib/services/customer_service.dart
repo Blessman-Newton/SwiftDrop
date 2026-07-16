@@ -35,4 +35,18 @@ class CustomerService {
       return null;
     }
   }
+
+  /// Fetch list of available cosmetics
+  Future<List<Map<String, dynamic>>?> getCosmetics() async {
+    try {
+      final response = await _api.dio.get('/api/v1/customer/cosmetics');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((e) => e as Map<String, dynamic>).toList();
+      }
+      return null;
+    } on DioException catch (_) {
+      return null;
+    }
+  }
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from './api'
 import type { DashboardStats, User, Rider, Restaurant, AdminOrder, AnalyticsData, AdminMenuItem } from './types'
+import CosmeticsView from './components/CosmeticsView'
 
-type View = 'dashboard' | 'users' | 'riders' | 'orders' | 'restaurants' | 'analytics'
+type View = 'dashboard' | 'users' | 'riders' | 'orders' | 'restaurants' | 'analytics' | 'cosmetics'
 
 const STATUS_COLORS: Record<string, string> = {
   CREATED: 'bg-yellow-100 text-yellow-800',
@@ -246,6 +247,7 @@ function Sidebar({ view, setView }: { view: View; setView: (v: View) => void }) 
     { key: 'riders', label: 'Riders', icon: '🏍️' },
     { key: 'orders', label: 'Orders', icon: '📦' },
     { key: 'restaurants', label: 'Restaurants', icon: '🍽️' },
+    { key: 'cosmetics', label: 'Cosmetics', icon: '💄' },
     { key: 'analytics', label: 'Analytics', icon: '📈' },
   ]
 
@@ -496,20 +498,29 @@ function RidersView({ token }: { token: string }) {
 function OrdersView({ token }: { token: string }) {
   const [orders, setOrders] = useState<AdminOrder[]>([])
   const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
 
   useEffect(() => {
     api.getOrders(statusFilter || undefined).then(setOrders).catch(console.error)
   }, [statusFilter])
 
+  const filteredOrders = orders.filter((order) => {
+    if (!typeFilter) return true
+    return order.order_type.toLowerCase() === typeFilter.toLowerCase()
+  })
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold text-gray-900">Orders</h2>
-      <div className="flex gap-2 flex-wrap">
+      
+      {/* Status Filters */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <span className="text-xs font-bold text-gray-500 mr-2">STATUS:</span>
         {['', 'CREATED', 'CONFIRMED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP', 'EN_ROUTE', 'DELIVERED', 'CANCELLED'].map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm ${
+            className={`px-3 py-1 text-xs rounded-lg ${
               statusFilter === s ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
@@ -517,6 +528,29 @@ function OrdersView({ token }: { token: string }) {
           </button>
         ))}
       </div>
+
+      {/* Type Filters */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <span className="text-xs font-bold text-gray-500 mr-2">SERVICE TYPE:</span>
+        {[
+          { key: '', label: 'All Services' },
+          { key: 'food', label: 'Food Delivery' },
+          { key: 'parcel', label: 'Courier Pickup' },
+          { key: 'gas', label: 'Gas Refills' },
+          { key: 'cosmetics', label: 'Cosmetics' },
+        ].map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setTypeFilter(t.key)}
+            className={`px-3 py-1 text-xs rounded-lg ${
+              typeFilter === t.key ? 'bg-pink-600 text-white font-bold' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -532,7 +566,7 @@ function OrdersView({ token }: { token: string }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {orders.map((order) => (
+            {filteredOrders.map((order) => (
               <tr key={order.id} className="hover:bg-gray-50">
                 <td className="px-6 py-4 font-medium text-gray-900">{order.order_no}</td>
                 <td className="px-6 py-4">
@@ -560,7 +594,7 @@ function OrdersView({ token }: { token: string }) {
             ))}
           </tbody>
         </table>
-        {orders.length === 0 && <p className="text-center py-8 text-gray-500">No orders found</p>}
+        {filteredOrders.length === 0 && <p className="text-center py-8 text-gray-500">No orders found</p>}
       </div>
     </div>
   )
@@ -871,6 +905,7 @@ export default function App() {
         {view === 'riders' && <RidersView token={token} />}
         {view === 'orders' && <OrdersView token={token} />}
         {view === 'restaurants' && <RestaurantsView token={token} />}
+        {view === 'cosmetics' && <CosmeticsView />}
         {view === 'analytics' && <AnalyticsView token={token} />}
       </main>
     </div>

@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.models.address import Address
 from app.models.order import Order
 from app.models.user import User
+from app.models.cosmetic import CosmeticProduct
 from app.schemas.customer import (
     AddressCreateRequest,
     AddressResponse,
@@ -195,4 +196,25 @@ async def redeem_points(
         "wallet_balance": float(current_user.wallet_balance),
         "loyalty_points": current_user.loyalty_points,
     }
+
+
+@router.get("/cosmetics")
+async def list_customer_cosmetics(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
+):
+    query = select(CosmeticProduct).where(CosmeticProduct.is_available == True).order_by(CosmeticProduct.name.asc())
+    result = await db.execute(query)
+    cosmetics = result.scalars().all()
+    return [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "description": c.description,
+            "price": float(c.price),
+            "image_url": c.image_url,
+            "is_available": c.is_available,
+        }
+        for c in cosmetics
+    ]
 
