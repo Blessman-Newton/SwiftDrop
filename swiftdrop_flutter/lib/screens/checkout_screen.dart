@@ -728,6 +728,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
 
     final orderId = orderResult['id'] as String;
+    final deliveryPin = orderResult['delivery_pin'] as String?;
 
     // Step 2: Initialize payment
     setState(() => _statusMessage = 'Initializing payment...');
@@ -757,7 +758,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final uri = Uri.parse(authUrl);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (mounted) {
-        _showPaymentVerificationDialog(reference);
+        _showPaymentVerificationDialog(reference, deliveryPin: deliveryPin);
       }
     } catch (e) {
       setState(() {
@@ -767,7 +768,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  void _showPaymentVerificationDialog(String reference) {
+  void _showPaymentVerificationDialog(String reference, {String? deliveryPin}) {
     bool isVerifying = false;
     Timer? verificationTimer;
     int checkCount = 0;
@@ -794,7 +795,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   if (verifyResult != null && verifyResult['status'] == 'success') {
                     timer.cancel();
                     Navigator.of(dialogContext).pop();
-                    _showOrderPlaced();
+                    _showOrderPlaced(deliveryPin: deliveryPin);
                   }
                 } catch (_) {}
               });
@@ -844,7 +845,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       if (verifyResult != null && verifyResult['status'] == 'success') {
                         verificationTimer?.cancel();
                         Navigator.of(dialogContext).pop();
-                        _showOrderPlaced();
+                        _showOrderPlaced(deliveryPin: deliveryPin);
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -875,13 +876,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     });
   }
 
-  void _showOrderPlaced() {
+  void _showOrderPlaced({String? deliveryPin}) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -910,6 +910,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 style: GoogleFonts.inter(
                     fontSize: 13, color: const Color(0xFF6C7A71)),
               ),
+
+              // ── Delivery PIN Card ──────────────────────────────────
+              if (deliveryPin != null) ...[
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.lock_outline_rounded,
+                              color: AppColors.primary, size: 16),
+                          const SizedBox(width: 6),
+                          Text(
+                            'DELIVERY CONFIRMATION CODE',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        deliveryPin,
+                        style: GoogleFonts.inter(
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                          letterSpacing: 10,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Share this PIN with your rider to confirm delivery',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: Colors.grey.shade400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              // ───────────────────────────────────────────────────────
+
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,

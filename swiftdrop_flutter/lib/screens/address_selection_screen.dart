@@ -71,12 +71,21 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
       if (permission == LocationPermission.deniedForever ||
           permission == LocationPermission.denied) return;
 
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        ).timeout(const Duration(seconds: 15));
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+      if (pos == null) return;
+
       if (mounted) {
         setState(() {
-          _center = LatLng(pos.latitude, pos.longitude);
+          _center = LatLng(pos!.latitude, pos.longitude);
         });
         if (_mapReady) {
           _mapController.move(_center, 14);
@@ -99,8 +108,18 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.deniedForever ||
-          permission == LocationPermission.denied) {
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission is permanently denied. Please enable it in Settings.'),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+      if (permission == LocationPermission.denied) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Location permission denied')),
@@ -109,9 +128,25 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
         return;
       }
 
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      );
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        ).timeout(const Duration(seconds: 15));
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+
+      if (pos == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not get current location. Please try again or search manually.')),
+          );
+        }
+        return;
+      }
 
       final point = LatLng(pos.latitude, pos.longitude);
       final result = await _tomtom.reverseGeocode(point);
@@ -119,7 +154,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
       setState(() {
         _center = point;
         _selectedPoint = point;
-        _selectedAddress = result?.address ?? '${pos.latitude}, ${pos.longitude}';
+        _selectedAddress = result?.address ?? '${pos!.latitude}, ${pos.longitude}';
         _selectedLabel = 'Current Location';
         _searchController.text = _selectedAddress ?? '';
       });
@@ -128,7 +163,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not get current location')),
+          const SnackBar(content: Text('Could not get current location. Please try again or search manually.')),
         );
       }
     }

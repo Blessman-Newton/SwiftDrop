@@ -224,15 +224,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) return;
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high));
+
+      // Use medium accuracy + timeout to avoid hanging on high-precision GPS
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        ).timeout(const Duration(seconds: 15));
+      } catch (_) {
+        // Fallback: use last known position if fresh fix times out
+        pos = await Geolocator.getLastKnownPosition();
+      }
+
+      if (pos == null || !mounted) return;
       final result = await _tomtom.reverseGeocode(
-        LatLng(pos.latitude, pos.longitude));
+          LatLng(pos.latitude, pos.longitude));
       if (mounted) {
         setState(() {
           _selectedLocation = result?.address ??
-              '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+              '${pos!.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
         });
       }
     } catch (_) {}
