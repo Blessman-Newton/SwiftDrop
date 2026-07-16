@@ -104,6 +104,19 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
 
   Future<void> _useCurrentLocation() async {
     try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location services are disabled on this device. Please enable location services in settings.'),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -129,20 +142,29 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
       }
 
       Position? pos;
+      String errorSource = '';
       try {
         pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.medium,
           ),
         ).timeout(const Duration(seconds: 15));
-      } catch (_) {
-        pos = await Geolocator.getLastKnownPosition();
+      } catch (err) {
+        errorSource = ' (fresh check failed: $err)';
+        try {
+          pos = await Geolocator.getLastKnownPosition();
+        } catch (err2) {
+          errorSource += ' (last known failed: $err2)';
+        }
       }
 
       if (pos == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not get current location. Please try again or search manually.')),
+            SnackBar(
+              content: Text('Could not get current location$errorSource. Please try again or search manually.'),
+              duration: const Duration(seconds: 6),
+            ),
           );
         }
         return;
@@ -163,7 +185,10 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not get current location. Please try again or search manually.')),
+          SnackBar(
+            content: Text('Could not get current location: $e. Please try again or search manually.'),
+            duration: const Duration(seconds: 6),
+          ),
         );
       }
     }
