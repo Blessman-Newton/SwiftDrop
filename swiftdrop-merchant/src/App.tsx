@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Navbar from "./components/Navbar";
 import DashboardView from "./components/DashboardView";
 import OrdersView from "./components/OrdersView";
@@ -30,6 +30,29 @@ import {
   Wallet
 } from "lucide-react";
 import * as api from "./api";
+
+function playNewOrderSound() {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const playNote = (freq: number, start: number, duration: number) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, start);
+      gain.gain.exponentialRampToValueAtTime(0.01, start + duration - 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+    const now = audioCtx.currentTime;
+    playNote(523.25, now, 0.15); // C5 note
+    playNote(659.25, now + 0.15, 0.3); // E5 note
+  } catch (e) {
+    console.error("Audio synth error:", e);
+  }
+}
 
 export default function App() {
   const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics" | "wallet" | "settings">("dashboard");
@@ -64,6 +87,8 @@ export default function App() {
   const [dashboardStats, setDashboardStats] = useState<{total_orders_today: number; total_earnings_today: number; avg_preparation_time: number; cancelled_orders: number; active_orders: number; completed_orders: number} | null>(null);
 
   const [previewMode, setPreviewMode] = useState<"split" | "mobile" | "web">("split");
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -145,7 +170,7 @@ export default function App() {
         // Fetch orders
         try {
           const ordersData = await api.getOrders();
-          setOrders(ordersData.map((order: any) => ({
+          const mappedOrders = ordersData.map((order: any) => ({
             id: order.id,
             orderNo: order.order_no,
             status: order.status,
@@ -158,7 +183,11 @@ export default function App() {
             driverStatus: order.rider_name ? (order.status === 'awaiting_pickup' ? 'Arriving' : 'Assigned') : null,
             driverPhone: order.rider_phone || null,
             driverAvatar: order.rider_avatar || null,
-          })));
+          }));
+          setOrders(mappedOrders);
+          const newCount = mappedOrders.filter((o: any) => o.status === 'new').length;
+          setNewOrdersCount(newCount);
+          isInitialLoad.current = false;
         } catch (e) {
           console.error("Failed to load orders:", e);
         }
@@ -203,13 +232,30 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Flashing page title when there are new orders pending acceptance
+  useEffect(() => {
+    if (newOrdersCount === 0) {
+      document.title = "SwiftDrop Merchant Panel";
+      return;
+    }
+    let isFlash = false;
+    const flashInterval = setInterval(() => {
+      document.title = isFlash ? `🔔 (${newOrdersCount}) New Order!` : "SwiftDrop Merchant Panel";
+      isFlash = !isFlash;
+    }, 1000);
+    return () => {
+      clearInterval(flashInterval);
+      document.title = "SwiftDrop Merchant Panel";
+    };
+  }, [newOrdersCount]);
+
   // Poll for order updates every 15 seconds
   useEffect(() => {
     if (!isLoggedIn) return;
     const pollInterval = setInterval(async () => {
       try {
         const ordersData = await api.getOrders();
-        setOrders(ordersData.map((order: any) => ({
+        const mappedOrders = ordersData.map((order: any) => ({
           id: order.id,
           orderNo: order.order_no,
           status: order.status,
@@ -222,13 +268,19 @@ export default function App() {
           driverStatus: order.rider_name ? (order.status === 'awaiting_pickup' ? 'Arriving' : 'Assigned') : null,
           driverPhone: order.rider_phone || null,
           driverAvatar: order.rider_avatar || null,
-        })));
+        }));
+        setOrders(mappedOrders);
+        const newCount = mappedOrders.filter((o: any) => o.status === 'new').length;
+        if (!isInitialLoad.current && newCount > newOrdersCount) {
+          playNewOrderSound();
+        }
+        setNewOrdersCount(newCount);
       } catch (e) {
         console.error("Failed to poll orders:", e);
       }
     }, 15000);
     return () => clearInterval(pollInterval);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, newOrdersCount]);
 
   const handleToggleOnline = () => {
     setIsOnline(!isOnline);

@@ -460,7 +460,7 @@ class _RiderOrdersScreenState extends ConsumerState<RiderOrdersScreen> {
                       ),
                     ),
                     child: Text(
-                      'Reject',
+                      'Decline',
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
@@ -588,7 +588,7 @@ class _RiderOrdersScreenState extends ConsumerState<RiderOrdersScreen> {
     _orderTimers.remove(orderId);
 
     ref.read(riderToastsProvider.notifier).add(
-      'Order #$orderNo rejected.',
+      'Order #$orderNo declined.',
       ToastType.info,
     );
 

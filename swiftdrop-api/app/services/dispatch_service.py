@@ -134,6 +134,8 @@ async def auto_match_rider(db: AsyncSession, order_id: UUID) -> dict:
         raise NotFoundException("Order not found")
     if order.rider_id is not None:
         return {"status": "already_assigned", "rider_id": str(order.rider_id)}
+    if order.payment_status != "paid":
+        return {"status": "unpaid", "message": "Order has not been paid yet"}
 
     pickup_lat = order.pickup_lat
     pickup_lng = order.pickup_lng

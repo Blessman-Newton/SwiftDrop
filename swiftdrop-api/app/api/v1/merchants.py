@@ -404,7 +404,7 @@ async def list_merchant_orders(
             selectinload(Order.customer),
             selectinload(Order.rider).selectinload(User.rider_profile)
         )
-        .where(Order.restaurant_name == restaurant.name)
+        .where(Order.restaurant_name == restaurant.name, Order.payment_status == "paid")
         .order_by(Order.created_at.desc())
     )
     if status:
@@ -472,6 +472,9 @@ async def update_order_status(
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.payment_status != "paid" and request.status != "declined":
+        raise HTTPException(status_code=400, detail="Cannot process orders with unpaid status")
 
     status_map = {
         "confirmed": "CONFIRMED",

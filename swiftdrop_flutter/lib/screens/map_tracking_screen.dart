@@ -994,7 +994,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               final stepIdx = index ~/ 2;
               final isActive = stepIdx == _activeStep;
               final isCompleted = stepIdx < _activeStep;
-              return AnimatedContainer(
+              final circle = AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 width: 32,
                 height: 32,
@@ -1024,6 +1024,31 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
                 ),
               );
+
+              if (isActive && _pulseController != null) {
+                return AnimatedBuilder(
+                  animation: _pulseController!,
+                  builder: (context, child) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 32 + (12 * _pulseController!.value),
+                          height: 32 + (12 * _pulseController!.value),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.2 * (1.0 - _pulseController!.value)),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        child!,
+                      ],
+                    );
+                  },
+                  child: circle,
+                );
+              }
+              return circle;
             }),
           ),
         ),

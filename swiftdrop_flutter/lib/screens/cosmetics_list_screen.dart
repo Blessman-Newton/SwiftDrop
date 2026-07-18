@@ -129,13 +129,13 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background(isDark),
       bottomNavigationBar: cart.isEmpty
           ? null
           : Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                color: AppColors.surface(isDark),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -203,7 +203,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
             padding: const EdgeInsets.all(16.0),
             child: Container(
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                color: AppColors.surface(isDark),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -269,7 +269,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
 
                           return Container(
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              color: AppColors.surface(isDark),
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
@@ -393,7 +393,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary
-                    : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                    : AppColors.surface(isDark),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected

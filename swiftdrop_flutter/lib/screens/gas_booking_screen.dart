@@ -233,7 +233,7 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
     final formattedTime = _deliveryTime.format(context);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
         title: Text(
           'LPG Gas Refill Service',

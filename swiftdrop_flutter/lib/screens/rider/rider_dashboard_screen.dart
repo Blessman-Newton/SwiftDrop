@@ -7,6 +7,7 @@ import '../../providers/merchant_providers.dart';
 import '../../providers/rider_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
+import '../../theme/app_theme.dart';
 
 class RiderDashboardScreen extends ConsumerStatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -72,8 +73,10 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
     final isOnline = ref.watch(riderOnlineProvider);
     final dashboardAsync = ref.watch(riderDashboardProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
