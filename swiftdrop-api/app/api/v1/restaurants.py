@@ -70,13 +70,20 @@ async def get_restaurant(
     restaurant_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    query = (
-        select(Restaurant)
-        .options(
-            selectinload(Restaurant.menu_items).selectinload(MenuItem.category)
-        )
-        .where(Restaurant.id == restaurant_id)
+    try:
+        UUID(restaurant_id)
+        is_uuid = True
+    except ValueError:
+        is_uuid = False
+
+    query = select(Restaurant).options(
+        selectinload(Restaurant.menu_items).selectinload(MenuItem.category)
     )
+    if is_uuid:
+        query = query.where(Restaurant.id == restaurant_id)
+    else:
+        query = query.where(Restaurant.slug == restaurant_id)
+
     result = await db.execute(query)
     restaurant = result.scalar_one_or_none()
 
@@ -136,11 +143,26 @@ async def get_menu(
     category_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    try:
+        UUID(restaurant_id)
+        is_uuid = True
+    except ValueError:
+        is_uuid = False
+
+    if is_uuid:
+        resolved_id = restaurant_id
+    else:
+        res_q = select(Restaurant.id).where(Restaurant.slug == restaurant_id)
+        resolved_id_res = (await db.execute(res_q)).scalar_one_or_none()
+        if not resolved_id_res:
+            raise HTTPException(status_code=404, detail="Restaurant not found")
+        resolved_id = str(resolved_id_res)
+
     query = (
         select(MenuItem)
         .options(selectinload(MenuItem.category))
         .where(
-            MenuItem.restaurant_id == restaurant_id,
+            MenuItem.restaurant_id == resolved_id,
             MenuItem.is_available == True,
         )
     )

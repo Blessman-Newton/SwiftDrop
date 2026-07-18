@@ -24,6 +24,8 @@ interface OrdersViewProps {
 export default function OrdersView({ orders, onUpdateOrderStatus, onNavigate }: OrdersViewProps) {
   const [activeTab, setActiveTab] = useState<"active" | "scheduled" | "completed">("active");
   const [searchQuery, setSearchQuery] = useState("");
+  const [etaModalOrder, setEtaModalOrder] = useState<string | null>(null);
+  const [etaCustom, setEtaCustom] = useState("");
 
   // Helper to format elapsed seconds to mm:ss
   const formatTime = (seconds: number) => {
@@ -229,7 +231,7 @@ export default function OrdersView({ orders, onUpdateOrderStatus, onNavigate }: 
                           Decline
                         </button>
                         <button 
-                          onClick={() => onUpdateOrderStatus(order.id, "preparing")}
+                          onClick={() => setEtaModalOrder(order.id)}
                           className="py-3.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:brightness-110 active:scale-95 transition-all shadow-sm"
                         >
                           Accept Order
@@ -299,6 +301,76 @@ export default function OrdersView({ orders, onUpdateOrderStatus, onNavigate }: 
           <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-120 transition-transform duration-700" />
         </div>
       )}
+
+      {/* ETA Modal */}
+      <AnimatePresence>
+        {etaModalOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-surface-container-lowest dark:bg-surface-container-low rounded-3xl p-6 w-full max-w-sm shadow-xl"
+            >
+              <h3 className="font-display font-bold text-xl mb-2">Set Preparation Time</h3>
+              <p className="text-sm text-on-surface-variant mb-6">How long will it take to prepare this order?</p>
+
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                {[15, 30, 45].map((time) => (
+                  <button
+                    key={time}
+                    onClick={() => {
+                      onUpdateOrderStatus(etaModalOrder, "preparing");
+                      setEtaModalOrder(null);
+                    }}
+                    className="py-3 rounded-xl border border-outline-variant/30 bg-surface-container hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-all font-bold text-sm"
+                  >
+                    {time} min
+                  </button>
+                ))}
+              </div>
+
+              <div className="mb-6">
+                <label className="text-xs font-bold text-on-surface-variant mb-1.5 block">Custom Time (minutes)</label>
+                <div className="flex gap-3">
+                  <input
+                    type="number"
+                    value={etaCustom}
+                    onChange={(e) => setEtaCustom(e.target.value)}
+                    placeholder="e.g. 20"
+                    className="flex-1 px-4 py-2 bg-surface-container rounded-xl border border-outline-variant/30 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    onClick={() => {
+                      if (etaCustom && parseInt(etaCustom) > 0) {
+                        onUpdateOrderStatus(etaModalOrder, "preparing");
+                        setEtaModalOrder(null);
+                        setEtaCustom("");
+                      }
+                    }}
+                    disabled={!etaCustom || parseInt(etaCustom) <= 0}
+                    className="px-4 py-2 bg-primary text-on-primary rounded-xl font-bold text-sm disabled:opacity-50"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setEtaModalOrder(null)}
+                className="w-full py-2.5 border border-outline-variant/30 rounded-xl font-bold text-sm text-on-surface hover:bg-surface-container transition-all"
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import DashboardView from "./components/DashboardView";
 import OrdersView from "./components/OrdersView";
 import MenuView from "./components/MenuView";
 import AnalyticsView from "./components/AnalyticsView";
+import WalletView from "./components/WalletView";
 import OnboardingView from "./components/OnboardingView";
 import SettingsView from "./components/SettingsView";
 import type { OnboardingData } from "./components/OnboardingView";
@@ -25,12 +26,13 @@ import {
   Sun,
   AlertCircle,
   Phone,
-  KeyRound
+  KeyRound,
+  Wallet
 } from "lucide-react";
 import * as api from "./api";
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics" | "settings">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics" | "wallet" | "settings">("dashboard");
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("swift_drop_dark_mode");
     return saved === "true";
@@ -530,6 +532,8 @@ export default function App() {
         );
       case "analytics":
         return <AnalyticsView menuItems={menuItems} dashboardStats={dashboardStats} />;
+      case "wallet":
+        return <WalletView />;
       case "settings":
         return restaurant ? (
           <SettingsView
@@ -559,6 +563,7 @@ export default function App() {
     { id: "orders", label: "Orders", icon: ClipboardList },
     { id: "menu", label: "Menu", icon: Utensils },
     { id: "analytics", label: "Analytics", icon: TrendingUp },
+    { id: "wallet", label: "Wallet", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
