@@ -466,7 +466,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         children: [
           Column(
             children: [
-              _buildHeader(),
+              _buildHeader(activeOrder),
               Expanded(child: _buildMap(isDark)),
             ],
           ),
@@ -502,7 +502,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(Order activeOrder) {
     return SafeArea(
       bottom: false,
       child: Container(
@@ -554,7 +554,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                     ),
                   ),
                   Text(
-                    'Order ID: #SD-5291',
+                    'Order ID: #${activeOrder.id.length > 8 ? activeOrder.id.substring(0, 8).toUpperCase() : activeOrder.id.toUpperCase()}',
                     style: GoogleFonts.inter(
                       fontSize: 9,
                       color: Colors.grey.shade500,
