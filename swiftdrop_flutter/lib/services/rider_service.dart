@@ -179,4 +179,17 @@ class RiderService {
       return false;
     }
   }
+
+  /// Request a cashout to MoMo
+  Future<bool> requestCashout(double amount, String provider, String momoNumber) async {
+    try {
+      final response = await _api.dio.post(
+        '/api/v1/rider-profile/cashout',
+        data: {'amount': amount, 'provider': provider, 'momo_number': momoNumber},
+      );
+      return response.statusCode == 200;
+    } on DioException catch (_) {
+      return false;
+    }
+  }
 }

@@ -299,6 +299,7 @@ class FoodItem {
 class Restaurant {
   final String id;
   final String name;
+  final String slug;
   final double rating;
   final List<String> tags;
   final String deliveryTime;
@@ -310,10 +311,13 @@ class Restaurant {
   final bool isTrending;
   final List<FoodItem> menu;
   final int priceLevel;
+  final double? latitude;
+  final double? longitude;
 
   const Restaurant({
     required this.id,
     required this.name,
+    required this.slug,
     required this.rating,
     required this.tags,
     required this.deliveryTime,
@@ -325,6 +329,8 @@ class Restaurant {
     this.isTrending = false,
     required this.menu,
     this.priceLevel = 2,
+    this.latitude,
+    this.longitude,
   });
 
   double get distanceMiles {
@@ -337,6 +343,7 @@ class Restaurant {
     return Restaurant(
       id: json['id'] as String,
       name: json['name'] as String,
+      slug: (json['slug'] as String?) ?? '',
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
       tags: List<String>.from(json['tags'] ?? []),
       deliveryTime: (json['delivery_time'] as String?) ?? '',
@@ -347,6 +354,8 @@ class Restaurant {
       isTrending: (json['tags'] as List?)?.contains('Trending') ?? false,
       isNew: (json['tags'] as List?)?.contains('New') ?? false,
       menu: [],
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 
@@ -359,6 +368,7 @@ class Restaurant {
     return Restaurant(
       id: json['id'] as String,
       name: json['name'] as String,
+      slug: (json['slug'] as String?) ?? '',
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
       tags: List<String>.from(json['tags'] ?? []),
       deliveryTime: (json['delivery_time'] as String?) ?? '',
@@ -369,6 +379,8 @@ class Restaurant {
       isTrending: (json['tags'] as List?)?.contains('Trending') ?? false,
       isNew: (json['tags'] as List?)?.contains('New') ?? false,
       menu: menuItems,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
     );
   }
 }

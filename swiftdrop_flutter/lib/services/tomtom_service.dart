@@ -132,10 +132,35 @@ class TomTomService {
 
       final results = response.data['addresses'] as List? ?? [];
       if (results.isNotEmpty) {
-        final addr = results[0]['address'];
+        final addr = results[0]['address'] as Map<String, dynamic>?;
+        String formattedShort = '';
+        
+        if (addr != null) {
+          final street = addr['streetName'] as String? ?? addr['street'] as String? ?? '';
+          final subdivision = addr['municipalitySubdivision'] as String? ?? '';
+          final municipality = addr['municipality'] as String? ?? addr['localName'] as String? ?? '';
+
+          final parts = <String>[];
+          if (subdivision.isNotEmpty) {
+            parts.add(subdivision);
+          }
+          if (street.isNotEmpty) {
+            parts.add(street);
+          }
+          if (parts.isEmpty && municipality.isNotEmpty) {
+            parts.add(municipality);
+          }
+
+          formattedShort = parts.isNotEmpty ? parts.join(', ') : (addr['freeformAddress'] as String? ?? '');
+        }
+
+        if (formattedShort.isEmpty) {
+          formattedShort = 'Current Location';
+        }
+
         return TomTomSearchResult(
-          name: addr?['freeformAddress'] ?? 'Current Location',
-          address: addr?['freeformAddress'] ?? '',
+          name: formattedShort,
+          address: formattedShort,
           latitude: point.latitude,
           longitude: point.longitude,
         );

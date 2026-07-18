@@ -202,10 +202,9 @@ final ordersProvider =
 });
 
 class OrdersNotifier extends StateNotifier<List<Order>> {
-  OrdersNotifier() : super([_demoOrder]) {
-    // TEMP DEMO: seeded active order to showcase tracking. Revert after.
-    // _loadFromApi();
-    // _startPolling();
+  OrdersNotifier() : super([]) {
+    _loadFromApi();
+    _startPolling();
   }
 
   // TEMP DEMO order — remove.

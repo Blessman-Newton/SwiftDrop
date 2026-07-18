@@ -83,7 +83,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Parcel routes
       GoRoute(
           path: '/parcel/booking',
-          builder: (_, __) => const ParcelBookingScreen()),
+          builder: (_, state) {
+            final type = state.uri.queryParameters['type'] ?? 'package';
+            return ParcelBookingScreen(pickupType: type);
+          }),
       GoRoute(
           path: '/parcel/details',
           builder: (_, __) => const ParcelPackageDetailsScreen()),

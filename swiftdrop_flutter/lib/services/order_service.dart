@@ -132,4 +132,14 @@ class OrderService {
       return null;
     }
   }
+
+  /// Trigger mock payment callback for Pay For Me
+  Future<bool> triggerMockPaymentCallback(String orderId) async {
+    try {
+      final response = await _api.dio.post('/api/v1/payments/mock-callback/$orderId');
+      return response.statusCode == 200;
+    } on DioException catch (_) {
+      return false;
+    }
+  }
 }

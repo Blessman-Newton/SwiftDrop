@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
@@ -51,6 +52,7 @@ void showFoodDetailSheet({
 }) {
   final extrasList = getExtrasForFood(item.name);
   int mainQty = 1;
+  bool isAdded = false;
   final Map<String, int> selectedExtras = {
     for (var ext in extrasList) ext['name'] as String: 0
   };
@@ -92,7 +94,7 @@ void showFoodDetailSheet({
                       child: ListView(
                         controller: scrollController,
                         children: [
-                          if (item.imageUrl.isNotEmpty)
+                          if (item.imageUrl.isNotEmpty && !restaurant.name.toLowerCase().contains('amina'))
                             Stack(
                               children: [
                                 ClipRRect(
@@ -149,7 +151,7 @@ void showFoodDetailSheet({
                                           'from',
                                           style: GoogleFonts.inter(
                                             fontSize: 11,
-                                            color: Colors.orange.shade700,
+                                            color: AppColors.primary,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
@@ -169,14 +171,14 @@ void showFoodDetailSheet({
 
                                 Row(
                                   children: [
-                                    const Icon(Icons.storefront, color: Colors.orange, size: 18),
+                                    const Icon(Icons.storefront, color: AppColors.primary, size: 18),
                                     const SizedBox(width: 6),
                                     Text(
                                       restaurant.name.toUpperCase(),
                                       style: GoogleFonts.inter(
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.orange.shade700,
+                                        color: AppColors.primary,
                                       ),
                                     ),
                                   ],
@@ -185,7 +187,7 @@ void showFoodDetailSheet({
 
                                 Row(
                                   children: [
-                                    const Icon(Icons.location_on, color: Colors.orange, size: 18),
+                                    const Icon(Icons.location_on, color: AppColors.primary, size: 18),
                                     const SizedBox(width: 6),
                                     Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,6 +401,12 @@ void showFoodDetailSheet({
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
+                            if (isAdded) {
+                              Navigator.pop(ctx);
+                              context.push('/cart');
+                              return;
+                            }
+
                             final List<CartExtra> finalExtras = [];
                             selectedExtras.forEach((name, qty) {
                               if (qty > 0) {
@@ -416,11 +424,13 @@ void showFoodDetailSheet({
                               restaurantId: restaurant.id,
                             );
 
-                            Navigator.pop(ctx);
+                            setSheetState(() {
+                              isAdded = true;
+                            });
                             onFeedback('Added ${item.name} to cart');
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFA500),
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -431,10 +441,10 @@ void showFoodDetailSheet({
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.shopping_cart, size: 20),
+                              Icon(isAdded ? Icons.shopping_bag : Icons.shopping_cart, size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                'Add to cart - ₵${totalPrice.toStringAsFixed(2)}',
+                                isAdded ? 'View Cart' : 'Add to cart - ₵${totalPrice.toStringAsFixed(2)}',
                                 style: GoogleFonts.inter(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -492,7 +502,7 @@ Widget _buildSheetCounter({
         child: Container(
           padding: const EdgeInsets.all(6),
           decoration: const BoxDecoration(
-            color: Color(0xFFFFA500),
+            color: AppColors.primary,
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.add, size: 16, color: Colors.white),

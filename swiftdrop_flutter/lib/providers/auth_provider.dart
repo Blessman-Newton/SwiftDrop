@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -59,6 +60,23 @@ class AuthNotifier extends StateNotifier<User?> {
       state = user;
     }
     return user;
+  }
+
+  Future<User?> loginWithGoogle() async {
+    await Future.delayed(const Duration(seconds: 1));
+    final dummyUser = User(
+      uid: 'google_user_123',
+      email: 'swiftdrop.user@gmail.com',
+      displayName: 'Swift Customer',
+      phoneNumber: '+233200000000',
+      walletBalance: 150.0,
+      loyaltyPoints: 120,
+      membershipTier: 'Gold',
+    );
+    state = dummyUser;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('swiftdrop_active_session', jsonEncode(dummyUser.toMap()));
+    return dummyUser;
   }
 
   Future<bool> sendOtp(String phone) async {

@@ -26,8 +26,24 @@ class RestaurantService {
 
   Future<Restaurant?> getRestaurant(String restaurantId) async {
     try {
+      String actualId = restaurantId;
+      final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      if (!uuidRegex.hasMatch(restaurantId)) {
+        final list = await getRestaurants();
+        final match = list.firstWhere(
+          (r) => r.id == restaurantId || r.slug == restaurantId || r.name.toLowerCase() == restaurantId.toLowerCase(),
+          orElse: () => list.firstWhere(
+            (r) => r.slug.replaceAll("'", "") == restaurantId.replaceAll("'", "") || r.name.toLowerCase().replaceAll("'", "") == restaurantId.toLowerCase().replaceAll("'", ""),
+            orElse: () => Restaurant(id: restaurantId, name: '', slug: '', rating: 0, tags: const [], deliveryTime: '', deliveryFee: '', distance: '', imageUrl: '', menu: const []),
+          ),
+        );
+        if (match.name.isNotEmpty) {
+          actualId = match.id;
+        }
+      }
+
       final response = await _client.dio.get(
-        '${ApiEndpoints.restaurants}/$restaurantId',
+        '${ApiEndpoints.restaurants}/$actualId',
       );
       return Restaurant.fromDetailResponse(response.data);
     } on DioException {
@@ -37,11 +53,27 @@ class RestaurantService {
 
   Future<List<FoodItem>> getMenuItems(String restaurantId, {String? category}) async {
     try {
+      String actualId = restaurantId;
+      final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      if (!uuidRegex.hasMatch(restaurantId)) {
+        final list = await getRestaurants();
+        final match = list.firstWhere(
+          (r) => r.id == restaurantId || r.slug == restaurantId || r.name.toLowerCase() == restaurantId.toLowerCase(),
+          orElse: () => list.firstWhere(
+            (r) => r.slug.replaceAll("'", "") == restaurantId.replaceAll("'", "") || r.name.toLowerCase().replaceAll("'", "") == restaurantId.toLowerCase().replaceAll("'", ""),
+            orElse: () => Restaurant(id: restaurantId, name: '', slug: '', rating: 0, tags: const [], deliveryTime: '', deliveryFee: '', distance: '', imageUrl: '', menu: const []),
+          ),
+        );
+        if (match.name.isNotEmpty) {
+          actualId = match.id;
+        }
+      }
+
       final queryParams = <String, dynamic>{};
       if (category != null) queryParams['category'] = category;
 
       final response = await _client.dio.get(
-        '${ApiEndpoints.restaurants}/$restaurantId/menu',
+        '${ApiEndpoints.restaurants}/$actualId/menu',
         queryParameters: queryParams,
       );
 
