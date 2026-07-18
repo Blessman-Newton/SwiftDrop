@@ -474,6 +474,23 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               isDark: isDark,
               obscure: true,
             ),
+            if (_mode == AuthMode.login) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () => _showForgotPasswordDialog(context, isDark),
+                  child: Text(
+                    'Forgot Password?',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF6FFBBE) : const Color(0xFF006C49),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
           ],
           if (_mode == AuthMode.signup)
@@ -575,6 +592,77 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   color: isDark
                       ? const Color(0xFF6FFBBE)
                       : const Color(0xFF006C49),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.grey.shade300)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'OR',
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white38 : Colors.grey.shade400,
+                    ),
+                  ),
+                ),
+                Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.grey.shade300)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: () async {
+                setState(() => _loading = true);
+                try {
+                  final user = await ref.read(currentUserProvider.notifier).loginWithGoogle();
+                  if (!mounted) return;
+                  setState(() => _loading = false);
+                  if (user != null) {
+                    context.go('/home');
+                  } else {
+                    _showError('Google sign in failed');
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    setState(() => _loading = false);
+                    _showError(e.toString());
+                  }
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : Colors.grey.shade200,
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.network(
+                      'https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png',
+                      height: 22,
+                      width: 22,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, color: Colors.blue, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Continue with Google',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -917,6 +1005,72 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
         ),
+      ),
+    );
+  }
+
+  void _showForgotPasswordDialog(BuildContext context, bool isDark) {
+    final emailResetController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF18233C) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Reset Password',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter your email address to receive a password reset link.',
+              style: GoogleFonts.poppins(fontSize: 13, color: isDark ? Colors.white70 : Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailResetController,
+              keyboardType: TextInputType.emailAddress,
+              style: GoogleFonts.poppins(color: isDark ? Colors.white : Colors.black),
+              decoration: InputDecoration(
+                hintText: 'email@example.com',
+                hintStyle: GoogleFonts.poppins(color: isDark ? Colors.white38 : Colors.black38),
+                prefixIcon: Icon(Icons.email, color: isDark ? Colors.white70 : Colors.black54),
+                filled: true,
+                fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: GoogleFonts.poppins(color: isDark ? Colors.white70 : Colors.black54)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final email = emailResetController.text.trim();
+              if (email.isNotEmpty) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('A password reset link has been sent to $email.', style: GoogleFonts.poppins()),
+                    backgroundColor: const Color(0xFF10B981),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Reset', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

@@ -62,6 +62,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   String _cartFeedbackMsg = '';
   String? _appliedPromo;
   String _selectedAddress = 'Home: 123 Oak Street';
+  double? _selectedLat;
+  double? _selectedLng;
+
   String _selectedPayment = 'Apple Pay •••• 9821';
 
   final List<String> _addresses = [
@@ -229,6 +232,37 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     if (restaurantAsync.isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (restaurantAsync.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading restaurant:\n${restaurantAsync.error}',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => ref.refresh(restaurantDetailProvider(widget.restaurantId)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -1052,8 +1086,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                       _CheckoutPriceRow(label: 'Subtotal', value: subtotal),
                       if (discount > 0)
                         _CheckoutPriceRow(label: 'Discount ($_appliedPromo)', value: -discount, isDiscount: true),
-                      _CheckoutPriceRow(label: 'Delivery', value: deliveryFeeVal),
-                      _CheckoutPriceRow(label: 'Tax', value: tax),
+                      _CheckoutPriceRow(label: 'Delivery Fee', value: deliveryFeeVal),
+                      _CheckoutPriceRow(label: 'Service Fee', value: tax),
                       const Divider(height: 16),
                       _CheckoutPriceRow(label: 'Total', value: total, isBold: true),
                       const SizedBox(height: 12),
@@ -1084,6 +1118,10 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                       promoCode: _appliedPromo,
                                       orderType: 'food',
                                       userEmail: user.email,
+                                      pickupLat: _restaurant.latitude,
+                                      pickupLng: _restaurant.longitude,
+                                      deliveryLat: _selectedLat,
+                                      deliveryLng: _selectedLng,
                                     ),
                                   ),
                                 );
@@ -1204,7 +1242,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           ),
         );
         if (result != null) {
-          setState(() => _selectedAddress = result.address);
+          setState(() {
+            _selectedAddress = result.address;
+            _selectedLat = result.lat;
+            _selectedLng = result.lng;
+          });
         }
       },
       child: Container(
@@ -1375,6 +1417,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   void _showFoodDetailSheet(FoodItem item) {
     final extrasList = _getExtrasForFood(item.name);
     int mainQty = 1;
+    bool isAdded = false;
     final Map<String, int> selectedExtras = {
       for (var ext in extrasList) ext['name'] as String: 0
     };
@@ -1410,7 +1453,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                         child: ListView(
                           controller: scrollController,
                           children: [
-                            if (item.imageUrl.isNotEmpty)
+                            if (item.imageUrl.isNotEmpty && !_restaurant.name.toLowerCase().contains('amina'))
                               Stack(
                                 children: [
                                   ClipRRect(
@@ -1467,7 +1510,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                             'from',
                                             style: GoogleFonts.inter(
                                               fontSize: 11,
-                                              color: Colors.orange.shade700,
+                                              color: AppColors.primary,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
@@ -1487,14 +1530,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
                                   Row(
                                     children: [
-                                      const Icon(Icons.storefront, color: Colors.orange, size: 18),
+                                      const Icon(Icons.storefront, color: AppColors.primary, size: 18),
                                       const SizedBox(width: 6),
                                       Text(
                                         _restaurant.name.toUpperCase(),
                                         style: GoogleFonts.inter(
                                           fontSize: 13,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.orange.shade700,
+                                          color: AppColors.primary,
                                         ),
                                       ),
                                     ],
@@ -1503,7 +1546,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
                                   Row(
                                     children: [
-                                      const Icon(Icons.location_on, color: Colors.orange, size: 18),
+                                      const Icon(Icons.location_on, color: AppColors.primary, size: 18),
                                       const SizedBox(width: 6),
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1715,28 +1758,35 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: () {
-                              final List<CartExtra> finalExtras = [];
-                              selectedExtras.forEach((name, qty) {
-                                if (qty > 0) {
-                                  final extConfig = extrasList.firstWhere((element) => element['name'] == name);
-                                  finalExtras.add(
-                                    CartExtra(name: name, price: extConfig['price'] as double, quantity: qty),
-                                  );
-                                }
-                              });
+                              if (isAdded) {
+                                Navigator.pop(ctx);
+                                setState(() => _showCheckout = true);
+                              } else {
+                                final List<CartExtra> finalExtras = [];
+                                selectedExtras.forEach((name, qty) {
+                                  if (qty > 0) {
+                                    final extConfig = extrasList.firstWhere((element) => element['name'] == name);
+                                    finalExtras.add(
+                                      CartExtra(name: name, price: extConfig['price'] as double, quantity: qty),
+                                    );
+                                  }
+                                });
 
-                              ref.read(cartProvider.notifier).addCustomItem(
-                                item,
-                                finalExtras,
-                                mainQty,
-                                restaurantId: widget.restaurantId,
-                              );
+                                ref.read(cartProvider.notifier).addCustomItem(
+                                  item,
+                                  finalExtras,
+                                  mainQty,
+                                  restaurantId: widget.restaurantId,
+                                );
 
-                              Navigator.pop(ctx);
-                              _showFeedback('Added ${item.name} to cart');
+                                _showFeedback('Added ${item.name} to cart');
+                                setSheetState(() {
+                                  isAdded = true;
+                                });
+                              }
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFA500),
+                              backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -1747,10 +1797,12 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.shopping_cart, size: 20),
+                                Icon(isAdded ? Icons.shopping_bag : Icons.shopping_cart, size: 20),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Add to cart - ₵${totalPrice.toStringAsFixed(2)}',
+                                  isAdded
+                                      ? 'View Cart'
+                                      : 'Add to cart - ₵${totalPrice.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -1803,7 +1855,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           child: Container(
             padding: const EdgeInsets.all(6),
             decoration: const BoxDecoration(
-              color: Color(0xFFFFA500),
+              color: AppColors.primary,
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.add, size: 16, color: Colors.white),

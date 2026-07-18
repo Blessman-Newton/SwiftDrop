@@ -19,6 +19,18 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
   List<Map<String, dynamic>> _cosmetics = [];
   bool _isLoading = true;
   String _searchQuery = '';
+  String _selectedCategory = 'All';
+
+  String _getCategory(Map<String, dynamic> item) {
+    final name = (item['name'] as String).toLowerCase();
+    if (name.contains('oil') || name.contains('serum')) {
+      return 'Oil';
+    } else if (name.contains('spray') || name.contains('mist') || name.contains('perfume')) {
+      return 'Spray';
+    } else {
+      return 'Pomade';
+    }
+  }
 
   @override
   void initState() {
@@ -31,7 +43,41 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
     final data = await _customerService.getCosmetics();
     if (mounted) {
       setState(() {
-        _cosmetics = data ?? [];
+        final raw = data ?? [];
+        final extraItems = [
+          {
+            'id': 'cos_extra_1',
+            'name': 'Glow Body Spray',
+            'description': 'Refreshing floral scented body spray mist.',
+            'price': 50.0,
+            'image_url': 'https://images.unsplash.com/photo-1547887537-6158d64c35b3?w=400',
+            'is_available': true,
+          },
+          {
+            'id': 'cos_extra_2',
+            'name': 'Organic Argan Oil',
+            'description': '100% pure Moroccan argan oil for skin & hair.',
+            'price': 75.0,
+            'image_url': 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400',
+            'is_available': true,
+          },
+          {
+            'id': 'cos_extra_3',
+            'name': 'Moisturizing Hair Pomade',
+            'description': 'Nourishing hair conditioning pomade with honey.',
+            'price': 40.0,
+            'image_url': 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400',
+            'is_available': true,
+          }
+        ];
+        
+        final combined = [...raw];
+        for (var item in extraItems) {
+          if (!combined.any((element) => element['name'] == item['name'])) {
+            combined.add(item);
+          }
+        }
+        _cosmetics = combined;
         _isLoading = false;
       });
     }
@@ -55,6 +101,11 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
         content: Text('Added ${c['name']} to cart'),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'VIEW CART',
+          textColor: Colors.white,
+          onPressed: () => context.push('/cart'),
+        ),
       ),
     );
   }
@@ -62,15 +113,73 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cart = ref.watch(cartProvider);
+    final totalQty = cart.fold<int>(0, (sum, item) => sum + item.quantity);
+    final totalPrice = cart.fold<double>(0.0, (sum, item) => sum + item.totalPrice);
     
     final filteredCosmetics = _cosmetics.where((c) {
       final name = (c['name'] as String).toLowerCase();
       final desc = (c['description'] as String? ?? '').toLowerCase();
-      return name.contains(_searchQuery.toLowerCase()) || desc.contains(_searchQuery.toLowerCase());
+      final matchesSearch = name.contains(_searchQuery.toLowerCase()) || desc.contains(_searchQuery.toLowerCase());
+      if (_selectedCategory == 'All') {
+        return matchesSearch;
+      }
+      final cat = _getCategory(c);
+      return matchesSearch && cat == _selectedCategory;
     }).toList();
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      bottomNavigationBar: cart.isEmpty
+          ? null
+          : Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => context.push('/cart'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEC4899),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.shopping_bag_outlined),
+                            const SizedBox(width: 8),
+                            Text(
+                              'View Cart ($totalQty ${totalQty == 1 ? 'item' : 'items'})',
+                              style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '₵${totalPrice.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 15),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
       appBar: AppBar(
         title: Text(
           'Cosmetics Catalog',
@@ -120,6 +229,8 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
               ),
             ),
           ),
+          
+          _buildCategoryTabs(isDark),
           
           Expanded(
             child: _isLoading
@@ -258,6 +369,51 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryTabs(bool isDark) {
+    final categories = ['All', 'Pomade', 'Spray', 'Oil'];
+    return Container(
+      height: 40,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length,
+        itemBuilder: (context, index) {
+          final cat = categories[index];
+          final isSelected = _selectedCategory == cat;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = cat),
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary
+                    : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primary
+                      : (isDark ? Colors.white10 : Colors.grey.shade200),
+                ),
+              ),
+              child: Text(
+                cat,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.white70 : Colors.black87),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -19,9 +20,13 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final _searchController = TextEditingController();
   String _selectedLocation = 'Sunyani, Ghana';
-  final TomTomService _tomtom = TomTomService();
+  final _searchController = TextEditingController();
+  final _tomtom = TomTomService();
+
+  late PageController _pageController;
+  int _currentBannerPage = 0;
+  Timer? _bannerTimer;
 
   // Popular foods near you (images resolve via FoodImages keyword match).
   static const List<Map<String, String>> _popularFoods = [
@@ -32,9 +37,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     {'name': 'Shawarma', 'price': 'GHS 45'},
     {'name': 'Chicken & Chips', 'price': 'GHS 55'},
   ];
-
-  late PageController _pageController;
-  int _currentBannerPage = 0;
 
   final List<Map<String, dynamic>> _banners = [
     {
@@ -51,7 +53,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'title': 'Book us to refill your gas now',
       'subtitle': 'Schedule refills, safe, reliable & fast delivery',
       'button': 'Book a Refill',
-      'route': '/parcel-delivery',
+      'route': '/gas-booking',
       'imageUrl': 'https://images.unsplash.com/photo-1628102428189-6c4538be649f?w=600',
       'colors': [const Color(0xE61E3A8A), const Color(0xCC3B82F6)],
     },
@@ -60,7 +62,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'title': 'Medicine Pharmacy Delivery',
       'subtitle': 'Prescriptions & OTC drugs safely delivered',
       'button': 'Buy Medicine',
-      'route': '/parcel-delivery',
+      'route': '/parcel/booking',
       'imageUrl': 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600',
       'colors': [const Color(0xE64C1D95), const Color(0xCC8B5CF6)],
     },
@@ -69,9 +71,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       'title': 'Send Parcels City-Wide',
       'subtitle': 'Fast and secure courier dispatch',
       'button': 'Send Package',
-      'route': '/parcel-delivery',
+      'route': '/parcel/booking',
       'imageUrl': 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=600',
       'colors': [const Color(0xE60F766E), const Color(0xCC14B8A6)],
+    },
+    {
+      'tag': 'COSMETICS',
+      'title': 'Premium Cosmetics & Care',
+      'subtitle': 'Browse pomade, spray, oils & beauty supplies',
+      'button': 'Shop Beauty',
+      'route': '/cosmetics-list',
+      'imageUrl': 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=600',
+      'colors': [const Color(0xE6BE185D), const Color(0xCCEC4899)],
+    },
+    {
+      'tag': 'GROCERIES',
+      'title': 'Fresh Groceries & Essentials',
+      'subtitle': 'Book a rider to pickup or deliver groceries',
+      'button': 'Order Groceries',
+      'route': '/parcel/booking',
+      'imageUrl': 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=600',
+      'colors': [const Color(0xE678350F), const Color(0xCCD97706)],
     },
   ];
 
@@ -135,6 +155,120 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  void _showPickupOptionsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What should we pick up for you?',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Select the type of pickup service you need.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // 1. Food Pickup
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.fastfood, color: Color(0xFF4CAF50)),
+                  ),
+                  title: Text(
+                    'Food Pickup',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Pick up prepared meals from any local vendor or restaurant.',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('/parcel/booking?type=food');
+                  },
+                ),
+                const Divider(height: 24),
+                // 2. Package Pickup
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE3F2FD),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.local_shipping, color: Color(0xFF2196F3)),
+                  ),
+                  title: Text(
+                    'Package Pickup',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Send box, documents, keys or personal packages.',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('/parcel/booking?type=package');
+                  },
+                ),
+                const Divider(height: 24),
+                // 3. Other Pickup
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEDE7F6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.widgets, color: Color(0xFF9C27B0)),
+                  ),
+                  title: Text(
+                    'Other Pickup',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    'Any custom items, laundry, groceries, or specific instructions.',
+                    style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context.push('/parcel/booking?type=other');
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCircularNavRow(bool isDark) {
     final items = [
       {
@@ -147,7 +281,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'label': 'Pickup',
         'icon': Icons.delivery_dining_rounded,
         'color': const Color(0xFF6366F1),
-        'onTap': () => context.push('/parcel/booking'),
+        'onTap': () => _showPickupOptionsBottomSheet(context),
       },
       {
         'label': 'Gas Refill',
@@ -214,6 +348,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _pageController = PageController();
     _scrollController = ScrollController();
     _initializeCurrentLocation();
+    _startBannerTimer();
+  }
+
+  void _startBannerTimer() {
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (!mounted) return;
+      if (_pageController.hasClients) {
+        final nextPage = (_currentBannerPage + 1) % _banners.length;
+        _pageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
   }
 
   Future<void> _initializeCurrentLocation() async {
@@ -252,6 +401,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
+    _bannerTimer?.cancel();
     _pageController.dispose();
     _scrollController.dispose();
     _searchController.dispose();
@@ -331,158 +481,166 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Location
-                  GestureDetector(
-                    onTap: () {
-                      final searchCtrl = TextEditingController();
-                      List<TomTomSearchResult> results = [];
-                      bool isSearching = false;
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        final searchCtrl = TextEditingController();
+                        List<TomTomSearchResult> results = [];
+                        bool isSearching = false;
 
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                        ),
-                        builder: (ctx) => StatefulBuilder(
-                          builder: (ctx, setSheetState) => Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (ctx) => StatefulBuilder(
+                            builder: (ctx, setSheetState) => Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Select Location',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  ListTile(
+                                    leading: const Icon(Icons.my_location, color: AppColors.primary),
+                                    title: Text('Use Current Location',
+                                      style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                                    onTap: () async {
+                                      Navigator.pop(ctx);
+                                      try {
+                                        LocationPermission perm = await Geolocator.checkPermission();
+                                        if (perm == LocationPermission.denied) {
+                                          perm = await Geolocator.requestPermission();
+                                        }
+                                        if (perm == LocationPermission.denied ||
+                                            perm == LocationPermission.deniedForever) return;
+                                        final pos = await Geolocator.getCurrentPosition(
+                                          locationSettings: const LocationSettings(
+                                              accuracy: LocationAccuracy.high));
+                                        final result = await _tomtom.reverseGeocode(
+                                          LatLng(pos.latitude, pos.longitude));
+                                        if (mounted) {
+                                          setState(() {
+                                            _selectedLocation = result?.address ??
+                                                '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
+                                          });
+                                        }
+                                      } catch (_) {}
+                                    },
+                                  ),
+                                  const Divider(),
+                                  TextField(
+                                    controller: searchCtrl,
+                                    autofocus: true,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search city or address...',
+                                      prefixIcon: const Icon(Icons.search),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    onChanged: (q) async {
+                                      if (q.trim().length < 2) {
+                                        setSheetState(() => results = []);
+                                        return;
+                                      }
+                                      setSheetState(() => isSearching = true);
+                                      final r = await _tomtom.search(q);
+                                      setSheetState(() {
+                                        results = r;
+                                        isSearching = false;
+                                      });
+                                    },
+                                  ),
+                                  if (isSearching) const Padding(
+                                    padding: EdgeInsets.only(top: 8),
+                                    child: LinearProgressIndicator(),
+                                  ),
+                                  if (results.isNotEmpty)
+                                    Container(
+                                      constraints: const BoxConstraints(maxHeight: 200),
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: results.length,
+                                        itemBuilder: (ctx, i) => ListTile(
+                                          dense: true,
+                                          leading: const Icon(Icons.location_on,
+                                              color: AppColors.primary, size: 20),
+                                          title: Text(results[i].name,
+                                              style: GoogleFonts.inter(fontSize: 14)),
+                                          subtitle: Text(results[i].address,
+                                              style: GoogleFonts.inter(fontSize: 11,
+                                                  color: Colors.grey[600]),
+                                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                                          onTap: () {
+                                            Navigator.pop(ctx);
+                                            setState(() => _selectedLocation =
+                                                results[i].address.isNotEmpty
+                                                    ? results[i].address
+                                                    : results[i].name);
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              color: AppColors.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
                             child: Column(
-                              mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Select Location',
+                                  'Current Location',
                                   style: GoogleFonts.inter(
-                                    fontSize: 18,
+                                    fontSize: 10,
                                     fontWeight: FontWeight.bold,
+                                    color: Colors.grey[400],
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 16),
-                                ListTile(
-                                  leading: const Icon(Icons.my_location, color: AppColors.primary),
-                                  title: Text('Use Current Location',
-                                    style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-                                  onTap: () async {
-                                    Navigator.pop(ctx);
-                                    try {
-                                      LocationPermission perm = await Geolocator.checkPermission();
-                                      if (perm == LocationPermission.denied) {
-                                        perm = await Geolocator.requestPermission();
-                                      }
-                                      if (perm == LocationPermission.denied ||
-                                          perm == LocationPermission.deniedForever) return;
-                                      final pos = await Geolocator.getCurrentPosition(
-                                        locationSettings: const LocationSettings(
-                                            accuracy: LocationAccuracy.high));
-                                      final result = await _tomtom.reverseGeocode(
-                                        LatLng(pos.latitude, pos.longitude));
-                                      if (mounted) {
-                                        setState(() {
-                                          _selectedLocation = result?.address ??
-                                              '${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}';
-                                        });
-                                      }
-                                    } catch (_) {}
-                                  },
-                                ),
-                                const Divider(),
-                                TextField(
-                                  controller: searchCtrl,
-                                  autofocus: true,
-                                  decoration: InputDecoration(
-                                    hintText: 'Search city or address...',
-                                    prefixIcon: const Icon(Icons.search),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  onChanged: (q) async {
-                                    if (q.trim().length < 2) {
-                                      setSheetState(() => results = []);
-                                      return;
-                                    }
-                                    setSheetState(() => isSearching = true);
-                                    final r = await _tomtom.search(q);
-                                    setSheetState(() {
-                                      results = r;
-                                      isSearching = false;
-                                    });
-                                  },
-                                ),
-                                if (isSearching) const Padding(
-                                  padding: EdgeInsets.only(top: 8),
-                                  child: LinearProgressIndicator(),
-                                ),
-                                if (results.isNotEmpty)
-                                  Container(
-                                    constraints: const BoxConstraints(maxHeight: 200),
-                                    child: ListView.builder(
-                                      shrinkWrap: true,
-                                      itemCount: results.length,
-                                      itemBuilder: (ctx, i) => ListTile(
-                                        dense: true,
-                                        leading: const Icon(Icons.location_on,
-                                            color: AppColors.primary, size: 20),
-                                        title: Text(results[i].name,
-                                            style: GoogleFonts.inter(fontSize: 14)),
-                                        subtitle: Text(results[i].address,
-                                            style: GoogleFonts.inter(fontSize: 11,
-                                                color: Colors.grey[600]),
-                                            maxLines: 1, overflow: TextOverflow.ellipsis),
-                                        onTap: () {
-                                          Navigator.pop(ctx);
-                                          setState(() => _selectedLocation =
-                                              results[i].address.isNotEmpty
-                                                  ? results[i].address
-                                                  : results[i].name);
-                                        },
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _selectedLocation,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.textPrimary(isDark),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      '▼',
+                                      style: TextStyle(fontSize: 10),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
-                        ),
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        const Icon(Icons.location_on,
-                            color: AppColors.primary, size: 20),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Current Location',
-                              style: GoogleFonts.inter(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[400],
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                Text(
-                                  _selectedLocation,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.textPrimary(isDark),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Text(
-                                  '▼',
-                                  style: TextStyle(fontSize: 10),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -584,7 +742,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 final gradientColors = b['colors'] as List<Color>;
 
                                 return GestureDetector(
-                                  onTap: () => context.push(b['route'] as String),
+                                  onTap: () {
+                                    final route = b['route'] as String;
+                                    if (route == '/parcel/booking') {
+                                      _showPickupOptionsBottomSheet(context);
+                                    } else {
+                                      context.push(route);
+                                    }
+                                  },
                                   child: Stack(
                                     fit: StackFit.expand,
                                     children: [

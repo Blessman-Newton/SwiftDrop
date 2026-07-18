@@ -12,7 +12,8 @@ import '../services/tomtom_service.dart';
 import 'address_selection_screen.dart';
 
 class ParcelBookingScreen extends ConsumerStatefulWidget {
-  const ParcelBookingScreen({super.key});
+  final String pickupType;
+  const ParcelBookingScreen({super.key, this.pickupType = 'package'});
 
   @override
   ConsumerState<ParcelBookingScreen> createState() => _ParcelBookingScreenState();
@@ -21,6 +22,10 @@ class ParcelBookingScreen extends ConsumerStatefulWidget {
 class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
   late final TextEditingController _pickupController;
   late final TextEditingController _deliveryController;
+  late final TextEditingController _vendorNameController;
+  late final TextEditingController _foodDetailsController;
+  late final TextEditingController _packageNameController;
+  late final TextEditingController _otherInstructionsController;
   final _formKey = GlobalKey<FormState>();
 
   final MapController _mapController = MapController();
@@ -42,13 +47,20 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
     _deliveryController = TextEditingController(
       text: booking.deliveryLocation,
     );
+    _vendorNameController = TextEditingController();
+    _foodDetailsController = TextEditingController();
+    _packageNameController = TextEditingController();
+    _otherInstructionsController = TextEditingController();
   }
 
   @override
   void dispose() {
     _pickupController.dispose();
     _deliveryController.dispose();
-    _mapController.dispose();
+    _vendorNameController.dispose();
+    _foodDetailsController.dispose();
+    _packageNameController.dispose();
+    _otherInstructionsController.dispose();
     super.dispose();
   }
 
@@ -270,32 +282,33 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
             ),
           ),
           // Content
+          // Content - Top Booking Card
           Positioned(
-            top: MediaQuery.of(context).padding.top + 56,
+            top: MediaQuery.of(context).padding.top + 70,
             left: 20,
             right: 20,
-            bottom: 20,
             child: Form(
               key: _formKey,
-              child: Column(
-              children: [
-                // Booking Card
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.1),
-                        blurRadius: 25,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: const Color.fromRGBO(187, 202, 191, 0.2),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.48,
+                ),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromRGBO(0, 0, 0, 0.1),
+                      blurRadius: 25,
+                      offset: Offset(0, 4),
                     ),
+                  ],
+                  border: Border.all(
+                    color: const Color.fromRGBO(187, 202, 191, 0.2),
                   ),
+                ),
+                child: SingleChildScrollView(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -305,21 +318,18 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                           Container(
                             width: 12,
                             height: 12,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF006C49),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF006C49),
                               shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF006C49).withValues(alpha: 0.2),
-                                  blurRadius: 16,
-                                  spreadRadius: 4,
-                                ),
-                              ],
                             ),
                           ),
                           Container(
                             width: 2,
-                            height: 150,
+                            height: widget.pickupType == 'package'
+                                ? 210
+                                : widget.pickupType == 'food'
+                                    ? 240
+                                    : 140,
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             child: const DashedLinePainter(),
                           ),
@@ -330,31 +340,122 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 16),
                       // Input fields
                       Expanded(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildLocationField(
-                              label: 'PICKUP LOCATION',
-                              controller: _pickupController,
-                              hintText: 'Current Location (123 Urban St)',
-                              onMapTap: () async {
-                                final result = await context.push<AddressSelectionResult>('/address-selection');
-                                if (result != null) {
-                                  _pickupController.text = result.address;
-                                  ref.read(parcelBookingProvider.notifier).updatePickup(
-                                    result.address, lat: result.lat, lng: result.lng);
-                                }
-                              },
+                            Text(
+                              widget.pickupType == 'food'
+                                  ? 'FOOD PICKUP DETAILS'
+                                  : widget.pickupType == 'other'
+                                      ? 'OTHER PICKUP DETAILS'
+                                      : 'PACKAGE PICKUP DETAILS',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF006C49),
+                                letterSpacing: 1.0,
+                              ),
                             ),
+                            const SizedBox(height: 12),
+                            
+                            // Dynamic Fields
+                            if (widget.pickupType == 'food') ...[
+                              _buildTextField(
+                                label: 'VENDOR / RESTAURANT NAME',
+                                controller: _vendorNameController,
+                                hintText: 'e.g. Amina\'s Kitchen',
+                                prefixIcon: Icons.restaurant,
+                                validator: (val) => val == null || val.trim().isEmpty ? 'Vendor name required' : null,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildLocationField(
+                                label: 'VENDOR ADDRESS (PICKUP)',
+                                controller: _pickupController,
+                                hintText: 'Where to collect food?',
+                                onMapTap: () async {
+                                  final result = await context.push<AddressSelectionResult>('/address-selection');
+                                  if (result != null) {
+                                    _pickupController.text = result.address;
+                                    ref.read(parcelBookingProvider.notifier).updatePickup(
+                                      result.address, lat: result.lat, lng: result.lng);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildTextField(
+                                label: 'ORDER INFO (ORDER #, PHONE, DETAILS)',
+                                controller: _foodDetailsController,
+                                hintText: 'e.g. Order #593, Call Kwame at 055...',
+                                prefixIcon: Icons.info_outline,
+                                maxLines: 2,
+                                validator: (val) => val == null || val.trim().isEmpty ? 'Order details required' : null,
+                              ),
+                            ] else if (widget.pickupType == 'other') ...[
+                              _buildTextField(
+                                label: 'DESCRIPTION & INSTRUCTIONS',
+                                controller: _otherInstructionsController,
+                                hintText: 'e.g. Pick up my blue laundry bag, instructions...',
+                                prefixIcon: Icons.description_outlined,
+                                maxLines: 2,
+                                validator: (val) => val == null || val.trim().isEmpty ? 'Instructions required' : null,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildLocationField(
+                                label: 'PICKUP ADDRESS',
+                                controller: _pickupController,
+                                hintText: 'Where are we picking up from?',
+                                onMapTap: () async {
+                                  final result = await context.push<AddressSelectionResult>('/address-selection');
+                                  if (result != null) {
+                                    _pickupController.text = result.address;
+                                    ref.read(parcelBookingProvider.notifier).updatePickup(
+                                      result.address, lat: result.lat, lng: result.lng);
+                                  }
+                                },
+                              ),
+                            ] else ...[
+                              _buildTextField(
+                                label: 'PACKAGE NAME / TYPE',
+                                controller: _packageNameController,
+                                hintText: 'e.g. Documents, Laptop, Gift Box',
+                                prefixIcon: Icons.shopping_bag_outlined,
+                                validator: (val) => val == null || val.trim().isEmpty ? 'Package name required' : null,
+                              ),
+                              const SizedBox(height: 12),
+                              _buildLocationField(
+                                label: 'LOCATION OF PACKAGE (PICKUP)',
+                                controller: _pickupController,
+                                hintText: 'Where to collect package?',
+                                onMapTap: () async {
+                                  final result = await context.push<AddressSelectionResult>('/address-selection');
+                                  if (result != null) {
+                                    _pickupController.text = result.address;
+                                    ref.read(parcelBookingProvider.notifier).updatePickup(
+                                      result.address, lat: result.lat, lng: result.lng);
+                                  }
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              _buildTextField(
+                                label: 'NOTES & INSTRUCTIONS FOR RIDER',
+                                controller: _otherInstructionsController,
+                                hintText: 'e.g. Leave with security, call upon arrival',
+                                prefixIcon: Icons.chat_bubble_outline,
+                                maxLines: 2,
+                              ),
+                            ],
+                            
                             Container(
                               height: 1,
-                              color: const Color.fromRGBO(187, 202, 191, 0.3),
-                              margin: const EdgeInsets.symmetric(vertical: 16),
+                              color: Colors.grey[200],
+                              margin: const EdgeInsets.symmetric(vertical: 14),
                             ),
+                            
                             _buildLocationField(
-                              label: 'DELIVERY LOCATION',
+                              label: 'DELIVERY DESTINATION',
                               controller: _deliveryController,
                               hintText: 'Where is it going?',
                               onMapTap: () async {
@@ -372,7 +473,17 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+              ),
+            ),
+          ),
+          // Content - Bottom Panel
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 // Quick Actions (Saved Addresses)
                 SizedBox(
                   height: 56,
@@ -396,40 +507,40 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                       Semantics(
                         label: 'Add new address',
                         child: GestureDetector(
-                onTap: () async {
-                          final result = await context.push<AddressSelectionResult>('/address-selection');
-                          if (result != null) {
-                            _pickupController.text = result.address;
-                            ref.read(parcelBookingProvider.notifier).updatePickup(
-                              result.address, lat: result.lat, lng: result.lng);
-                          }
-                        },
+                          onTap: () async {
+                            final result = await context.push<AddressSelectionResult>('/address-selection');
+                            if (result != null) {
+                              _pickupController.text = result.address;
+                              ref.read(parcelBookingProvider.notifier).updatePickup(
+                                result.address, lat: result.lat, lng: result.lng);
+                            }
+                          },
                           child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE3EAE3).withValues(alpha: 0.9),
-                            shape: BoxShape.circle,
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(0, 0, 0, 0.05),
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.add,
-                            color: Color(0xFF161D19),
-                            size: 20,
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE3EAE3).withValues(alpha: 0.9),
+                              shape: BoxShape.circle,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color.fromRGBO(0, 0, 0, 0.05),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Color(0xFF161D19),
+                              size: 20,
+                            ),
                           ),
                         ),
-                      ),
                       ),
                     ],
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(height: 16),
                 // Bottom Action Button
                 SizedBox(
                   width: double.infinity,
@@ -437,9 +548,32 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                   child: ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        ref.read(parcelBookingProvider.notifier).updatePickup(_pickupController.text);
-                        ref.read(parcelBookingProvider.notifier).updateDelivery(_deliveryController.text);
-                        context.push('/parcel/details');
+                        final notifier = ref.read(parcelBookingProvider.notifier);
+                        notifier.updatePickup(_pickupController.text);
+                        notifier.updateDelivery(_deliveryController.text);
+
+                        if (widget.pickupType == 'food') {
+                          notifier.updatePackage(
+                            'document',
+                            1.0,
+                            notes: 'Vendor Name: ${_vendorNameController.text}\nOrder details & Instructions: ${_foodDetailsController.text}',
+                          );
+                          context.push('/parcel/service');
+                        } else if (widget.pickupType == 'other') {
+                          notifier.updatePackage(
+                            'box',
+                            2.0,
+                            notes: 'Special Instructions: ${_otherInstructionsController.text}',
+                          );
+                          context.push('/parcel/service');
+                        } else {
+                          notifier.updatePackage(
+                            'box',
+                            5.0,
+                            notes: 'Package: ${_packageNameController.text}\nInstructions: ${_otherInstructionsController.text}',
+                          );
+                          context.push('/parcel/details');
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -455,7 +589,9 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Continue to Package Details',
+                          (widget.pickupType == 'food' || widget.pickupType == 'other')
+                              ? 'Continue to Service Options'
+                              : 'Continue to Package Details',
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -465,10 +601,9 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                         const Icon(Icons.arrow_forward, size: 20),
                       ],
                     ),
-                      ),
-                    ),
-                    ],
-            ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -642,6 +777,58 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String label,
+    required TextEditingController controller,
+    required String hintText,
+    IconData? prefixIcon,
+    int maxLines = 1,
+    String? Function(String?)? validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF6B7280),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          maxLines: maxLines,
+          style: GoogleFonts.inter(fontSize: 13, color: Colors.black87),
+          validator: validator,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: GoogleFonts.inter(fontSize: 12, color: Colors.grey[400]),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            isDense: true,
+            prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 16, color: const Color(0xFF006C49)) : null,
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[200]!),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[100]!),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Color(0xFF006C49)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

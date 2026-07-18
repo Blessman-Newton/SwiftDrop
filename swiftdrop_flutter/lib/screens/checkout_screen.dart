@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pay_with_paystack/pay_with_paystack.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
+import '../services/tomtom_service.dart';
 import '../models/models.dart';
 import '../services/order_service.dart';
 import '../services/api_client.dart';
@@ -11,7 +14,11 @@ import '../theme/app_theme.dart';
 import 'address_selection_screen.dart';
 import 'momo_payment_screen.dart';
 
-class CheckoutScreen extends StatefulWidget {
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/providers.dart';
+
+class CheckoutScreen extends ConsumerStatefulWidget {
   final String restaurantId;
   final String restaurantName;
   final List<CartItem> cartItems;
@@ -26,6 +33,10 @@ class CheckoutScreen extends StatefulWidget {
   final String? parcelPickup;
   final String? parcelDelivery;
   final String userEmail;
+  final double? pickupLat;
+  final double? pickupLng;
+  final double? deliveryLat;
+  final double? deliveryLng;
 
   const CheckoutScreen({
     super.key,
@@ -43,17 +54,25 @@ class CheckoutScreen extends StatefulWidget {
     this.parcelPickup,
     this.parcelDelivery,
     required this.userEmail,
+    this.pickupLat,
+    this.pickupLng,
+    this.deliveryLat,
+    this.deliveryLng,
   });
 
   @override
-  State<CheckoutScreen> createState() => _CheckoutScreenState();
+  ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
 }
 
-class _CheckoutScreenState extends State<CheckoutScreen> {
+class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   bool _isProcessing = false;
   String _statusMessage = '';
   late String _deliveryAddress;
+  double? _deliveryLat;
+  double? _deliveryLng;
+  bool _isLoadingLocation = false;
   MoMoPaymentResult? _momoPayment;
+  bool _isPayForMeSelected = false;
 
   // 'doorstep' = deliver to address, 'pickup' = collect from restaurant.
   String _deliveryMethod = 'doorstep';
@@ -70,6 +89,57 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     _deliveryAddress = widget.deliveryAddress;
+    _deliveryLat = widget.deliveryLat;
+    _deliveryLng = widget.deliveryLng;
+
+    if (widget.orderType == 'food') {
+      _loadCurrentLocation();
+    }
+  }
+
+  Future<void> _loadCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        ).timeout(const Duration(seconds: 15));
+      } catch (_) {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+
+      if (pos == null || !mounted) {
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      final tomtom = TomTomService();
+      final result = await tomtom.reverseGeocode(LatLng(pos!.latitude, pos!.longitude));
+      if (mounted && result != null) {
+        setState(() {
+          _deliveryAddress = result.address;
+          _deliveryLat = pos!.latitude;
+          _deliveryLng = pos!.longitude;
+          _isLoadingLocation = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
   }
 
   @override
@@ -373,10 +443,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           if (widget.discount > 0)
             _buildPriceRow('Discount', -widget.discount, AppColors.primary, isDiscount: true),
           _buildPriceRow(
-              _isPickup && _isFood ? 'Delivery (Pickup)' : 'Delivery',
+              _isPickup && _isFood ? 'Delivery Fee (Pickup)' : 'Delivery Fee',
               _effectiveDeliveryFee,
               text),
-          _buildPriceRow('Tax', widget.tax, text),
+          _buildPriceRow('Service Fee', widget.tax, text),
           const Divider(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -416,90 +486,201 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // ─── Payment Method Section ──────────────────────────────────────────────────
   Widget _buildPaymentMethod(Color surface, Color text, Color subtext) {
-    return GestureDetector(
-      onTap: _openMoMoSelection,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: _momoPayment != null
-                    ? const Color(0xFFEEF6EE)
-                    : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.phone_android,
-                color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
-                size: 20,
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _isPayForMeSelected = false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: !_isPayForMeSelected ? AppColors.primary.withOpacity(0.08) : surface,
+                    border: Border.all(
+                      color: !_isPayForMeSelected ? AppColors.primary : Colors.grey.shade200,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.payment, size: 18, color: !_isPayForMeSelected ? AppColors.primary : Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pay Myself',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: !_isPayForMeSelected ? AppColors.primary : text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Payment Method',
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: subtext),
+              child: GestureDetector(
+                onTap: () => setState(() => _isPayForMeSelected = true),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: _isPayForMeSelected ? AppColors.primary.withOpacity(0.08) : surface,
+                    border: Border.all(
+                      color: _isPayForMeSelected ? AppColors.primary : Colors.grey.shade200,
+                      width: 2,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  const SizedBox(height: 4),
-                  if (_momoPayment != null) ...[
-                    Text(
-                      '${_getProviderName(_momoPayment!.provider)} •••• ${_momoPayment!.phoneNumber.substring(_momoPayment!.phoneNumber.length - 4)}',
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
-                    ),
-                    Text(
-                      _momoPayment!.displayName,
-                      style: GoogleFonts.inter(fontSize: 12, color: subtext),
-                    ),
-                  ] else ...[
-                    Text(
-                      'Add Mobile Money',
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
-                    ),
-                    Text(
-                      'MTN MoMo, Telecel Cash, AirtelTigo',
-                      style: GoogleFonts.inter(fontSize: 12, color: subtext),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: _momoPayment != null ? const Color(0xFFEEF6EE) : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _momoPayment != null ? 'Change' : 'Add',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.share, size: 18, color: _isPayForMeSelected ? AppColors.primary : Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pay for Me',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _isPayForMeSelected ? AppColors.primary : text,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+        if (!_isPayForMeSelected) ...[
+          GestureDetector(
+            onTap: _openMoMoSelection,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade100),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _momoPayment != null
+                          ? const Color(0xFFEEF6EE)
+                          : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.phone_android,
+                      color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mobile Money Account',
+                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: subtext),
+                        ),
+                        const SizedBox(height: 4),
+                        if (_momoPayment != null) ...[
+                          Text(
+                            '${_getProviderName(_momoPayment!.provider)} •••• ${_momoPayment!.phoneNumber.substring(_momoPayment!.phoneNumber.length - 4)}',
+                            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                          ),
+                          Text(
+                            _momoPayment!.displayName,
+                            style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                          ),
+                        ] else ...[
+                          Text(
+                            'Add Mobile Money',
+                            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                          ),
+                          Text(
+                            'MTN MoMo, Telecel Cash, AirtelTigo',
+                            style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: _momoPayment != null ? const Color(0xFFEEF6EE) : const Color(0xFFF3F4F6),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _momoPayment != null ? 'Change' : 'Add',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ] else ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEEF6EE),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.share_arrival_time,
+                    color: AppColors.primary,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Share Payment Request',
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: text),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'We will generate a link you can copy and send to a friend to pay for you.',
+                        style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -651,11 +832,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       MaterialPageRoute(
         builder: (_) => AddressSelectionScreen(
           currentAddress: _deliveryAddress,
+          currentLat: _deliveryLat,
+          currentLng: _deliveryLng,
         ),
       ),
     );
     if (result != null) {
-      setState(() => _deliveryAddress = result.address);
+      setState(() {
+        _deliveryAddress = result.address;
+        _deliveryLat = result.lat;
+        _deliveryLng = result.lng;
+      });
     }
   }
 
@@ -677,10 +864,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
-    if (_momoPayment == null) {
+    if (!_isPayForMeSelected && _momoPayment == null) {
       setState(() => _statusMessage = 'Please add a Mobile Money payment method');
       return;
     }
+
+    final confirmed = await _showLocationConfirmationDialog();
+    if (!confirmed) return;
 
     setState(() {
       _isProcessing = true;
@@ -707,9 +897,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       orderType: widget.orderType,
       restaurantName: widget.restaurantName,
       pickupAddress: widget.orderType == 'food' ? widget.restaurantName : (widget.parcelPickup ?? ''),
+      pickupLat: widget.pickupLat,
+      pickupLng: widget.pickupLng,
       deliveryAddress: _isPickup && _isFood
           ? 'Pickup at ${widget.restaurantName}'
           : _deliveryAddress,
+      deliveryLat: _deliveryLat,
+      deliveryLng: _deliveryLng,
       subtotal: widget.subtotal,
       deliveryFee: _effectiveDeliveryFee,
       tax: widget.tax,
@@ -729,6 +923,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final orderId = orderResult['id'] as String;
     final deliveryPin = orderResult['delivery_pin'] as String?;
+
+    if (_isPayForMeSelected) {
+      setState(() {
+        _isProcessing = false;
+        _statusMessage = '';
+      });
+      _showPayForMeDialog(orderId, deliveryPin: deliveryPin);
+      return;
+    }
 
     // Step 2: Initialize payment
     setState(() => _statusMessage = 'Initializing payment...');
@@ -1004,6 +1207,304 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Future<bool> _showLocationConfirmationDialog() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    bool? result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF18233C) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.location_on, color: AppColors.primary, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              'Confirm Delivery Address',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Please confirm that this is the correct delivery location:',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                color: isDark ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF1F7F2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+              ),
+              child: Text(
+                _deliveryAddress,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () async {
+                Navigator.pop(ctx, false);
+                await _openAddressSelection();
+                _processPayment();
+              },
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'Tap to change location',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(
+                color: isDark ? Colors.white70 : Colors.black54,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: Text(
+              'Confirm & Pay',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  void _showPayForMeDialog(String orderId, {String? deliveryPin}) {
+    final payLink = 'https://pay.swiftdrop.com/pay-for-me/$orderId';
+    bool isSimulating = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Row(
+                children: [
+                  const Icon(Icons.share, color: AppColors.primary, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Pay For Me Link',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Send this request link to anyone to pay for this order. We will process your order immediately after they pay.',
+                    style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            payLink,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(fontSize: 12, color: Colors.black87),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.copy, size: 20, color: AppColors.primary),
+                          onPressed: () {
+                            Clipboard.setData(ClipboardData(text: payLink));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Payment link copied to clipboard!'),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (isSimulating)
+                    const Center(
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.sports_esports_outlined, size: 20),
+                        label: Text(
+                          'Simulate Friend Paid',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          setDialogState(() {
+                            isSimulating = true;
+                          });
+                          final success = await OrderService().triggerMockPaymentCallback(orderId);
+                          if (success) {
+                            if (mounted) {
+                              Navigator.pop(dialogContext); // close link dialog
+                              // Clear Cart
+                              ref.read(cartProvider.notifier).clearCart();
+                              // Show success dialog
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (ctx) => AlertDialog(
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  title: const Row(
+                                    children: [
+                                      Icon(Icons.check_circle, color: AppColors.primary, size: 28),
+                                      SizedBox(width: 10),
+                                      Text('Payment Confirmed!'),
+                                    ],
+                                  ),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Your friend completed the payment successfully. Your order is now placed!',
+                                        style: GoogleFonts.inter(height: 1.4),
+                                      ),
+                                      if (deliveryPin != null) ...[
+                                        const SizedBox(height: 16),
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withOpacity(0.08),
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.lock, color: AppColors.primary),
+                                              const SizedBox(width: 12),
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'DELIVERY PIN',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: AppColors.primary,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    deliveryPin,
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      letterSpacing: 1.5,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        context.go('/orders');
+                                      },
+                                      child: const Text('View Orders', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                          } else {
+                            if (mounted) {
+                              setDialogState(() {
+                                isSimulating = false;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Simulation failed. Please try again.')),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Cancel Request', style: TextStyle(color: Colors.grey)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

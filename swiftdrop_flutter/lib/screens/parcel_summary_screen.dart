@@ -607,6 +607,10 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                                       parcelPickup: booking.pickupLocation,
                                       parcelDelivery: booking.deliveryLocation,
                                       userEmail: user.email,
+                                      pickupLat: booking.pickupLat,
+                                      pickupLng: booking.pickupLng,
+                                      deliveryLat: booking.deliveryLat,
+                                      deliveryLng: booking.deliveryLng,
                                     ),
                                   ),
                                 );

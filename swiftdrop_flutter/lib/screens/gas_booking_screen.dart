@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../theme/app_theme.dart';
 import '../services/order_service.dart';
 import '../services/customer_service.dart';
+import '../services/tomtom_service.dart';
+import '../screens/address_selection_screen.dart';
 
 class GasBookingScreen extends ConsumerStatefulWidget {
   const GasBookingScreen({super.key});
@@ -12,8 +16,6 @@ class GasBookingScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<GasBookingScreen> createState() => _GasBookingScreenState();
 }
-
-class _HomeScreenGasBanner {} // Dummy token for referencing home screen gas
 
 class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
   String _selectedSize = '12.5 kg';
@@ -35,10 +37,44 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
     '50 kg': 600.0,
   };
 
+  String _deliveryMode = 'Instant'; // Instant or Scheduled
+  String _deliverySpeed = 'Standard'; // Standard or Express
+  String _deliveryAddress = 'Sunyani, Ghana';
+  double? _deliveryLat;
+  double? _deliveryLng;
+
   @override
   void initState() {
     super.initState();
     _loadGasPrices();
+    _fetchCurrentLocation();
+  }
+
+  Future<void> _fetchCurrentLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      ).timeout(const Duration(seconds: 8));
+
+      final tomtom = TomTomService();
+      final reverseResult = await tomtom.reverseGeocode(LatLng(pos.latitude, pos.longitude));
+      if (reverseResult != null && reverseResult.address.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _deliveryAddress = reverseResult.address;
+            _deliveryLat = pos.latitude;
+            _deliveryLng = pos.longitude;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadGasPrices() async {
@@ -57,7 +93,7 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
     return _gasPrices[_selectedSize] ?? 150.0;
   }
 
-  double get _deliveryFee => 15.0;
+  double get _deliveryFee => _deliverySpeed == 'Express' ? 25.0 : 15.0;
   double get _totalPrice => _basePrice + _deliveryFee;
 
   Future<void> _selectDate(BuildContext context) async {
@@ -130,10 +166,10 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
         orderType: 'parcel',
         restaurantName: 'LPG Gas Depot (Tarkwa)',
         pickupAddress: 'Gas Filling Station Main Depot',
-        deliveryAddress: 'Customer Delivery Address (Scheduled)',
+        deliveryAddress: _deliveryAddress,
         items: [
           {
-            'name': 'LPG Refill ($_selectedSize - $_fillType)',
+            'name': 'LPG Refill ($_selectedSize - $_fillType - $_deliveryMode - $_deliverySpeed Speed)',
             'quantity': 1,
             'price': _basePrice,
           }
@@ -158,7 +194,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
               ],
             ),
             content: Text(
-              'Your gas refill booking ($_selectedSize) has been scheduled successfully for $formattedDate at $formattedTime.\n\nTotal: ₵${_totalPrice.toStringAsFixed(2)}',
+              _deliveryMode == 'Instant'
+                  ? 'Your gas refill booking ($_selectedSize) has been placed for INSTANT delivery ($_deliverySpeed Speed) successfully.\n\nAddress: $_deliveryAddress\n\nTotal: ₵${_totalPrice.toStringAsFixed(2)}'
+                  : 'Your gas refill booking ($_selectedSize) has been scheduled successfully for $formattedDate at $formattedTime ($_deliverySpeed Speed).\n\nAddress: $_deliveryAddress\n\nTotal: ₵${_totalPrice.toStringAsFixed(2)}',
               style: GoogleFonts.inter(height: 1.4),
             ),
             actions: [
@@ -389,85 +427,312 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
               const SizedBox(height: 24),
             ],
 
-            // Scheduled Date & Time Selector
+            // Delivery Address Selection
             Text(
-              'Scheduled Delivery Details',
+              'Delivery Address & Directions',
               style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppColors.darkSurface : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
               ),
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.calendar_month, color: AppColors.primary),
-                          const SizedBox(width: 10),
-                          Text('Date', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                      TextButton(
-                        onPressed: () => _selectDate(context),
-                        child: Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const Icon(Icons.location_on, color: AppColors.primary, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Deliver to',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _deliveryAddress,
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, color: AppColors.primary),
-                          const SizedBox(width: 10),
-                          Text('Time Slot', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                        ],
+                  const Divider(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 40,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await context.push<AddressSelectionResult>(
+                          '/address-selection',
+                          extra: {
+                            'address': _deliveryAddress,
+                            'lat': _deliveryLat,
+                            'lng': _deliveryLng,
+                          },
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _deliveryAddress = result.address;
+                            _deliveryLat = result.lat;
+                            _deliveryLng = result.lng;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.map, size: 18),
+                      label: Text(
+                        'Set on Map / Add Address',
+                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold),
                       ),
-                      TextButton(
-                        onPressed: () => _selectTime(context),
-                        child: Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: const BorderSide(color: AppColors.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Delivery Speed (Schedule Info)
+            // Delivery Option Selection
+            Text(
+              'Delivery Option',
+              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _deliveryMode = 'Instant'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: _deliveryMode == 'Instant'
+                            ? AppColors.primary.withOpacity(0.08)
+                            : (isDark ? AppColors.darkSurface : Colors.white),
+                        border: Border.all(
+                          color: _deliveryMode == 'Instant' ? AppColors.primary : Colors.grey.shade200,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.bolt, color: _deliveryMode == 'Instant' ? AppColors.primary : Colors.grey),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Instant Delivery',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _deliveryMode = 'Scheduled'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: _deliveryMode == 'Scheduled'
+                            ? AppColors.primary.withOpacity(0.08)
+                            : (isDark ? AppColors.darkSurface : Colors.white),
+                        border: Border.all(
+                          color: _deliveryMode == 'Scheduled' ? AppColors.primary : Colors.grey.shade200,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.calendar_month, color: _deliveryMode == 'Scheduled' ? AppColors.primary : Colors.grey),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Schedule Delivery',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Scheduled Details (only if Scheduled)
+            if (_deliveryMode == 'Scheduled') ...[
+              Text(
+                'Scheduled Delivery Details',
+                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_month, color: AppColors.primary),
+                            const SizedBox(width: 10),
+                            Text('Date', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () => _selectDate(context),
+                          child: Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    const Divider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.access_time, color: AppColors.primary),
+                            const SizedBox(width: 10),
+                            Text('Time Slot', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () => _selectTime(context),
+                          child: Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            // Delivery Speed (Standard vs Express)
             Text(
               'Delivery Speed',
               style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info, color: Colors.blueAccent),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Schedule Only (LPG gas fillings are safely handled via scheduled transport orders only).',
-                      style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade700, height: 1.4),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _deliverySpeed = 'Standard'),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _deliverySpeed == 'Standard'
+                            ? AppColors.primary.withOpacity(0.08)
+                            : (isDark ? AppColors.darkSurface : Colors.white),
+                        border: Border.all(
+                          color: _deliverySpeed == 'Standard' ? AppColors.primary : Colors.grey.shade200,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Standard Speed',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              if (_deliverySpeed == 'Standard')
+                                const Icon(Icons.check_circle, color: AppColors.primary, size: 18),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _deliveryMode == 'Instant' ? 'Delivered in 1-2 hours' : 'Delivered on scheduled slot',
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '₵15.00',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _deliverySpeed = 'Express'),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _deliverySpeed == 'Express'
+                            ? AppColors.primary.withOpacity(0.08)
+                            : (isDark ? AppColors.darkSurface : Colors.white),
+                        border: Border.all(
+                          color: _deliverySpeed == 'Express' ? AppColors.primary : Colors.grey.shade200,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Express Speed',
+                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              if (_deliverySpeed == 'Express')
+                                const Icon(Icons.check_circle, color: AppColors.primary, size: 18),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _deliveryMode == 'Instant' ? 'Delivered in 20-30 mins' : 'Priority slot priority delivery',
+                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '₵25.00',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 32),
 

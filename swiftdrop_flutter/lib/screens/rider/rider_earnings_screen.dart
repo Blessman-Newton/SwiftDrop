@@ -24,6 +24,10 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
   bool _isWithdrawing = false;
   bool _withdrawSuccess = false;
 
+  String _selectedMomoProvider = 'MTN';
+  String _momoNumber = '';
+  final TextEditingController _momoNumberController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -43,12 +47,13 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
   @override
   void dispose() {
     _chartController.dispose();
+    _momoNumberController.dispose();
     super.dispose();
   }
 
   void _handleWithdraw() {
     final amount = double.tryParse(_withdrawAmount);
-    if (amount == null || amount <= 0 || amount > _balance) return;
+    if (amount == null || amount <= 0 || amount > _balance || _momoNumber.length < 10) return;
 
     setState(() => _isWithdrawing = true);
     Future.delayed(const Duration(seconds: 2), () {
@@ -59,7 +64,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           _balance -= amount;
         });
         ref.read(riderToastsProvider.notifier).add(
-          'Successfully withdrew GHS ${amount.toStringAsFixed(2)}',
+          'Successfully withdrew GHS ${amount.toStringAsFixed(2)} via $_selectedMomoProvider',
           ToastType.success,
         );
       }
@@ -72,6 +77,9 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
       _withdrawAmount = '';
       _isWithdrawing = false;
       _withdrawSuccess = false;
+      _selectedMomoProvider = 'MTN';
+      _momoNumber = '';
+      _momoNumberController.clear();
     });
   }
 
@@ -922,47 +930,79 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
           ),
         ),
         const SizedBox(height: 16),
+        Text(
+          'MOMO PROVIDER',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF94A3B8),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: ['MTN', 'Telecel', 'AirtelTigo'].map((provider) {
+            final isSelected = _selectedMomoProvider == provider;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _selectedMomoProvider = provider),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFE6F0EB) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF006C49) : Colors.transparent,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    provider,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: isSelected ? const Color(0xFF006C49) : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'MOMO NUMBER',
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: const Color(0xFF94A3B8),
+          ),
+        ),
+        const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.credit_card, color: Color(0xFF94A3B8), size: 18),
+          child: TextField(
+            controller: _momoNumberController,
+            keyboardType: TextInputType.phone,
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF1E293B),
+            ),
+            decoration: InputDecoration(
+              hintText: 'e.g. 024XXXXXXX',
+              hintStyle: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFCBD5E1),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Chase Bank Business (---- 9812)',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF1E293B),
-                      ),
-                    ),
-                    Text(
-                      'Instant transfer (under 2 minutes)',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: const Color(0xFF94A3B8),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              border: InputBorder.none,
+            ),
+            onChanged: (val) => setState(() => _momoNumber = val),
           ),
         ),
         const SizedBox(height: 20),
@@ -974,6 +1014,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                     double.tryParse(_withdrawAmount) != null &&
                     double.parse(_withdrawAmount) > 0 &&
                     double.parse(_withdrawAmount) <= _balance &&
+                    _momoNumber.length >= 10 &&
                     !_isWithdrawing)
                 ? _handleWithdraw
                 : null,
@@ -1034,7 +1075,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          'Your funds will arrive in your Chase Bank\naccount within 2 minutes.',
+          'Your funds will arrive in your $_selectedMomoProvider MoMo\nwallet within 2 minutes.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             fontSize: 13,
