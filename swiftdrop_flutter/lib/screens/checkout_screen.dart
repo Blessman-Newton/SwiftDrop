@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pay_with_paystack/pay_with_paystack.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../services/tomtom_service.dart';
@@ -17,6 +18,7 @@ import 'momo_payment_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
+import '../providers/auth_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -74,14 +76,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   MoMoPaymentResult? _momoPayment;
   bool _isPayForMeSelected = false;
 
+  String _deliverySpeed = 'Standard'; // Standard or Express
+  String? _activePaymentUrl;
+  WebViewController? _webViewController;
+  Timer? _verificationTimer;
+
   // 'doorstep' = deliver to address, 'pickup' = collect from restaurant.
   String _deliveryMethod = 'doorstep';
 
   bool get _isPickup => _deliveryMethod == 'pickup';
   bool get _isFood => widget.orderType == 'food';
 
-  double get _effectiveDeliveryFee =>
-      (_isFood && _isPickup) ? 0.0 : widget.deliveryFee;
+  double get _effectiveDeliveryFee {
+    if (_isFood && _isPickup) return 0.0;
+    final base = widget.deliveryFee;
+    return _deliverySpeed == 'Express' ? base + 13.0 : base;
+  }
   double get _effectiveTotal =>
       widget.total - widget.deliveryFee + _effectiveDeliveryFee;
 
@@ -92,9 +102,25 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     _deliveryLat = widget.deliveryLat;
     _deliveryLng = widget.deliveryLng;
 
+    // Pre-populate momoPayment using user account details
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      _momoPayment = MoMoPaymentResult(
+        provider: 'mtn',
+        phoneNumber: user.phoneNumber ?? '',
+        displayName: user.displayName ?? 'Alex Johnson',
+      );
+    }
+
     if (widget.orderType == 'food') {
       _loadCurrentLocation();
     }
+  }
+
+  @override
+  void dispose() {
+    _verificationTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadCurrentLocation() async {
@@ -150,6 +176,51 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final textColor = isDark ? Colors.white : const Color(0xFF1A1A2E);
     final subtextColor = isDark ? Colors.grey[400]! : const Color(0xFF6B7280);
 
+    if (_activePaymentUrl != null && _webViewController != null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+          elevation: 1,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: textColor),
+            onPressed: () {
+              setState(() {
+                _activePaymentUrl = null;
+                _webViewController = null;
+                _isProcessing = false;
+                _statusMessage = 'Payment checked. You can verify manually or try again.';
+              });
+            },
+          ),
+          title: Text(
+            'Confirm Paystack Payment',
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          centerTitle: true,
+          actions: [
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _activePaymentUrl = null;
+                  _webViewController = null;
+                  _isProcessing = false;
+                });
+              },
+              child: Text(
+                'Close',
+                style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        body: WebViewWidget(controller: _webViewController!),
+      );
+    }
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -181,10 +252,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     _buildDeliveryMethod(surfaceColor, textColor, subtextColor),
                     const SizedBox(height: 12),
                   ],
-                  if (!_isPickup || !_isFood)
+                  if (!_isPickup || !_isFood) ...[
                     _buildDeliveryAddress(
                         surfaceColor, textColor, subtextColor),
-                  if (!_isPickup || !_isFood) const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                    _buildDeliverySpeedSection(
+                        surfaceColor, textColor, subtextColor),
+                    const SizedBox(height: 12),
+                  ],
                   _buildOrderSummary(surfaceColor, textColor, subtextColor),
                   const SizedBox(height: 12),
                   _buildPaymentMethod(surfaceColor, textColor, subtextColor),
@@ -298,6 +373,131 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   : Icons.radio_button_unchecked,
               color: selected ? AppColors.primary : subtext,
               size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Delivery Speed Section ──────────────────────────────────────────────────
+  Widget _buildDeliverySpeedSection(Color surface, Color text, Color subtext) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(0, 0, 0, 0.04),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Delivery Speed',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: text,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _speedCard(
+                  label: 'Standard',
+                  duration: '25 - 35 mins',
+                  price: 'GHS ${widget.deliveryFee.toStringAsFixed(2)}',
+                  isSelected: _deliverySpeed == 'Standard',
+                  text: text,
+                  subtext: subtext,
+                  onTap: () => setState(() => _deliverySpeed = 'Standard'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _speedCard(
+                  label: 'Express',
+                  duration: '15 - 20 mins',
+                  price: 'GHS ${(widget.deliveryFee + 13.0).toStringAsFixed(2)}',
+                  isSelected: _deliverySpeed == 'Express',
+                  text: text,
+                  subtext: subtext,
+                  onTap: () => setState(() => _deliverySpeed = 'Express'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _speedCard({
+    required String label,
+    required String duration,
+    required String price,
+    required bool isSelected,
+    required Color text,
+    required Color subtext,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withOpacity(0.06) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : const Color.fromRGBO(128, 128, 128, 0.2),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: text,
+                  ),
+                ),
+                Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isSelected ? AppColors.primary : subtext,
+                  size: 18,
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              duration,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                color: isSelected ? AppColors.primary : subtext,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              price,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+              ),
             ),
           ],
         ),
@@ -950,25 +1150,97 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return;
     }
 
-    // Step 3: Launch Paystack checkout (MoMo is accessed through Paystack's mobile money channel)
-    // Step 3: Launch Paystack hosted secure page
+    // Step 3: Launch Paystack checkout in-app
     setState(() => _statusMessage = 'Opening secure payment gateway...');
 
     final authUrl = paymentResult['authorization_url'] as String;
     final reference = paymentResult['reference'] as String;
 
     try {
-      final uri = Uri.parse(authUrl);
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (mounted) {
-        _showPaymentVerificationDialog(reference, deliveryPin: deliveryPin);
-      }
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageFinished: (String url) {
+              _checkPaymentOnBackend(reference, deliveryPin);
+              // Auto-fill user MoMo phone number inside Paystack input elements
+              if (_momoPayment != null && _momoPayment!.phoneNumber.isNotEmpty) {
+                final phone = _momoPayment!.phoneNumber;
+                final js = """
+                  setTimeout(function() {
+                    var inputs = document.querySelectorAll('input[type="tel"], input[name="phone"], input[id="phone"], input[placeholder*="phone"], input[placeholder*="number"]');
+                    for (var i = 0; i < inputs.length; i++) {
+                      if (!inputs[i].value) {
+                        inputs[i].value = '$phone';
+                        inputs[i].dispatchEvent(new Event('input', { bubbles: true }));
+                      }
+                    }
+                  }, 1500);
+                """;
+                try {
+                  _webViewController?.runJavaScript(js);
+                } catch (_) {}
+              }
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(authUrl));
+
+      setState(() {
+        _activePaymentUrl = authUrl;
+        _webViewController = controller;
+      });
+
+      _startVerificationTimer(reference, deliveryPin);
     } catch (e) {
       setState(() {
         _isProcessing = false;
         _statusMessage = 'Failed to open payment gateway: $e';
       });
     }
+  }
+
+  void _startVerificationTimer(String reference, String? deliveryPin) {
+    _verificationTimer?.cancel();
+    int checkCount = 0;
+    _verificationTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+      checkCount++;
+      if (checkCount > 30) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final verifyResult = await OrderService().verifyPayment(reference);
+        if (verifyResult != null && verifyResult['status'] == 'success') {
+          timer.cancel();
+          if (mounted) {
+            setState(() {
+              _activePaymentUrl = null;
+              _webViewController = null;
+              _isProcessing = false;
+            });
+            _showOrderPlaced(deliveryPin: deliveryPin);
+          }
+        }
+      } catch (_) {}
+    });
+  }
+
+  Future<void> _checkPaymentOnBackend(String reference, String? deliveryPin) async {
+    try {
+      final verifyResult = await OrderService().verifyPayment(reference);
+      if (verifyResult != null && verifyResult['status'] == 'success') {
+        _verificationTimer?.cancel();
+        if (mounted) {
+          setState(() {
+            _activePaymentUrl = null;
+            _webViewController = null;
+            _isProcessing = false;
+          });
+          _showOrderPlaced(deliveryPin: deliveryPin);
+        }
+      }
+    } catch (_) {}
   }
 
   void _showPaymentVerificationDialog(String reference, {String? deliveryPin}) {

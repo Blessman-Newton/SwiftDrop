@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +7,8 @@ import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../widgets/app_image.dart';
-import '../services/notification_service.dart';
+import '../widgets/notifications_sheet.dart';
+import '../theme/app_theme.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,481 +18,390 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  Order? _selectedOrder;
+  // Saved addresses list
+  final List<String> _addresses = [
+    'Home: 123 Oak Street, Sunyani',
+    'Work: 456 Tech Park Drive, Sunyani',
+  ];
+
+  // Selected language
+  String _currentLanguage = 'English';
+
+  // Referral code
+  final String _referralCode = 'SWIFT-ALEX-2026';
+
+  // Mock wallet transactions
+  final List<Map<String, dynamic>> _transactions = [
+    {'title': 'Wallet Top Up', 'amount': '+GHS 25.00', 'date': 'Today, 10:24 AM', 'type': 'credit'},
+    {'title': 'Order #SF-8219', 'amount': '-GHS 42.50', 'date': 'Yesterday, 6:15 PM', 'type': 'debit'},
+    {'title': 'Points Redeemed', 'amount': '+GHS 10.00', 'date': 'July 22, 2:40 PM', 'type': 'credit'},
+  ];
+
+  // Coupons
+  final List<Map<String, dynamic>> _coupons = [
+    {'code': 'SWIFT50', 'desc': '50% off your first order', 'valid': true},
+    {'code': 'FREEDEL', 'desc': 'Free delivery on orders above GHS 30', 'valid': true},
+    {'code': 'COSMETIC10', 'desc': '10% off cosmetics list', 'valid': true},
+  ];
+
+  // Help FAQ
+  final List<Map<String, String>> _faqs = [
+    {'q': 'How do I track my order?', 'a': 'You can track your order in real-time by clicking the tracking option in the active order card on the home screen or inside the Orders tab.'},
+    {'q': 'Can I pay with Mobile Money (MoMo)?', 'a': 'Yes! SwiftDrop supports MTN, Telecel, and AirtelTigo for both instant checkout payments and rider cashouts.'},
+    {'q': 'What is the refund policy?', 'a': 'Refunds are automatically credited to your SwiftBalance when an order is cancelled by the merchant or failed to deliver.'},
+    {'q': 'How do I contact customer support?', 'a': 'You can tap on the Live Chat option under Help & Support to chat with a support agent instantly.'},
+  ];
+
+  // Live chat mock messages
+  final List<Map<String, dynamic>> _chatMessages = [
+    {'sender': 'support', 'text': 'Hello! How can I help you today?', 'time': '10:00 AM'},
+  ];
+  final _chatController = TextEditingController();
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final profile = ref.watch(userProfileProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4FBF4),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(20, MediaQuery.of(context).padding.top + 16, 20, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Profile Header
-                      Row(
-                        children: [
-                          Container(
-                            width: 96,
-                            height: 96,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFF10B981),
-                                width: 4,
-                              ),
-                            ),
-                            child: Stack(
-                              children: [
-                                ClipOval(
-                                  child: AppImage(
-                                    url: user?.avatarUrl ??
-                                        'https://lh3.googleusercontent.com/aida-public/AB6AXuAwqgDiwFP1vJ2CnxsRalve_zQVmL3gs-rHYpCzbOuwKY7l_jwMY67AqghN3uJcNrCk0eCbDXB8croeuW5FYOt1oEDe63rSihQSS7B91ARrQtcFqfSteTXbrJrcZz_uStSZWL2cruRdPUfFaHNnFAEEoEdzKzQ6V7PeaiNQZqzLD81plfykwT2wPRK1Y4P9vr6E4BmbCPLuO0U4GO8K0N0hcZHho42zQfWcFIu9bjLUf_uoCrFu0RfGnF_PJyxVfHytX8-sF3_nTw4',
-                                    width: 96,
-                                    height: 96,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF006C49),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.verified,
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user?.displayName ?? 'Alex Johnson',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                    color: const Color(0xFF161D19),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFFDBCA),
-                                    borderRadius: BorderRadius.circular(9999),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.workspace_premium,
-                                          size: 14, color: Color(0xFF341100)),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${profile.membershipTier} Member',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF341100),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+      backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAF8),
+      appBar: AppBar(
+        title: Text(
+          'Profile',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Colors.white),
+        ),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+            onPressed: () => NotificationsSheet.show(context, ref),
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // User Summary Card
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.primary, width: 3),
+                    ),
+                    child: ClipOval(
+                      child: AppImage(
+                        url: user?.avatarUrl ?? '',
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        fallbackSeed: user?.displayName ?? 'Alex Johnson',
                       ),
-                      const SizedBox(height: 24),
-
-                      // Wallet Section
-                      Row(
-                        children: [
-                          // Main Wallet Card
-                          Expanded(
-                            flex: 2,
-                            child: Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFF006C49),
-                                    Color(0xFF10B981)
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color.fromRGBO(0, 108, 73, 0.25),
-                                    blurRadius: 16,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'SwiftBalance',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.9),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(
-                                            Icons.account_balance_wallet,
-                                            color: Colors.white,
-                                            size: 24),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'GHS ${profile.walletBalance.toStringAsFixed(2)}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 48,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      letterSpacing: -1,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      _buildWalletAction(
-                                          Icons.add_circle, 'Top Up', () async {
-                                        final success = await ref.read(userProfileProvider.notifier).topUp(25.0);
-                                        if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(success 
-                                                ? 'Added GHS 25.00 to SwiftBalance' 
-                                                : 'Failed to top up wallet balance. Try again.',
-                                                style: GoogleFonts.inter()),
-                                              backgroundColor: success ? const Color(0xFF006C49) : Colors.red,
-                                            ),
-                                          );
-                                        }
-                                      }),
-                                      const SizedBox(width: 8),
-                                      _buildWalletAction(Icons.send, 'Send', () {}),
-                                      const SizedBox(width: 8),
-                                      _buildWalletAction(
-                                          Icons.history, 'History', () {}),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.displayName ?? 'Alex Johnson',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary(isDark),
                           ),
-                          const SizedBox(width: 12),
-                          // Points Card
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF6EE),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Color.fromRGBO(0, 0, 0, 0.04),
-                                    blurRadius: 10,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          'Points',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF3C4A42),
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        '${profile.points}',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF006C49),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(9999),
-                                    child: LinearProgressIndicator(
-                                      value: (profile.points / 3000).clamp(0.0, 1.0),
-                                      backgroundColor: const Color(0xFFBBCABF),
-                                      valueColor: const AlwaysStoppedAnimation(
-                                          Color(0xFF006C49)),
-                                      minHeight: 8,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    '${(3000 - profile.points).clamp(0, 9999)} more for Platinum',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: const Color(0xFF3C4A42),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton(
-                                      onPressed: () {},
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor:
-                                            const Color(0xFF006C49),
-                                        side: const BorderSide(
-                                            color: Color(0xFF006C49)),
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        'Redeem',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Account Settings
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(24, 16, 24, 12),
-                              child: Text(
-                                'Account Settings',
-                                style: GoogleFonts.inter(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF161D19),
-                                ),
-                              ),
-                            ),
-                            const Divider(color: Color(0xFFDDE4DD), height: 1),
-                            _buildSettingsItem(
-                              icon: Icons.person,
-                              label: 'Personal Information',
-                              iconBg: const Color(0xFF10B981)
-                                  .withValues(alpha: 0.2),
-                              iconColor: const Color(0xFF006C49),
-                              onTap: () => _showPlaceholderSheet('Personal Information', Icons.person, [
-                                'Name: ${user?.displayName ?? 'Alex Johnson'}',
-                                'Email: ${user?.email ?? 'hello@swiftdrop.com'}',
-                                'Phone: ${user?.phoneNumber ?? '+1 (555) 123-4567'}',
-                              ]),
-                            ),
-                            _buildSettingsItem(
-                              icon: Icons.payments,
-                              label: 'Payment Methods',
-                              iconBg: const Color(0xFFDAE2FD),
-                              iconColor: const Color(0xFF565E74),
-                              onTap: () => _showPlaceholderSheet('Payment Methods', Icons.payments, [
-                                'Apple Pay •••• 9821',
-                                'Visa •••• 4532',
-                                'Add new payment method',
-                              ]),
-                            ),
-                            _buildSettingsItem(
-                              icon: Icons.location_on,
-                              label: 'Saved Addresses',
-                              iconBg: const Color(0xFFFFDBCA),
-                              iconColor: const Color(0xFF9D4300),
-                              onTap: () => _showPlaceholderSheet('Saved Addresses', Icons.location_on, [
-                                'Home: 123 Oak Street, Apt 4B',
-                                'Work: 456 Tech Park Drive',
-                                'Add new address',
-                              ]),
-                            ),
-                            _buildSettingsItem(
-                              icon: Icons.notifications_active,
-                              label: 'Notifications',
-                              iconBg: const Color(0xFF10B981)
-                                  .withValues(alpha: 0.2),
-                              iconColor: const Color(0xFF006C49),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFBA1A1A),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Text(
-                                  '2',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              onTap: () => _showRealNotificationsSheet(),
-                            ),
-                            _buildSettingsItem(
-                              icon: Icons.group_add,
-                              label: 'Refer a Friend',
-                              iconBg: const Color(0xFFDAE2FD),
-                              iconColor: const Color(0xFF565E74),
-                              onTap: () => _showPlaceholderSheet('Refer a Friend', Icons.group_add, [
-                                'Your referral code: SWIFT-ALEX',
-                                'Share with friends to earn GHS 10 each',
-                                '3 friends referred so far',
-                              ]),
-                            ),
-                            _buildSettingsItem(
-                              icon: Icons.security,
-                              label: 'Security',
-                              iconBg: const Color(0xFFFFDAD6),
-                              iconColor: const Color(0xFFBA1A1A),
-                              onTap: () => _showPlaceholderSheet('Security', Icons.security, [
-                                'Change password',
-                                'Two-factor authentication: OFF',
-                                'Biometric login: ON',
-                              ]),
-                            ),
-                          ],
+                        const SizedBox(height: 4),
+                        Text(
+                          user?.email ?? 'customer@swiftdrop.com',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Sign Out
-                      Semantics(
-                        label: 'Sign out',
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: TextButton.icon(
-                            onPressed: () {
-                              ref.read(currentUserProvider.notifier).signOut();
-                              context.go('/role-selection');
-                            },
-                            icon: const Icon(Icons.logout,
-                                color: Color(0xFFBA1A1A)),
-                            label: Text(
-                              'Sign Out',
-                              style: GoogleFonts.inter(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFFBA1A1A),
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${profile.membershipTier} Member',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, color: AppColors.primary),
+                    onPressed: () => _showEditProfileSheet(user),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // GENERAL SECTION
+            _buildCategoryGroup(
+              'General',
+              [
+                _buildSettingsItem(
+                  icon: Icons.person_outline_rounded,
+                  label: 'Personal Profile',
+                  iconBg: const Color(0xFFE8F5E9),
+                  iconColor: const Color(0xFF2E7D32),
+                  onTap: () => _showEditProfileSheet(user),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.location_on_outlined,
+                  label: 'My Address',
+                  iconBg: const Color(0xFFFFF3E0),
+                  iconColor: const Color(0xFFE65100),
+                  onTap: () => _showSavedAddressesSheet(),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.language_rounded,
+                  label: 'Language',
+                  iconBg: const Color(0xFFE8EAF6),
+                  iconColor: const Color(0xFF283593),
+                  trailing: Text(
+                    _currentLanguage,
+                    style: GoogleFonts.inter(fontSize: 13, color: Colors.grey),
+                  ),
+                  onTap: () => _showLanguageSheet(),
+                ),
+              ],
+              isDark,
+            ),
+
+            // PROMOTIONAL ACTIVITY SECTION
+            _buildCategoryGroup(
+              'Promotional Activity',
+              [
+                _buildSettingsItem(
+                  icon: Icons.confirmation_number_outlined,
+                  label: 'Coupon',
+                  iconBg: const Color(0xFFFCE4EC),
+                  iconColor: const Color(0xFFC2185B),
+                  onTap: () => _showCouponsSheet(),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.stars_rounded,
+                  label: 'Loyalty Points',
+                  iconBg: const Color(0xFFFFFDE7),
+                  iconColor: const Color(0xFFF57F17),
+                  trailing: Text(
+                    '${profile.points} pts',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFFF57F17)),
+                  ),
+                  onTap: () => _showLoyaltyPointsSheet(profile),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'My Wallet',
+                  iconBg: const Color(0xFFE0F2F1),
+                  iconColor: const Color(0xFF00695C),
+                  trailing: Text(
+                    'GHS ${profile.walletBalance.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF00695C)),
+                  ),
+                  onTap: () => _showWalletDetailsSheet(profile),
+                ),
+              ],
+              isDark,
+            ),
+
+            // ACTIVITIES SECTION
+            _buildCategoryGroup(
+              'Activities & Partnerships',
+              [
+                _buildSettingsItem(
+                  icon: Icons.share_outlined,
+                  label: 'Referral & Earn',
+                  iconBg: const Color(0xFFE0F7FA),
+                  iconColor: const Color(0xFF00838F),
+                  onTap: () => _showReferralSheet(),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.delivery_dining_rounded,
+                  label: 'Join as Delivery Rider',
+                  iconBg: const Color(0xFFF3E5F5),
+                  iconColor: const Color(0xFF6A1B9A),
+                  onTap: () => _showJoinRiderSheet(),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.storefront_rounded,
+                  label: 'Open a Store',
+                  iconBg: const Color(0xFFEFEBE9),
+                  iconColor: const Color(0xFF4E342E),
+                  onTap: () => _showOpenStoreSheet(),
+                ),
+              ],
+              isDark,
+            ),
+
+            // HELP & SUPPORT SECTION
+            _buildCategoryGroup(
+              'Help & Support',
+              [
+                _buildSettingsItem(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Live Chat',
+                  iconBg: const Color(0xFFFFF8E1),
+                  iconColor: const Color(0xFFFF8F00),
+                  onTap: () => _showLiveChatSheet(),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.help_outline_rounded,
+                  label: 'Help & Support',
+                  iconBg: const Color(0xFFE0F2F1),
+                  iconColor: const Color(0xFF00695C),
+                  onTap: () => _showHelpSupportSheet(),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.info_outline_rounded,
+                  label: 'About Us',
+                  iconBg: const Color(0xFFECEFF1),
+                  iconColor: const Color(0xFF37474F),
+                  onTap: () => _showLegalDocSheet('About Us', 'SwiftDrop is the ultimate convenience platform in Sunyani, delivering fresh local and international food, gas refills, cosmetics, and custom courier pickup & delivery. Our mission is to connect customers, merchants, and riders seamlessly.'),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.description_outlined,
+                  label: 'Terms & Conditions',
+                  iconBg: const Color(0xFFECEFF1),
+                  iconColor: const Color(0xFF37474F),
+                  onTap: () => _showLegalDocSheet('Terms & Conditions', 'By using SwiftDrop, you agree to our terms of service. Orders must be paid viaPaystack before delivery dispatch. Merchants are responsible for food quality and preparation, while riders handle secure transit.'),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Privacy Policy',
+                  iconBg: const Color(0xFFECEFF1),
+                  iconColor: const Color(0xFF37474F),
+                  onTap: () => _showLegalDocSheet('Privacy Policy', 'Your personal data is encrypted and secure. We track rider locations during active deliveries to ensure secure drop-offs. We never sell or share your transaction and contact details with unverified third parties.'),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.undo_rounded,
+                  label: 'Refund Policy',
+                  iconBg: const Color(0xFFECEFF1),
+                  iconColor: const Color(0xFF37474F),
+                  onTap: () => _showLegalDocSheet('Refund Policy', 'If your order is declined or cancelled, refunds are instantly credited back to your SwiftBalance. Instant transfers back to your mobile money wallet can take up to 24 hours depending on network providers.'),
+                ),
+                _buildSettingsItem(
+                  icon: Icons.cancel_presentation_outlined,
+                  label: 'Cancellation Policy',
+                  iconBg: const Color(0xFFECEFF1),
+                  iconColor: const Color(0xFF37474F),
+                  onTap: () => _showLegalDocSheet('Cancellation Policy', 'Orders can be cancelled free of charge before the merchant accepts them. Once preparation begins, cancellation will incur a 50% penalty to compensate the merchant for ingredients used.'),
+                ),
+              ],
+              isDark,
+            ),
+            const SizedBox(height: 16),
+
+            // SIGN OUT BUTTON
+            Semantics(
+              label: 'Sign out',
+              child: SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () {
+                    ref.read(currentUserProvider.notifier).signOut();
+                    context.go('/role-selection');
+                  },
+                  icon: const Icon(Icons.logout_rounded, color: Color(0xFFBA1A1A)),
+                  label: Text(
+                    'Sign Out',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFFBA1A1A),
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: const Color(0xFFFFDAD6),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
-          if (_selectedOrder != null) _buildOrderDetailModal(),
-        ],
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildWalletAction(IconData icon, String label, VoidCallback? onTap) {
-    return Expanded(
-      child: Semantics(
-        label: label,
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              children: [
-                Icon(icon, color: Colors.white, size: 20),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+  Widget _buildCategoryGroup(String title, List<Widget> children, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Text(
+            title.toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+              letterSpacing: 1.2,
             ),
           ),
         ),
-      ),
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.grey[200]!,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.015),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: children,
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
@@ -500,348 +411,279 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     required Color iconBg,
     required Color iconColor,
     Widget? trailing,
-    VoidCallback? onTap,
+    required VoidCallback onTap,
   }) {
-    return Column(
-      children: [
-        const Divider(color: Color(0xFFDDE4DD), height: 1),
-        Semantics(
-          label: label,
-          child: InkWell(
-            onTap: onTap ?? () {},
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: iconBg,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: iconColor, size: 20),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: const Color(0xFF161D19),
-                      ),
-                    ),
-                  ),
-                  if (trailing != null) ...[
-                    trailing,
-                    const SizedBox(width: 8),
-                  ],
-                  const Icon(Icons.chevron_right, color: Color(0xFF6C7A71)),
-                ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Semantics(
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
               ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOrderDetailModal() {
-    if (_selectedOrder == null) return const SizedBox.shrink();
-    final order = _selectedOrder!;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedOrder = null),
-      child: Container(
-        color: Colors.black54,
-        child: GestureDetector(
-          onTap: () {},
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary(isDark),
+                  ),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFBBCABF),
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Order Details',
-                        style: GoogleFonts.inter(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF161D19),
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () => setState(() => _selectedOrder = null),
-                        child:
-                            const Icon(Icons.close, color: Color(0xFF6C7A71)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4FBF4),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.receipt_long,
-                              color: Color(0xFF006C49), size: 24),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                order.restaurantName,
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF161D19),
-                                ),
-                              ),
-                              Text(
-                                '${order.id} • ${_formatOrderDate(order.createdAt)}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF3C4A42),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    order.orderType == 'parcel' ? 'DELIVERY DETAILS' : 'ITEMS',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF3C4A42),
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (order.orderType == 'parcel') ...[
-                    _buildDetailRow('Pickup', order.parcelPickupLocation ?? 'N/A'),
-                    _buildDetailRow('Drop-off', order.parcelDeliveryLocation ?? 'N/A'),
-                  ] else
-                    ...order.items.map((item) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${item.quantity}x ${item.foodItem.name}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: const Color(0xFF161D19),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'GHS ${(item.foodItem.price * item.quantity).toStringAsFixed(2)}',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF161D19),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Divider(color: Color(0xFFE3EAE3)),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Total',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF161D19),
-                        ),
-                      ),
-                      Text(
-                        'GHS ${order.totalPrice.toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF006C49),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEF6EE),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.access_time,
-                            size: 16, color: Color(0xFF006C49)),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Delivered on ${_formatOrderDate(order.createdAt)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: const Color(0xFF3C4A42),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
+              if (trailing != null) ...[
+                trailing,
+                const SizedBox(width: 8),
+              ],
+              Icon(Icons.chevron_right_rounded, color: isDark ? Colors.white30 : Colors.grey[400], size: 20),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF3C4A42),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                color: const Color(0xFF161D19),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // --- Dynamic Sheet Helpers ---
 
-  void _showPlaceholderSheet(String title, IconData icon, List<String> items) {
+  void _showEditProfileSheet(User? user) {
+    final nameCtrl = TextEditingController(text: user?.displayName ?? 'Alex Johnson');
+    final emailCtrl = TextEditingController(text: user?.email ?? 'customer@swiftdrop.com');
+    final phoneCtrl = TextEditingController(text: user?.phoneNumber ?? '+233201234567');
+
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Personal Profile',
+                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  prefixIcon: Icon(Icons.email_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final updatedUser = user?.copyWith(
+                      displayName: nameCtrl.text.trim(),
+                      email: emailCtrl.text.trim(),
+                      phoneNumber: phoneCtrl.text.trim(),
+                    ) ?? User(
+                      uid: 'mock_uid',
+                      email: emailCtrl.text.trim(),
+                      displayName: nameCtrl.text.trim(),
+                      phoneNumber: phoneCtrl.text.trim(),
+                      walletBalance: 0.0,
+                      loyaltyPoints: 0,
+                      membershipTier: 'Silver',
+                    );
+                    ref.read(currentUserProvider.notifier).state = updatedUser;
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Profile updated successfully!', style: GoogleFonts.inter())),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('Save Changes', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+
+  void _showSavedAddressesSheet() {
+    final addrCtrl = TextEditingController();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Saved Addresses',
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 16),
+                ..._addresses.map((addr) => Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.location_on, color: AppColors.primary),
+                    title: Text(addr, style: GoogleFonts.inter(fontSize: 14)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: () {
+                        setState(() => _addresses.remove(addr));
+                        setSheetState(() {});
+                      },
+                    ),
+                  ),
+                )),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: addrCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Add New Address',
+                    prefixIcon: Icon(Icons.add_location_alt_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (addrCtrl.text.trim().isNotEmpty) {
+                        setState(() => _addresses.add(addrCtrl.text.trim()));
+                        addrCtrl.clear();
+                        setSheetState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Address added successfully!', style: GoogleFonts.inter())),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('Add Address', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLanguageSheet() {
+    final languages = ['English', 'Twi', 'Ga', 'Hausa', 'French'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFBBCABF),
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-              ),
+            Text(
+              'Select Language / Kasa',
+              style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Icon(icon, color: const Color(0xFF006C49), size: 24),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF161D19),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            ...items.map((item) => Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF4FBF4),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                item,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF161D19),
-                ),
-              ),
-            )),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF006C49),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  'Close',
-                  style: GoogleFonts.inter(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: languages.length,
+                itemBuilder: (ctx, idx) {
+                  final lang = languages[idx];
+                  return RadioListTile<String>(
+                    title: Text(lang, style: GoogleFonts.inter()),
+                    value: lang,
+                    groupValue: _currentLanguage,
+                    activeColor: AppColors.primary,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _currentLanguage = val);
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Language changed to $val', style: GoogleFonts.inter())),
+                        );
+                      }
+                    },
+                  );
+                },
               ),
             ),
           ],
@@ -850,171 +692,503 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showRealNotificationsSheet() {
-    final notificationService = NotificationService();
+  void _showCouponsSheet() {
+    final promoCtrl = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return DraggableScrollableSheet(
-              initialChildSize: 0.6,
-              minChildSize: 0.4,
-              maxChildSize: 0.9,
-              expand: false,
-              builder: (context, scrollController) {
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFBBCABF),
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.notifications_active, color: Color(0xFF006C49), size: 24),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Notifications',
-                                style: GoogleFonts.inter(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: const Color(0xFF161D19),
-                                ),
-                              ),
-                            ],
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              await notificationService.markAllRead();
-                              setDialogState(() {});
-                            },
-                            child: Text(
-                              'Clear All',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: const Color(0xFF006C49),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: FutureBuilder<Map<String, dynamic>>(
-                          future: notificationService.listNotifications(),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator(color: Color(0xFF006C49)));
-                            }
-                            if (snapshot.hasError || !snapshot.hasData) {
-                              return Center(
-                                child: Text('Failed to load notifications', style: GoogleFonts.inter()),
-                              );
-                            }
-
-                            final data = snapshot.data!;
-                            final List notifications = data['notifications'] ?? [];
-                            if (notifications.isEmpty) {
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.notifications_off_outlined, size: 48, color: Colors.grey),
-                                    const SizedBox(height: 12),
-                                    Text('No notifications found', style: GoogleFonts.inter(color: Colors.grey)),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            return ListView.builder(
-                              controller: scrollController,
-                              itemCount: notifications.length,
-                              itemBuilder: (context, index) {
-                                final notif = notifications[index] as Map<String, dynamic>;
-                                final isRead = notif['is_read'] ?? false;
-                                return Card(
-                                  color: isRead ? Colors.white : const Color(0xFFEEF6EE),
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  elevation: 0,
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    title: Text(
-                                      notif['title'] ?? 'Notification',
-                                      style: GoogleFonts.inter(
-                                        fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                                        fontSize: 15,
-                                        color: const Color(0xFF161D19),
-                                      ),
-                                    ),
-                                    subtitle: Padding(
-                                      padding: const EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        notif['body'] ?? '',
-                                        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF4B5563)),
-                                      ),
-                                    ),
-                                    trailing: !isRead 
-                                        ? IconButton(
-                                            icon: const Icon(Icons.mark_email_read, color: Color(0xFF006C49)),
-                                            onPressed: () async {
-                                              await notificationService.markRead(notif['id']);
-                                              setDialogState(() {});
-                                            },
-                                          )
-                                        : null,
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'My Coupons',
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 16),
+                ..._coupons.map((coupon) => Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: const Icon(Icons.local_offer_outlined, color: AppColors.primary),
+                    title: Text(coupon['code'], style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    subtitle: Text(coupon['desc'], style: GoogleFonts.inter(fontSize: 12)),
+                    trailing: TextButton(
+                      child: const Text('Apply'),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Coupon ${coupon['code']} applied successfully!', style: GoogleFonts.inter())),
+                        );
+                      },
+                    ),
                   ),
-                );
-              },
-            );
-          },
-        );
-      },
+                )),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: promoCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Enter Promo Code',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.card_giftcard),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (promoCtrl.text.trim().isNotEmpty) {
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Promo code ${promoCtrl.text.trim().toUpperCase()} applied!', style: GoogleFonts.inter())),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Apply Promo Code'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  String _formatOrderDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
-    return '${months[date.month - 1]} ${date.day}, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  void _showLoyaltyPointsSheet(UserProfile profile) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Loyalty Points & Tiers', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 20),
+            Text(
+              'Your Balance: ${profile.points} Points',
+              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+            ),
+            const SizedBox(height: 8),
+            Text('Earn 1 point for every GHS 1 spent. Redeem points for immediate wallet cashback!', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 20),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(9999),
+              child: LinearProgressIndicator(
+                value: (profile.points / 1000).clamp(0.0, 1.0),
+                backgroundColor: Colors.grey[200],
+                valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                minHeight: 12,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text('${(1000 - profile.points).clamp(0, 1000)} points remaining for next loyalty tier.', style: GoogleFonts.inter(fontSize: 11)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: profile.points < 100
+                    ? null
+                    : () async {
+                        final ok = await ref.read(userProfileProvider.notifier).redeemPoints(100);
+                        if (mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(ok 
+                              ? 'Redeemed 100 points for GHS 10.00 wallet credit!' 
+                              : 'Failed to redeem points.', style: GoogleFonts.inter())),
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text('Redeem 100 pts for GHS 10.00', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showWalletDetailsSheet(UserProfile profile) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('My Wallet (SwiftBalance)', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF006C49), Color(0xFF10B981)]),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('AVAILABLE BALANCE', style: GoogleFonts.inter(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Text('GHS ${profile.walletBalance.toStringAsFixed(2)}', style: GoogleFonts.inter(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Quick Top-Up via MoMo', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Row(
+                children: [GHS10, GHS25, GHS50].map((amt) {
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final ok = await ref.read(userProfileProvider.notifier).topUp(amt);
+                          if (ok) {
+                            setSheetState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Topped up GHS ${amt.toStringAsFixed(2)} successfully!', style: GoogleFonts.inter())),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                        child: Text('+ GHS $amt', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+              Text('Recent Transactions', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              ..._transactions.map((tx) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: tx['type'] == 'credit' ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
+                  child: Icon(tx['type'] == 'credit' ? Icons.arrow_upward : Icons.arrow_downward, color: tx['type'] == 'credit' ? Colors.green : Colors.red),
+                ),
+                title: Text(tx['title'], style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold)),
+                subtitle: Text(tx['date'], style: GoogleFonts.inter(fontSize: 11)),
+                trailing: Text(tx['amount'], style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: tx['type'] == 'credit' ? Colors.green : Colors.red)),
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const double GHS10 = 10.0;
+  static const double GHS25 = 25.0;
+  static const double GHS50 = 50.0;
+
+  void _showReferralSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.card_giftcard, size: 64, color: AppColors.primary),
+            const SizedBox(height: 16),
+            Text('Refer a Friend & Earn!', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('Share your referral code. When they place their first paid order, both of you earn GHS 10.00 cash directly into your SwiftBalance!', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(_referralCode, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                  IconButton(
+                    icon: const Icon(Icons.copy, color: AppColors.primary),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: _referralCode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Referral code copied to clipboard!', style: GoogleFonts.inter())),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showJoinRiderSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.delivery_dining_rounded, size: 64, color: AppColors.primary),
+            const SizedBox(height: 16),
+            Text('Drive for SwiftDrop', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('Earn premium weekly payouts, choose your own working hours, and get instant tips from customers. Complete simple KYC verification in the rider app and start delivering!', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.go('/role-selection');
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Open Rider Portal', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showOpenStoreSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.storefront_rounded, size: 64, color: AppColors.primary),
+            const SizedBox(height: 16),
+            Text('Become a SwiftDrop Merchant', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text('Sell food, drinks, cosmetics, or gas refill vouchers. Access thousands of local customers in Sunyani and track deliveries in real-time on our merchant dashboard.', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  context.go('/role-selection');
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Open Merchant Portal', style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLiveChatSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.6,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Support Live Chat', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _chatMessages.length,
+                    itemBuilder: (ctx, idx) {
+                      final msg = _chatMessages[idx];
+                      final isMe = msg['sender'] == 'me';
+                      return Align(
+                        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isMe ? AppColors.primary : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            msg['text'],
+                            style: GoogleFonts.inter(color: isMe ? Colors.white : Colors.black87),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _chatController,
+                        decoration: const InputDecoration(hintText: 'Type your message...'),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: AppColors.primary),
+                      onPressed: () {
+                        if (_chatController.text.trim().isNotEmpty) {
+                          _chatMessages.add({
+                            'sender': 'me',
+                            'text': _chatController.text.trim(),
+                            'time': 'Just now',
+                          });
+                          _chatController.clear();
+                          setSheetState(() {});
+                          Future.delayed(const Duration(seconds: 1), () {
+                            if (mounted) {
+                              _chatMessages.add({
+                                'sender': 'support',
+                                'text': 'Thanks for reaching out! A support representative will connect shortly.',
+                                'time': 'Just now',
+                              });
+                              setSheetState(() {});
+                            }
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showHelpSupportSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.6,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Frequently Asked Questions (FAQ)', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _faqs.length,
+                itemBuilder: (ctx, idx) {
+                  final faq = _faqs[idx];
+                  return ExpansionTile(
+                    title: Text(faq['q']!, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(faq['a']!, style: GoogleFonts.inter(fontSize: 13, color: Colors.grey[700])),
+                      )
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLegalDocSheet(String title, String content) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 16),
+            Text(
+              content,
+              style: GoogleFonts.inter(fontSize: 14, height: 1.5, color: Colors.grey[800]),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
   }
 }

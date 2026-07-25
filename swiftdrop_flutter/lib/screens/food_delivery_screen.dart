@@ -7,6 +7,7 @@ import '../providers/providers.dart';
 import '../providers/restaurant_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
+import '../widgets/notifications_sheet.dart';
 import '../widgets/food_detail_sheet.dart';
 
 class FoodDeliveryScreen extends ConsumerStatefulWidget {
@@ -41,19 +42,25 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
               .any((t) => t.toLowerCase().contains(searchQuery));
       final matchesCategory = _selectedCategory == 'All' ||
           r.tags
-              .any((t) => t.toLowerCase() == _selectedCategory.toLowerCase());
+              .any((t) {
+                final tag = t.toLowerCase();
+                final cat = _selectedCategory.toLowerCase();
+                if (cat == 'grills' && tag.contains('grill')) return true;
+                if (cat == 'local' && (tag.contains('local') || tag.contains('banku') || tag.contains('waakye') || tag.contains('fufu') || tag.contains('kenkey') || tag.contains('traditional'))) return true;
+                if (cat == 'fast food' && (tag.contains('fast') || tag.contains('burger') || tag.contains('pizza'))) return true;
+                return tag.contains(cat) || cat.contains(tag);
+              });
       return matchesSearch && matchesCategory;
     }).toList();
 
-    const categories = [
-      'All',
-      'Local',
-      'Jollof',
-      'Grill',
-      'Fast Food',
-      'Pizza',
-      'Healthy',
-      'Continental',
+    const opts = [
+      {'label': 'All', 'seed': 'All Food'},
+      {'label': 'Jollof', 'seed': 'Jollof Rice'},
+      {'label': 'Grills', 'seed': 'Chicken'},
+      {'label': 'Local', 'seed': 'Banku'},
+      {'label': 'Rice', 'seed': 'Fried Rice'},
+      {'label': 'Fast Food', 'seed': 'Burger'},
+      {'label': 'Pasta', 'seed': 'Spaghetti'},
     ];
 
     return SafeArea(
@@ -101,23 +108,51 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                     children: [
                       const Icon(Icons.tune,
                           color: Colors.grey, size: 18),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppColors.primaryLight,
-                            width: 1,
-                          ),
-                        ),
-                        child: ClipOval(
-                          child: AppImage(
-                            url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCa0wEAA2MJgGoOs4FJq2TrfbpALLldPBRttiucQHGSfiHmNc_LtUpt79HbwLmU2LEsXaaQoa6vJASaOKlXPRSyIxPpXkrMUw1UQhJMonTc2GR2FgI6S_kz-pHXkvv0EVYXKB6waNwa3zx9H_3nl062qaKpx9EdouXfAEe8_Ro7Zd6wA2I9Y_ILsGwFzWbITxaTeorZwc9mLQ0p86-S113bHO3gyD2mNjkbZouGTYSLjR0Ef-UTIEYRHDfbQ_I_UuxoaiN7Ix0HLoc',
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final notifsAsync = ref.watch(notificationsProvider);
+                          final unreadCount = notifsAsync.value?['unread_count'] ?? 0;
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: AppColors.primary,
+                                  size: 24,
+                                ),
+                                onPressed: () {
+                                  NotificationsSheet.show(context, ref);
+                                },
+                              ),
+                              if (unreadCount > 0)
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(
+                                      minWidth: 16,
+                                      minHeight: 16,
+                                    ),
+                                    child: Text(
+                                      unreadCount > 9 ? '9+' : '$unreadCount',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -173,53 +208,68 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Category chips
+                  // Category options with images (replacing text Category chips)
                   SizedBox(
-                    height: 40,
+                    height: 96,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: categories.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(width: 10),
+                      itemCount: opts.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 16),
                       itemBuilder: (context, index) {
-                        final cat = categories[index];
-                        final isActive = _selectedCategory == cat;
+                        final o = opts[index];
+                        final catLabel = o['label']!;
+                        final isActive = _selectedCategory.toLowerCase() == catLabel.toLowerCase();
                         return Semantics(
-                          label: '$cat category${isActive ? ', selected' : ''}',
+                          label: '$catLabel category${isActive ? ', selected' : ''}',
                           child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedCategory = cat),
-                            child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? AppColors.primary
-                                  : const Color(0xFFF1F5F1),
-                              borderRadius: BorderRadius.circular(99),
-                              boxShadow: isActive
-                                  ? [
-                                      BoxShadow(
-                                        color: AppColors.primary
-                                            .withOpacity(0.2),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                  : null,
+                            onTap: () => setState(() => _selectedCategory = catLabel),
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isActive
+                                          ? AppColors.primary
+                                          : Colors.transparent,
+                                      width: 2.5,
+                                    ),
+                                    boxShadow: isActive
+                                        ? [
+                                            BoxShadow(
+                                              color: AppColors.primary.withOpacity(0.2),
+                                              blurRadius: 6,
+                                              spreadRadius: 1,
+                                            )
+                                          ]
+                                        : null,
+                                  ),
+                                  padding: const EdgeInsets.all(2),
+                                  child: ClipOval(
+                                    child: AppImage(
+                                      url: '',
+                                      fit: BoxFit.cover,
+                                      fallbackSeed: o['seed'],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  catLabel,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: isActive
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                    color: isActive
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary(isDark).withOpacity(0.8),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Text(
-                              cat,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: isActive
-                                    ? Colors.white
-                                    : const Color(0xFF3C4A42)
-                                        .withOpacity(0.8),
-                              ),
-                            ),
-                          ),
                           ),
                         );
                       },
@@ -485,7 +535,6 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                         ),
                         error: (err, stack) => const SizedBox.shrink(),
                       ),
-                  _buildMenuOptions(isDark),
 
                   // All Restaurants heading
                   Row(
@@ -873,67 +922,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
     );
   }
 
-  // ── Menu Options (food categories) ──
-  Widget _buildMenuOptions(bool isDark) {
-    const opts = [
-      {'label': 'Jollof', 'seed': 'Jollof Rice'},
-      {'label': 'Grills', 'seed': 'Chicken'},
-      {'label': 'Local', 'seed': 'Banku'},
-      {'label': 'Rice', 'seed': 'Fried Rice'},
-      {'label': 'Fast Food', 'seed': 'Burger'},
-      {'label': 'Pasta', 'seed': 'Spaghetti'},
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Menu Options',
-          style: GoogleFonts.inter(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary(isDark),
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 92,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: opts.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
-            itemBuilder: (_, i) {
-              final o = opts[i];
-              return Column(
-                children: [
-                  ClipOval(
-                    child: SizedBox(
-                      width: 60,
-                      height: 60,
-                      child: AppImage(
-                        url: '',
-                        fit: BoxFit.cover,
-                        fallbackSeed: o['seed'],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    o['label']!,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary(isDark),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-      ],
-    );
-  }
+
 
   Widget _buildRecommendedFoodSection(List<Map<String, dynamic>> items, bool isDark) {
     if (items.isEmpty) return const SizedBox.shrink();

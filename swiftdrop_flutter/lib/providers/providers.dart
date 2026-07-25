@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import '../services/order_service.dart';
 import '../services/customer_service.dart';
+import '../services/notification_service.dart';
 import 'auth_provider.dart';
 
 // ==================== CART (with persistence) ====================
@@ -645,4 +646,13 @@ final userProfileProvider =
     Future.microtask(() => notifier.updateFromUser(user));
   }
   return notifier;
+});
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
+});
+
+final notificationsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final service = ref.watch(notificationServiceProvider);
+  return service.listNotifications();
 });

@@ -266,27 +266,27 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SCHEDULED FILLING ONLY',
+                          'PROMOTIONAL OFFER • SAVE GHS 10',
                           style: GoogleFonts.inter(
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white70,
-                            letterSpacing: 1,
+                            color: Colors.white,
+                            letterSpacing: 1.2,
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Safe, Certified LPG Home Refills',
+                          'Instant & Scheduled LPG Delivery',
                           style: GoogleFonts.inter(
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w900,
                             color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Standardized scales and certified weights.',
-                          style: GoogleFonts.inter(fontSize: 12, color: Colors.white70),
+                          'Safe, certified cylinder scales & leakage checks.',
+                          style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withOpacity(0.9)),
                         ),
                       ],
                     ),

@@ -230,6 +230,85 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
             ),
           ),
           
+          // Promotional Banner
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              height: 110,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFEC4899).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    right: -20,
+                    bottom: -20,
+                    child: Icon(
+                      Icons.face_retouching_natural_rounded,
+                      size: 100,
+                      color: Colors.white.withOpacity(0.15),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'PROMO DEALS',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '20% OFF Organic Skin Creams',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Order from Sunyani Beauty Emporium today!',
+                          style: GoogleFonts.inter(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          
           _buildCategoryTabs(isDark),
           
           Expanded(

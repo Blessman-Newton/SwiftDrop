@@ -10,6 +10,7 @@ import '../providers/restaurant_provider.dart';
 import '../services/tomtom_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
+import '../widgets/notifications_sheet.dart';
 import '../models/models.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -642,6 +643,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final notifsAsync = ref.watch(notificationsProvider);
+                      final unreadCount = notifsAsync.value?['unread_count'] ?? 0;
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.notifications_none_rounded,
+                              color: AppColors.textPrimary(isDark),
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              NotificationsSheet.show(context, ref);
+                            },
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 16,
+                                  minHeight: 16,
+                                ),
+                                child: Text(
+                                  unreadCount > 9 ? '9+' : '$unreadCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ),

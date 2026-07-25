@@ -308,10 +308,58 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                     color: const Color.fromRGBO(187, 202, 191, 0.2),
                   ),
                 ),
-                child: SingleChildScrollView(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Promotional Banner
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF006C49), Color(0xFF10B981)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.flash_on, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'PROMO: 20% OFF COURIER',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                                Text(
+                                  'Instant pick & deliver across Sunyani!',
+                                  style: GoogleFonts.inter(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                       // Progress indicator
                       Column(
                         children: [
@@ -474,7 +522,10 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                   ),
                 ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
           ),
           // Content - Bottom Panel
           Positioned(
