@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.config import get_settings
-from app.core.database import engine, Base
+from app.core.database import engine, Base, get_masked_db_target, database_url
 from app.api.v1.setup import run_migrations
 # Import models to register them with Base.metadata
 from app.models import (
@@ -22,6 +22,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     print(f"Starting {settings.APP_NAME} API...")
+    print(f"Database target: {get_masked_db_target(database_url)}")
     # Create tables on startup
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -60,6 +61,16 @@ app.add_middleware(
 app.include_router(api_router)
 
 
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "service": settings.APP_NAME,
+        "docs": "/docs" if settings.APP_ENV == "development" else None,
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": settings.APP_NAME}
+

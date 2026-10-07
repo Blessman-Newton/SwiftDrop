@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.config import get_settings
-from app.core.database import Base
+from app.core.database import Base, normalize_database_url
 
 settings = get_settings()
 
@@ -23,10 +23,7 @@ from app.models.order import Order, OrderItem, DispatchLog
 
 
 def run_migrations_offline() -> None:
-    # Convert postgresql:// to postgresql+asyncpg:// for async support
-    database_url = settings.DATABASE_URL
-    if database_url.startswith("postgresql://"):
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    database_url = normalize_database_url(settings.DATABASE_URL)
     
     context.configure(
         url=database_url,
@@ -45,10 +42,7 @@ def do_run_migrations(connection):
 
 
 async def run_async_migrations() -> None:
-    # Convert postgresql:// to postgresql+asyncpg:// for async support
-    database_url = settings.DATABASE_URL
-    if database_url.startswith("postgresql://"):
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    database_url = normalize_database_url(settings.DATABASE_URL)
     
     configuration = {"sqlalchemy.url": database_url}
     connectable = async_engine_from_config(
