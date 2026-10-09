@@ -16,10 +16,18 @@ class OrderTimeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stages = order.orderType == 'parcel'
-        ? OrderStatusX.parcelTimelineStages
-        : OrderStatusX.timelineStages;
-    final currentIndex = order.status.timelineIndex;
+    final isGas = order.restaurantName.contains('Gas') ||
+        order.items.any((ci) => ci.foodItem.name.contains('Gas') || ci.foodItem.name.contains('LPG'));
+    final isScheduled = order.items.any((ci) => ci.foodItem.name.contains('Scheduled'));
+
+    final stages = isGas
+        ? (isScheduled ? OrderStatusX.scheduledGasStages : OrderStatusX.instantGasStages)
+        : (order.orderType == 'parcel'
+            ? OrderStatusX.parcelTimelineStages
+            : OrderStatusX.timelineStages);
+    final currentIndex = isGas
+        ? order.status.getGasTimelineIndex(isScheduled)
+        : order.status.timelineIndex;
     final cancelled = order.status.isCancelled;
 
     if (cancelled) {

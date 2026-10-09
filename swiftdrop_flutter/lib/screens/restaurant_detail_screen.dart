@@ -42,8 +42,13 @@ FoodCategory? _categoryForTab(String tab) {
 
 class RestaurantDetailScreen extends ConsumerStatefulWidget {
   final String restaurantId;
+  final bool autoShowCheckout;
 
-  const RestaurantDetailScreen({super.key, required this.restaurantId});
+  const RestaurantDetailScreen({
+    super.key,
+    required this.restaurantId,
+    this.autoShowCheckout = false,
+  });
 
   @override
   ConsumerState<RestaurantDetailScreen> createState() => _RestaurantDetailScreenState();
@@ -89,6 +94,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   @override
   void initState() {
     super.initState();
+    _showCheckout = widget.autoShowCheckout;
     _scrollController = ScrollController();
     _heroAnimController = AnimationController(
       vsync: this,

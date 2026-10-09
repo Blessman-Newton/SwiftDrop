@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/providers.dart';
+import '../providers/auth_provider.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
+import 'checkout_screen.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -165,17 +167,17 @@ class CartScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Text('Your cart is empty', style: AppText.title(isDark)),
           const SizedBox(height: 6),
-          Text('Add items from a restaurant to get started',
+          Text('Add items to get started',
               style: AppText.secondary(isDark)),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: () => context.go('/food-delivery'),
+            onPressed: () => context.go('/'),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primary,
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
-            child: const Text('Browse restaurants'),
+            child: const Text('Start Shopping'),
           ),
         ],
       ),
@@ -184,6 +186,7 @@ class CartScreen extends ConsumerWidget {
 
   Widget _buildCheckoutBar(BuildContext context, bool isDark, double subtotal,
       String? restaurantId) {
+    final isCosmetics = restaurantId == 'cosmetics_store';
     return Container(
       padding: EdgeInsets.fromLTRB(
           20, 16, 20, 16 + MediaQuery.of(context).padding.bottom),
@@ -214,24 +217,75 @@ class CartScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: restaurantId == null
-                  ? null
-                  : () => context.push('/restaurant/$restaurantId'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              child: Text('Proceed to checkout',
-                  style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
+            child: Consumer(
+              builder: (context, ref, _) {
+                return FilledButton(
+                  onPressed: restaurantId == null
+                      ? null
+                      : () {
+                          if (isCosmetics) {
+                            _navigateToCosmeticsCheckout(context, ref);
+                          } else {
+                            context.push('/restaurant/$restaurantId?checkout=true');
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: Text('Proceed to checkout',
+                      style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                );
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _navigateToCosmeticsCheckout(BuildContext context, WidgetRef ref) {
+    final user = ref.read(currentUserProvider);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please log in to proceed',
+              style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600)),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    final cart = ref.read(cartProvider);
+    final cartNotifier = ref.read(cartProvider.notifier);
+    final subtotal = cartNotifier.subtotal;
+    final deliveryFee = 5.0; // flat cosmetics delivery fee
+    final tax = subtotal * 0.05; // 5% service fee
+    final total = subtotal + deliveryFee + tax;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          restaurantId: 'cosmetics_store',
+          restaurantName: 'Doorush Cosmetics',
+          cartItems: cart,
+          subtotal: subtotal,
+          deliveryFee: deliveryFee,
+          tax: tax,
+          discount: 0,
+          total: total,
+          deliveryAddress: 'Select delivery address',
+          orderType: 'cosmetics',
+          userEmail: user.email,
+        ),
       ),
     );
   }

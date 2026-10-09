@@ -63,4 +63,18 @@ class CustomerService {
       return null;
     }
   }
+
+  /// Fetch approved promo banners
+  Future<List<Map<String, dynamic>>?> getBanners() async {
+    try {
+      final response = await _api.dio.get('/api/v1/banners');
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data;
+        return data.map((e) => e as Map<String, dynamic>).toList();
+      }
+      return null;
+    } on DioException catch (_) {
+      return null;
+    }
+  }
 }

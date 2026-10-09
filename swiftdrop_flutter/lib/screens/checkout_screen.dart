@@ -112,7 +112,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       );
     }
 
-    if (widget.orderType == 'food') {
+    if (widget.orderType == 'food' || widget.orderType == 'cosmetics') {
       _loadCurrentLocation();
     }
   }
@@ -1096,7 +1096,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final orderResult = await OrderService().createOrder(
       orderType: widget.orderType,
       restaurantName: widget.restaurantName,
-      pickupAddress: widget.orderType == 'food' ? widget.restaurantName : (widget.parcelPickup ?? ''),
+      pickupAddress: widget.orderType == 'food'
+          ? widget.restaurantName
+          : widget.orderType == 'cosmetics'
+              ? widget.restaurantName
+              : (widget.parcelPickup ?? ''),
       pickupLat: widget.pickupLat,
       pickupLng: widget.pickupLng,
       deliveryAddress: _isPickup && _isFood
@@ -1110,7 +1114,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       discount: widget.discount,
       total: _effectiveTotal,
       promoCode: widget.promoCode,
-      items: widget.orderType == 'food' ? orderItems : null,
+      items: (widget.orderType == 'food' || widget.orderType == 'cosmetics') ? orderItems : null,
     );
 
     if (orderResult == null || orderResult['id'] == null) {

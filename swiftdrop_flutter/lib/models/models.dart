@@ -94,6 +94,64 @@ extension OrderStatusX on OrderStatus {
     OrderTimelineStage('Delivered', 'Parcel delivered'),
   ];
 
+  static const List<OrderTimelineStage> instantGasStages = [
+    OrderTimelineStage('Confirmed', 'Booking confirmed'),
+    OrderTimelineStage('Finding Rider', 'Finding a rider for you'),
+    OrderTimelineStage('Rider Assigned', 'Rider has accepted your request'),
+    OrderTimelineStage('Refill in Progress', 'Cylinder being refilled at depot'),
+    OrderTimelineStage('Out for Delivery', 'Rider is heading to drop-off'),
+    OrderTimelineStage('Delivered', 'Gas cylinder delivered'),
+  ];
+
+  static const List<OrderTimelineStage> scheduledGasStages = [
+    OrderTimelineStage('Scheduled', 'Refill scheduled successfully'),
+    OrderTimelineStage('Preparing', 'Preparing for your scheduled delivery'),
+    OrderTimelineStage('Finding Rider', 'Finding a rider for you'),
+    OrderTimelineStage('Rider Assigned', 'Rider has accepted your request'),
+    OrderTimelineStage('Out for Delivery', 'Rider is heading to drop-off'),
+    OrderTimelineStage('Delivered', 'Gas cylinder delivered'),
+  ];
+
+  int getGasTimelineIndex(bool isScheduled) {
+    if (isScheduled) {
+      switch (this) {
+        case OrderStatus.created:
+          return 0;
+        case OrderStatus.confirmed:
+          return 1;
+        case OrderStatus.preparing:
+          return 2;
+        case OrderStatus.readyForPickup:
+          return 3;
+        case OrderStatus.pickedUp:
+        case OrderStatus.enRoute:
+          return 4;
+        case OrderStatus.delivered:
+          return 5;
+        case OrderStatus.cancelled:
+          return -1;
+      }
+    } else {
+      switch (this) {
+        case OrderStatus.created:
+          return 0;
+        case OrderStatus.confirmed:
+          return 1;
+        case OrderStatus.readyForPickup:
+          return 2;
+        case OrderStatus.preparing:
+          return 3;
+        case OrderStatus.pickedUp:
+        case OrderStatus.enRoute:
+          return 4;
+        case OrderStatus.delivered:
+          return 5;
+        case OrderStatus.cancelled:
+          return -1;
+      }
+    }
+  }
+
   /// Backend string value for this status.
   String get apiValue {
     switch (this) {
@@ -317,7 +375,7 @@ class Restaurant {
   const Restaurant({
     required this.id,
     required this.name,
-    required this.slug,
+    this.slug = '',
     required this.rating,
     required this.tags,
     required this.deliveryTime,
@@ -765,7 +823,7 @@ class ParcelBooking {
         return 'Standard';
       case 'swift':
       default:
-        return 'SwiftDrop Express';
+        return 'Doorush Express';
     }
   }
 

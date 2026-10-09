@@ -1,36 +1,85 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/app_image.dart';
+import '../providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   bool _navigated = false;
+
+  late Animation<double> _ringAnimation;
+  late Animation<double> _stemAnimation;
+  late Animation<double> _dotAnimation;
+  late Animation<double> _wordmarkAnimation;
+  late Animation<double> _taglineAnimation;
+  late Animation<double> _loaderAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 3500),
+    );
+
+    _ringAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.06, 0.26, curve: Curves.easeInOut),
+    );
+
+    _stemAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.20, 0.36, curve: Curves.easeInOut),
+    );
+
+    _dotAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.34, 0.48, curve: Curves.elasticOut),
+    );
+
+    _wordmarkAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.44, 0.60, curve: Curves.easeOut),
+    );
+
+    _taglineAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.52, 0.66, curve: Curves.easeOut),
+    );
+
+    _loaderAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.62, 0.74, curve: Curves.easeOut),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 2000), () {
-        if (mounted && !_navigated) {
-          _navigated = true;
-          context.go('/onboarding');
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (mounted) {
+          _controller.forward();
         }
       });
+      Future.microtask(() {
+        if (mounted) {
+          ref.read(currentUserProvider.notifier).refreshFromApi();
+        }
+      });
+    });
+
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && !_navigated) {
+        _navigated = true;
+        context.go('/onboarding');
+      }
     });
   }
 
@@ -43,155 +92,251 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment(0.3, -0.5),
-            radius: 1.5,
-            colors: [Color(0xFF10B981), Color(0xFF006C49), Color(0xFF131B2E)],
-          ),
-        ),
-        child: Stack(
-          children: [
-            // Grid overlay
-            Opacity(
-              opacity: 0.1,
-              child: Row(
-                children: List.generate(
-                  6,
-                  (i) => Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
+      backgroundColor: const Color(0xFF123526),
+      body: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    return CustomPaint(
+                      size: const Size(150, 150),
+                      painter: SplashMarkPainter(
+                        ringProgress: _ringAnimation.value,
+                        stemProgress: _stemAnimation.value,
+                        dotScale: _dotAnimation.value,
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
-              ),
-            ),
-
-            // Center content
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Logo card
-                  AnimatedBuilder(
-                    animation: _controller,
-                    builder: (_, __) {
-                      return Transform.translate(
-                        offset: Offset(0, sin(_controller.value * pi) * 8),
-                        child: Container(
-                          padding: const EdgeInsets.all(28),
-                          decoration: BoxDecoration(
+                const SizedBox(height: 22),
+                AnimatedBuilder(
+                  animation: _wordmarkAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _wordmarkAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(0, 14 * (1 - _wordmarkAnimation.value)),
+                        child: Text(
+                          'doorush',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 38,
+                            fontWeight: FontWeight.w700,
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 40,
-                                offset: const Offset(0, 20),
-                              ),
-                            ],
+                            letterSpacing: -1.14,
                           ),
-                          child: AppImage(
-                            url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAtElRu6NdbfyEWJEfaIm0QTbTu8E3KwqrWqje57jHcnhoQSjTf67RATFYkOnRCNlvO1_8-RnKtNiwyhlRQdYWDjOTd9EbnB7pDjJqH-UBYdBj61KtLEw38ZbG75bow5Sa5p2GCVKaRwp7R7Gs2Ugi7kFhqwwWyopeAxf-P6tLcGhLvFByJO2wF8PKqtwZgDkBawWENUcby0JtmxdGbeo721Zm6r2EUehrQDcoh69WGiYkXSdxEQrIWzr9awyBov4QfocUaRYiMoZA',
-                            height: 80,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: 48),
-
-                  // Title
-                  Text(
-                    'Fast. Reliable. Delivered.',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white.withOpacity(0.9),
-                      letterSpacing: 2,
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Bouncy dots
-                  AnimatedBuilder(
-                    animation: _controller,
-                    builder: (_, __) {
-                      return Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(3, (i) {
-                          final offset = (_controller.value + i * 0.15) % 1.0;
-                          final scale = 0.8 + (offset * 0.4);
-                          return Transform.scale(
-                            scale: scale,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 4),
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF6FFBBE),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          );
-                        }),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            // Bottom badge
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(50),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.15)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.verified,
-                          size: 16, color: Color(0xFF6FFBBE)),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Secure Logistics Platform',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.8),
-                          letterSpacing: 1.5,
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              ),
+                const SizedBox(height: 6),
+                AnimatedBuilder(
+                  animation: _taglineAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _taglineAnimation.value,
+                      child: Transform.translate(
+                        offset: Offset(0, 10 * (1 - _taglineAnimation.value)),
+                        child: Text(
+                          'Delivery. Pickup. Everything in between.',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: const Color(0xFF8FCDAE),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            bottom: 80,
+            left: 0,
+            right: 0,
+            child: AnimatedBuilder(
+              animation: _loaderAnimation,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _loaderAnimation.value,
+                  child: Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(3, (i) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 5),
+                          child: PulsingDot(delay: i * 150),
+                        );
+                      }),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class SplashMarkPainter extends CustomPainter {
+  final double ringProgress;
+  final double stemProgress;
+  final double dotScale;
+
+  SplashMarkPainter({
+    required this.ringProgress,
+    required this.stemProgress,
+    required this.dotScale,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scale = size.width / 100;
+    canvas.save();
+    canvas.scale(scale);
+
+    final ringPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final ringPath = Path();
+    ringPath.addArc(
+      Rect.fromCircle(center: const Offset(34, 63), radius: 19),
+      -pi / 2,
+      2 * pi * ringProgress,
+    );
+    canvas.drawPath(ringPath, ringPaint);
+
+    final stemPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 9
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final stemPath = Path();
+    stemPath.moveTo(53, 63);
+    stemPath.lineTo(53, 35);
+    stemPath.quadraticBezierTo(53, 22, 63, 18.5);
+    stemPath.quadraticBezierTo(70, 16, 76, 17);
+
+    final stemLength = _getPathLength(stemPath);
+    final metric = stemPath.computeMetrics().first;
+    final extractedPath = metric.extractPath(0, stemLength * stemProgress);
+    canvas.drawPath(extractedPath, stemPaint);
+
+    final dotPaint = Paint()..color = const Color(0xFF29B573);
+    final dotRadius = 5.5 * dotScale;
+    canvas.drawCircle(const Offset(76, 17), dotRadius, dotPaint);
+
+    canvas.restore();
+  }
+
+  double _getPathLength(Path path) {
+    double length = 0;
+    for (final metric in path.computeMetrics()) {
+      length += metric.length;
+    }
+    return length;
+  }
+
+  @override
+  bool shouldRepaint(covariant SplashMarkPainter oldDelegate) {
+    return ringProgress != oldDelegate.ringProgress ||
+        stemProgress != oldDelegate.stemProgress ||
+        dotScale != oldDelegate.dotScale;
+  }
+}
+
+class PulsingDot extends StatefulWidget {
+  final int delay;
+
+  const PulsingDot({super.key, required this.delay});
+
+  @override
+  State<PulsingDot> createState() => _PulsingDotState();
+}
+
+class _PulsingDotState extends State<PulsingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+
+    _colorAnimation = TweenSequence<Color?>([
+      TweenSequenceItem(
+        tween: ColorTween(
+          begin: const Color(0xFF3E6C55),
+          end: const Color(0xFF29B573),
+        ),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: ColorTween(
+          begin: const Color(0xFF29B573),
+          end: const Color(0xFF3E6C55),
+        ),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(begin: 1.0, end: 1.25),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween(begin: 1.25, end: 1.0),
+        weight: 50,
+      ),
+    ]).animate(_controller);
+
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) {
+        _controller.repeat();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _colorAnimation.value,
+              shape: BoxShape.circle,
+            ),
+          ),
+        );
+      },
     );
   }
 }

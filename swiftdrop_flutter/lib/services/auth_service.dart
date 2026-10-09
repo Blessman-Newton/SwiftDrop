@@ -146,6 +146,13 @@ class AuthService {
     return User.fromMap(jsonDecode(sessionJson) as Map<String, dynamic>);
   }
 
+  Future<User?> getCachedUser() async {
+    final p = await prefs;
+    final sessionJson = p.getString(_sessionKey);
+    if (sessionJson == null) return null;
+    return User.fromMap(jsonDecode(sessionJson) as Map<String, dynamic>);
+  }
+
   Future<void> signOut() async {
     await _api.clearToken();
     final p = await prefs;

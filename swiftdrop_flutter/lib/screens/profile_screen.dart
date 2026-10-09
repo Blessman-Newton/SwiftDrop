@@ -47,7 +47,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   // Help FAQ
   final List<Map<String, String>> _faqs = [
     {'q': 'How do I track my order?', 'a': 'You can track your order in real-time by clicking the tracking option in the active order card on the home screen or inside the Orders tab.'},
-    {'q': 'Can I pay with Mobile Money (MoMo)?', 'a': 'Yes! SwiftDrop supports MTN, Telecel, and AirtelTigo for both instant checkout payments and rider cashouts.'},
+    {'q': 'Can I pay with Mobile Money (MoMo)?', 'a': 'Yes! Doorush supports MTN, Telecel, and AirtelTigo for both instant checkout payments and rider cashouts.'},
     {'q': 'What is the refund policy?', 'a': 'Refunds are automatically credited to your SwiftBalance when an order is cancelled by the merchant or failed to deliver.'},
     {'q': 'How do I contact customer support?', 'a': 'You can tap on the Live Chat option under Help & Support to chat with a support agent instantly.'},
   ];
@@ -227,17 +227,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   onTap: () => _showLoyaltyPointsSheet(profile),
                 ),
-                _buildSettingsItem(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'My Wallet',
-                  iconBg: const Color(0xFFE0F2F1),
-                  iconColor: const Color(0xFF00695C),
-                  trailing: Text(
-                    'GHS ${profile.walletBalance.toStringAsFixed(2)}',
-                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF00695C)),
-                  ),
-                  onTap: () => _showWalletDetailsSheet(profile),
-                ),
               ],
               isDark,
             ),
@@ -294,14 +283,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: 'About Us',
                   iconBg: const Color(0xFFECEFF1),
                   iconColor: const Color(0xFF37474F),
-                  onTap: () => _showLegalDocSheet('About Us', 'SwiftDrop is the ultimate convenience platform in Sunyani, delivering fresh local and international food, gas refills, cosmetics, and custom courier pickup & delivery. Our mission is to connect customers, merchants, and riders seamlessly.'),
+                  onTap: () => _showLegalDocSheet('About Us', 'Doorush is the ultimate convenience platform in Sunyani, delivering fresh local and international food, gas refills, cosmetics, and custom courier pickup & delivery. Our mission is to connect customers, merchants, and riders seamlessly.'),
                 ),
                 _buildSettingsItem(
                   icon: Icons.description_outlined,
                   label: 'Terms & Conditions',
                   iconBg: const Color(0xFFECEFF1),
                   iconColor: const Color(0xFF37474F),
-                  onTap: () => _showLegalDocSheet('Terms & Conditions', 'By using SwiftDrop, you agree to our terms of service. Orders must be paid viaPaystack before delivery dispatch. Merchants are responsible for food quality and preparation, while riders handle secure transit.'),
+                  onTap: () => _showLegalDocSheet('Terms & Conditions', 'By using Doorush, you agree to our terms of service. Orders must be paid viaPaystack before delivery dispatch. Merchants are responsible for food quality and preparation, while riders handle secure transit.'),
                 ),
                 _buildSettingsItem(
                   icon: Icons.privacy_tip_outlined,
@@ -982,7 +971,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             const Icon(Icons.delivery_dining_rounded, size: 64, color: AppColors.primary),
             const SizedBox(height: 16),
-            Text('Drive for SwiftDrop', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('Drive for Doorush', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text('Earn premium weekly payouts, choose your own working hours, and get instant tips from customers. Complete simple KYC verification in the rider app and start delivering!', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 24),
@@ -1018,7 +1007,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           children: [
             const Icon(Icons.storefront_rounded, size: 64, color: AppColors.primary),
             const SizedBox(height: 16),
-            Text('Become a SwiftDrop Merchant', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+            Text('Become a Doorush Merchant', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             Text('Sell food, drinks, cosmetics, or gas refill vouchers. Access thousands of local customers in Sunyani and track deliveries in real-time on our merchant dashboard.', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 24),

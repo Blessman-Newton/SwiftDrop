@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -72,6 +73,17 @@ class _RiderDashboardScreenState extends ConsumerState<RiderDashboardScreen>
   Widget build(BuildContext context) {
     final isOnline = ref.watch(riderOnlineProvider);
     final dashboardAsync = ref.watch(riderDashboardProvider);
+
+    ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
+      riderAvailableOrdersProvider,
+      (previous, next) {
+        final prevList = previous?.valueOrNull ?? [];
+        final nextList = next.valueOrNull ?? [];
+        if (nextList.length > prevList.length) {
+          SystemSound.play(SystemSoundType.alert);
+        }
+      },
+    );
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

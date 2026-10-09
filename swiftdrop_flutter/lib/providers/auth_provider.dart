@@ -20,12 +20,19 @@ class AuthNotifier extends StateNotifier<User?> {
   final AuthService _authService;
 
   AuthNotifier(this._authService) : super(null) {
-    _init();
+    _initLocal();
   }
 
-  Future<void> _init() async {
-    final user = await _authService.getCurrentUser();
+  Future<void> _initLocal() async {
+    final user = await _authService.getCachedUser();
     state = user;
+  }
+
+  Future<void> refreshFromApi() async {
+    final user = await _authService.getCurrentUser();
+    if (user != null) {
+      state = user;
+    }
   }
 
   Future<User?> signUp({

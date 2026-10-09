@@ -30,18 +30,40 @@ import '../widgets/main_scaffold.dart';
 import '../widgets/rider_scaffold.dart';
 import '../models/models.dart';
 
+CustomTransitionPage<void> _fadeTransitionPage(BuildContext context, GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        child: child,
+      );
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
     errorBuilder: (context, state) => _RouteErrorScreen(uri: state.uri.toString()),
     routes: [
-      GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(
-          path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
-      GoRoute(path: '/auth', builder: (_, __) => const AuthScreen()),
+        path: '/splash',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const SplashScreen()),
+      ),
       GoRoute(
-          path: '/role-selection',
-          builder: (_, __) => const RoleSelectionScreen()),
+        path: '/onboarding',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const OnboardingScreen()),
+      ),
+      GoRoute(
+        path: '/auth',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const AuthScreen()),
+      ),
+      GoRoute(
+        path: '/role-selection',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const RoleSelectionScreen()),
+      ),
 
       // Customer routes
       ShellRoute(
@@ -54,7 +76,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(
-              path: '/orders', builder: (_, __) => const OrdersScreen()),
+              path: '/orders',
+              builder: (_, state) {
+                final extra = state.extra as Map<String, dynamic>?;
+                final autoOpenId = extra?['autoOpenId'] as String?;
+                return OrdersScreen(autoOpenId: autoOpenId);
+              }),
           GoRoute(path: '/cart', builder: (_, __) => const CartScreen()),
         ],
       ),
@@ -62,45 +89,72 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Full-screen routes (no bottom nav)
       GoRoute(
         path: '/restaurant/:id',
-        builder: (_, state) => RestaurantDetailScreen(
-          restaurantId: state.pathParameters['id']!,
-        ),
+        pageBuilder: (context, state) {
+          final checkout = state.uri.queryParameters['checkout'] == 'true';
+          return _fadeTransitionPage(
+            context,
+            state,
+            RestaurantDetailScreen(
+              restaurantId: state.pathParameters['id']!,
+              autoShowCheckout: checkout,
+            ),
+          );
+        },
       ),
-      GoRoute(path: '/map', builder: (_, __) => const MapTrackingScreen()),
-      GoRoute(path: '/gas-booking', builder: (_, __) => const GasBookingScreen()),
-      GoRoute(path: '/cosmetics-list', builder: (_, __) => const CosmeticsListScreen()),
       GoRoute(
-          path: '/address-selection',
-          builder: (_, state) {
-            final extra = state.extra as Map<String, dynamic>?;
-            return AddressSelectionScreen(
+        path: '/map',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const MapTrackingScreen()),
+      ),
+      GoRoute(
+        path: '/gas-booking',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const GasBookingScreen()),
+      ),
+      GoRoute(
+        path: '/cosmetics-list',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const CosmeticsListScreen()),
+      ),
+      GoRoute(
+        path: '/address-selection',
+        pageBuilder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return _fadeTransitionPage(
+            context,
+            state,
+            AddressSelectionScreen(
               currentAddress: extra?['address'] as String?,
               currentLat: extra?['lat'] as double?,
               currentLng: extra?['lng'] as double?,
-            );
-          }),
+            ),
+          );
+        },
+      ),
 
       // Parcel routes
       GoRoute(
-          path: '/parcel/booking',
-          builder: (_, state) {
-            final type = state.uri.queryParameters['type'] ?? 'package';
-            return ParcelBookingScreen(pickupType: type);
-          }),
+        path: '/parcel/booking',
+        pageBuilder: (context, state) {
+          final type = state.uri.queryParameters['type'] ?? 'package';
+          return _fadeTransitionPage(context, state, ParcelBookingScreen(pickupType: type));
+        },
+      ),
       GoRoute(
-          path: '/parcel/details',
-          builder: (_, __) => const ParcelPackageDetailsScreen()),
+        path: '/parcel/details',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const ParcelPackageDetailsScreen()),
+      ),
       GoRoute(
-          path: '/parcel/service',
-          builder: (_, __) => const ParcelServiceSelectionScreen()),
+        path: '/parcel/service',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const ParcelServiceSelectionScreen()),
+      ),
       GoRoute(
-          path: '/parcel/summary',
-          builder: (_, __) => const ParcelSummaryScreen()),
+        path: '/parcel/summary',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const ParcelSummaryScreen()),
+      ),
 
       // Booking History → redirect to orders (same data source)
       GoRoute(
-          path: '/booking-history',
-          builder: (_, __) => const OrdersScreen()),
+        path: '/booking-history',
+        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const OrdersScreen()),
+      ),
 
       // Rider routes
       ShellRoute(
@@ -117,7 +171,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (_, __) => const RiderActiveDeliveryScreen()),
           GoRoute(
               path: '/rider/navigation',
-              builder: (_, __) => const RiderNavigationScreen()),
+              pageBuilder: (context, state) => _fadeTransitionPage(context, state, const RiderNavigationScreen())),
           GoRoute(
               path: '/rider/earnings',
               builder: (_, __) => const RiderEarningsScreen()),
@@ -125,10 +179,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     redirect: (context, state) {
-      final onboardingDone = ref.read(onboardingDoneProvider);
-      final user = ref.read(currentUserProvider);
-      final role = ref.read(userRoleProvider);
-
       final location = state.matchedLocation;
 
       // Always allow these screens without redirect
@@ -141,6 +191,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (allowedLocations.contains(location)) {
         return null;
       }
+
+      final onboardingDone = ref.read(onboardingDoneProvider);
+      final user = ref.read(currentUserProvider);
+      final role = ref.read(userRoleProvider);
 
       // Step 1: First time user - no onboarding done
       if (!onboardingDone) return '/onboarding';

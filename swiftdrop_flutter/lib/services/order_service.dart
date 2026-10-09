@@ -22,6 +22,7 @@ class OrderService {
     required double total,
     String? promoCode,
     List<Map<String, dynamic>>? items,
+    Map<String, dynamic>? metadata,
   }) async {
     try {
       final response = await _api.dio.post(
@@ -42,6 +43,7 @@ class OrderService {
           'total': total,
           'promo_code': promoCode,
           'items': items ?? [],
+          'metadata': metadata,
         },
       );
       if (response.statusCode == 200) {

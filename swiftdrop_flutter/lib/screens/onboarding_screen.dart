@@ -138,7 +138,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'SWIFTDROP',
+                        'DOORUSH',
                         style: GoogleFonts.poppins(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,

@@ -6,11 +6,11 @@ import 'router/router.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: SwiftDropApp()));
+  runApp(const ProviderScope(child: DoorushApp()));
 }
 
-class SwiftDropApp extends ConsumerWidget {
-  const SwiftDropApp({super.key});
+class DoorushApp extends ConsumerWidget {
+  const DoorushApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,7 +18,7 @@ class SwiftDropApp extends ConsumerWidget {
     final themeProvider = ref.watch(themeProviderProvider);
 
     return MaterialApp.router(
-      title: 'SwiftDrop',
+      title: 'Doorush',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

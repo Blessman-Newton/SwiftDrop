@@ -1,4 +1,4 @@
-package com.example.swiftdrop
+package com.blessman.swiftdrop
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

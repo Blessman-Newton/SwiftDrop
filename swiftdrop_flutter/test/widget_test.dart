@@ -4,7 +4,7 @@ import 'package:swiftdrop/main.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: SwiftDropApp()));
+    await tester.pumpWidget(const ProviderScope(child: DoorushApp()));
     await tester.pumpAndSettle();
   });
 }

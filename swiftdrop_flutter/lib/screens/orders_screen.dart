@@ -9,13 +9,34 @@ import '../theme/app_theme.dart';
 import '../widgets/order_timeline.dart';
 import '../widgets/order_rating_sheet.dart';
 
-class OrdersScreen extends ConsumerWidget {
-  const OrdersScreen({super.key});
+class OrdersScreen extends ConsumerStatefulWidget {
+  final String? autoOpenId;
+  const OrdersScreen({super.key, this.autoOpenId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends ConsumerState<OrdersScreen> {
+  bool _hasAutoOpened = false;
+
+  @override
+  Widget build(BuildContext context) {
     final orders = ref.watch(ordersProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (widget.autoOpenId != null && !_hasAutoOpened && orders.isNotEmpty) {
+      final matchingOrder = orders.firstWhere(
+        (o) => o.id == widget.autoOpenId,
+        orElse: () => orders.first,
+      );
+      if (matchingOrder.id == widget.autoOpenId) {
+        _hasAutoOpened = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showOrderDetail(matchingOrder, context, isDark);
+        });
+      }
+    }
 
     return Scaffold(
       backgroundColor:

@@ -402,7 +402,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             const SizedBox(height: 16),
             Center(
               child: Text(
-                'SwiftDrop',
+                'Doorush',
                 style: GoogleFonts.poppins(
                   fontSize: 30,
                   fontWeight: FontWeight.w900,
@@ -431,7 +431,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text(
               _mode == AuthMode.login
                   ? (_usePhoneLogin ? 'Sign in with phone' : 'Sign in to continue')
-                  : 'Join SwiftDrop today',
+                  : 'Join Doorush today',
               style: GoogleFonts.poppins(
                 fontSize: 14,
                 color: isDark ? Colors.white54 : Colors.black45,

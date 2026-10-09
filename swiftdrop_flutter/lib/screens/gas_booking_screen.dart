@@ -9,6 +9,7 @@ import '../services/order_service.dart';
 import '../services/customer_service.dart';
 import '../services/tomtom_service.dart';
 import '../screens/address_selection_screen.dart';
+import '../providers/providers.dart';
 
 class GasBookingScreen extends ConsumerStatefulWidget {
   const GasBookingScreen({super.key});
@@ -178,34 +179,45 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
         deliveryFee: _deliveryFee,
         tax: 0.0,
         total: _totalPrice,
+        metadata: {
+          'delivery_mode': _deliveryMode,
+          'scheduled_date': formattedDate,
+          'scheduled_time': formattedTime,
+        },
       );
 
       if (mounted) {
+        final orderId = orderResult != null ? orderResult['id'] as String? : null;
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title: const Row(
+            title: Row(
               children: [
                 Icon(Icons.check_circle, color: AppColors.primary, size: 28),
-                SizedBox(width: 10),
-                Text('Booking Successful!'),
+                const SizedBox(width: 10),
+                const Text('Booking Confirmed!'),
               ],
             ),
             content: Text(
               _deliveryMode == 'Instant'
-                  ? 'Your gas refill booking ($_selectedSize) has been placed for INSTANT delivery ($_deliverySpeed Speed) successfully.\n\nAddress: $_deliveryAddress\n\nTotal: ₵${_totalPrice.toStringAsFixed(2)}'
-                  : 'Your gas refill booking ($_selectedSize) has been scheduled successfully for $formattedDate at $formattedTime ($_deliverySpeed Speed).\n\nAddress: $_deliveryAddress\n\nTotal: ₵${_totalPrice.toStringAsFixed(2)}',
+                  ? 'Gas refill booking confirmed! Your refill request has been placed for instant delivery to $_deliveryAddress. We are now finding a rider for you.'
+                  : 'Gas refill scheduled successfully! Your refill is scheduled for $formattedDate at $formattedTime and will be delivered to $_deliveryAddress.',
               style: GoogleFonts.inter(height: 1.4),
             ),
             actions: [
               TextButton(
                 onPressed: () {
                   Navigator.pop(ctx); // close dialog
-                  context.go('/home'); // back to home
+                  if (orderId != null) {
+                    ref.read(ordersProvider.notifier).refreshOrders();
+                    context.go('/orders', extra: {'autoOpenId': orderId});
+                  } else {
+                    context.go('/orders');
+                  }
                 },
-                child: const Text('Back to Home', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: const Text('Track Order', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -224,6 +236,94 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
         });
       }
     }
+  }
+
+  void _showReviewDialog() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Review Your Refill Booking', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 20),
+            _reviewRow('Gas Size/Type', '$_selectedSize ($_fillType)'),
+            _reviewRow('Quantity', '1 Cylinder'),
+            _reviewRow('Delivery Address', _deliveryAddress),
+            _reviewRow('Delivery Type', '$_deliveryMode Delivery'),
+            if (_deliveryMode == 'Scheduled') ...[
+              _reviewRow('Scheduled Date', '${_deliveryDate.day}/${_deliveryDate.month}/${_deliveryDate.year}'),
+              _reviewRow('Scheduled Time', _deliveryTime.format(context)),
+            ],
+            _reviewRow('Delivery Speed', '$_deliverySpeed Speed'),
+            _reviewRow('Delivery Fee', '₵${_deliveryFee.toStringAsFixed(2)}'),
+            const Divider(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total Amount', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('₵${_totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ],
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _submitBooking();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: Text('Book Refill', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _reviewRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label: ', style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w600)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -778,7 +878,7 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _submitBooking,
+                onPressed: _isSubmitting ? null : _showReviewDialog,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,

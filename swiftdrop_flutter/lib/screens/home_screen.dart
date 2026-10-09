@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 import '../widgets/notifications_sheet.dart';
 import '../models/models.dart';
+import '../services/customer_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -39,7 +40,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     {'name': 'Chicken & Chips', 'price': 'GHS 55'},
   ];
 
-  final List<Map<String, dynamic>> _banners = [
+  late List<Map<String, dynamic>> _activeBanners;
+
+  final List<Map<String, dynamic>> _defaultBanners = [
     {
       'tag': 'LIMITED TIME',
       'title': '20% OFF Your First Order',
@@ -346,17 +349,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _activeBanners = List.from(_defaultBanners);
     _pageController = PageController();
     _scrollController = ScrollController();
     _initializeCurrentLocation();
     _startBannerTimer();
+    _loadDynamicBanners();
   }
 
   void _startBannerTimer() {
     _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (!mounted) return;
       if (_pageController.hasClients) {
-        final nextPage = (_currentBannerPage + 1) % _banners.length;
+        final nextPage = (_currentBannerPage + 1) % _activeBanners.length;
         _pageController.animateToPage(
           nextPage,
           duration: const Duration(milliseconds: 600),
@@ -364,6 +369,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
       }
     });
+  }
+
+  Future<void> _loadDynamicBanners() async {
+    try {
+      final service = CustomerService();
+      final dynamicBanners = await service.getBanners();
+      if (dynamicBanners != null && dynamicBanners.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _activeBanners = dynamicBanners.map((b) {
+              List<Color> bannerColors = [const Color(0xE6064E3B), const Color(0xCC065F46)];
+              final rawColors = b['colors'] as List<dynamic>?;
+              if (rawColors != null && rawColors.length >= 2) {
+                try {
+                  final c1 = int.parse(rawColors[0].toString().replaceAll('#', '0xFF'));
+                  final c2 = int.parse(rawColors[1].toString().replaceAll('#', '0xFF'));
+                  bannerColors = [Color(c1), Color(c2)];
+                } catch (_) {}
+              }
+              
+              return {
+                'tag': b['tag'] ?? 'LIMITED TIME',
+                'title': b['title'] ?? '',
+                'subtitle': b['subtitle'] ?? '',
+                'button': b['button_text'] ?? 'Claim Offer',
+                'route': b['route'] ?? '/food-delivery',
+                'imageUrl': b['image_url'] ?? '',
+                'colors': bannerColors,
+              };
+            }).toList();
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _initializeCurrentLocation() async {
@@ -784,9 +823,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   _currentBannerPage = index;
                                 });
                               },
-                              itemCount: _banners.length,
+                              itemCount: _activeBanners.length,
                               itemBuilder: (context, index) {
-                                final b = _banners[index];
+                                final b = _activeBanners[index];
                                 final gradientColors = b['colors'] as List<Color>;
 
                                 return GestureDetector(
@@ -895,7 +934,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: List.generate(
-                                  _banners.length,
+                                  _activeBanners.length,
                                   (index) => AnimatedContainer(
                                     duration: const Duration(milliseconds: 300),
                                     margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -946,11 +985,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               icon: Icons.replay,
                               label: 'History',
                               onTap: () => context.push('/booking-history'),
-                            ),
-                            _quickAction(
-                              icon: Icons.account_balance_wallet,
-                              label: 'Wallet',
-                              onTap: () => context.push('/profile'),
                             ),
                             _quickAction(
                               icon: Icons.headset_mic,

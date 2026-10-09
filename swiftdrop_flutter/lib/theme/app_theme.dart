@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/models.dart';
 
 class AppColors {
-  static const primary = Color(0xFF006C49);
+  static const primary = Color(0xFF123526);
   static const primaryLight = Color(0xFF10B981);
   static const accent = Color(0xFFFF7E2D);
   static const accentDark = Color(0xFF9D4300);
@@ -127,6 +127,13 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          splashFactory: InkSparkle.splashFactory,
+          elevation: 2,
+          shadowColor: Colors.black12,
+        ),
+      ),
     );
   }
 
@@ -164,6 +171,13 @@ class AppTheme {
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          splashFactory: InkSparkle.splashFactory,
+          elevation: 2,
+          shadowColor: Colors.black12,
+        ),
       ),
     );
   }

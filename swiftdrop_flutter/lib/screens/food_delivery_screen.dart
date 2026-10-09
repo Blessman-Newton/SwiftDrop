@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/food_detail_sheet.dart';
+import '../services/customer_service.dart';
 
 class FoodDeliveryScreen extends ConsumerStatefulWidget {
   const FoodDeliveryScreen({super.key});
@@ -21,6 +22,226 @@ class FoodDeliveryScreen extends ConsumerStatefulWidget {
 class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
   final _searchController = TextEditingController();
   String _selectedCategory = 'All';
+  String _selectedGroup = 'All';
+  List<Map<String, dynamic>>? _dynamicBanners;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDynamicBanners();
+  }
+
+  Future<void> _loadDynamicBanners() async {
+    try {
+      final service = CustomerService();
+      final list = await service.getBanners();
+      if (list != null && list.isNotEmpty) {
+        if (mounted) {
+          setState(() {
+            _dynamicBanners = list.map((b) {
+              List<Color> bannerColors = [const Color(0xE6064E3B), const Color(0xCC065F46)];
+              final rawColors = b['colors'] as List<dynamic>?;
+              if (rawColors != null && rawColors.length >= 2) {
+                try {
+                  final c1 = int.parse(rawColors[0].toString().replaceAll('#', '0xFF'));
+                  final c2 = int.parse(rawColors[1].toString().replaceAll('#', '0xFF'));
+                  bannerColors = [Color(c1), Color(c2)];
+                } catch (_) {}
+              }
+              return {
+                'tag': b['tag'] ?? 'PROMOTION',
+                'title': b['title'] ?? '',
+                'subtitle': b['subtitle'] ?? '',
+                'button': b['button_text'] ?? 'Claim Offer',
+                'route': b['route'] ?? '/food-delivery',
+                'imageUrl': b['image_url'] ?? '',
+                'colors': bannerColors,
+              };
+            }).toList();
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
+  bool _isLocalKitchen(Restaurant r) {
+    final name = r.name.toLowerCase();
+    final tags = r.tags.map((t) => t.toLowerCase()).toList();
+    return name.contains('kitchen') ||
+        name.contains('local') ||
+        name.contains('joint') ||
+        tags.contains('local') ||
+        tags.contains('kitchen') ||
+        tags.contains('traditional') ||
+        tags.contains('local joint');
+  }
+
+  Widget _buildGroupTab(String group, bool isDark) {
+    final isActive = _selectedGroup == group;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedGroup = group),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isActive 
+                ? const Color(0xFF123526) 
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: isActive 
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF123526).withOpacity(0.2),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : null,
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            group,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+              color: isActive 
+                  ? Colors.white 
+                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFoodPromoCard(Map<String, dynamic> b) {
+    final gradientColors = b['colors'] as List<Color>;
+    return Container(
+      width: 280,
+      margin: const EdgeInsets.only(right: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: gradientColors,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors[0].withOpacity(0.1),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      b['tag'] as String,
+                      style: GoogleFonts.inter(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    b['title'] as String,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if ((b['subtitle'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      b['subtitle'] as String,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              GestureDetector(
+                onTap: () {
+                  final route = b['route'] as String;
+                  context.push(route);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    b['button'] as String,
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: gradientColors[0],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if ((b['imageUrl'] as String).isNotEmpty)
+            Positioned(
+              right: -10,
+              bottom: -10,
+              child: Opacity(
+                opacity: 0.15,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: AppImage(
+                    url: b['imageUrl'] as String,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+            )
+          else
+            Positioned(
+              right: -24,
+              bottom: -24,
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -40,6 +261,14 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
       final matchesSearch = r.name.toLowerCase().contains(searchQuery) ||
           r.tags
               .any((t) => t.toLowerCase().contains(searchQuery));
+              
+      bool matchesGroup = true;
+      if (_selectedGroup == 'Restaurants') {
+        matchesGroup = !_isLocalKitchen(r);
+      } else if (_selectedGroup == 'Kitchen / Local') {
+        matchesGroup = _isLocalKitchen(r);
+      }
+
       final matchesCategory = _selectedCategory == 'All' ||
           r.tags
               .any((t) {
@@ -50,7 +279,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                 if (cat == 'fast food' && (tag.contains('fast') || tag.contains('burger') || tag.contains('pizza'))) return true;
                 return tag.contains(cat) || cat.contains(tag);
               });
-      return matchesSearch && matchesCategory;
+      return matchesSearch && matchesGroup && matchesCategory;
     }).toList();
 
     const opts = [
@@ -208,6 +437,24 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
                   const SizedBox(height: 16),
 
+                  // Grouping Filter Toggle (Restaurants vs Kitchen/Local)
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E2E25) : const Color(0xFFF0F4F2),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Row(
+                      children: [
+                        _buildGroupTab('All', isDark),
+                        _buildGroupTab('Restaurants', isDark),
+                        _buildGroupTab('Kitchen / Local', isDark),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Category options with images (replacing text Category chips)
                   SizedBox(
                     height: 96,
@@ -281,243 +528,252 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                   // Promo sliders
                   SizedBox(
                     height: (MediaQuery.of(context).size.height * 0.2).clamp(100.0, 144.0),
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        // Promo 1
-                        Semantics(
-                          label: 'Promotion: Free delivery at The Pizza Place, order above GHS 25',
-                          child: Container(
-                          margin: const EdgeInsets.only(right: 16),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primaryLight,
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withOpacity(0.1),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
+                    child: _dynamicBanners != null && _dynamicBanners!.isNotEmpty
+                        ? ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: _dynamicBanners!.length,
+                            itemBuilder: (context, index) => _buildFoodPromoCard(_dynamicBanners![index]),
+                          )
+                        : ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
                             children: [
-                              Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                              // Promo 1
+                              Semantics(
+                                label: 'Promotion: Free delivery at The Pizza Place, order above GHS 25',
+                                child: Container(
+                                  width: 280,
+                                  margin: const EdgeInsets.only(right: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      colors: [
+                                        AppColors.primary,
+                                        AppColors.primaryLight,
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.primary.withOpacity(0.1),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
                                     children: [
-                                      Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              Colors.white.withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'PROMOTION',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            letterSpacing: 0.5,
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      Colors.white.withOpacity(0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'PROMOTION',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'Free delivery at The Pizza Place',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Order above GHS 25',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 10,
+                                                  color: Colors.white
+                                                      .withOpacity(0.8),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Claim Offer',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Free delivery at The Pizza Place',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          height: 1.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Order above GHS 25',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10,
-                                          color: Colors.white
-                                              .withOpacity(0.8),
+                                      Positioned(
+                                        right: -24,
+                                        bottom: -24,
+                                        child: Container(
+                                          width: 96,
+                                          height: 96,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'Claim Offer',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Positioned(
-                                right: -24,
-                                bottom: -24,
-                                child: Container(
-                                  width: 96,
-                                  height: 96,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Colors.white.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
                                 ),
                               ),
-                            ],
-                          ),
-                          ),
-                        ),
 
-                        // Promo 2
-                        Semantics(
-                          label: 'Promotion: 50% Off Sushi Zen, valid for new users only',
-                          child: Container(
-                            width: 280,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [
-                                Color(0xFF9D4300),
-                                Color(0xFFFF7E2D),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF9D4300)
-                                    .withOpacity(0.1),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
-                            children: [
-                              Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              Colors.white.withOpacity(0.2),
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          'LIMITED TIME',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        '50% Off Sushi Zen',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                          height: 1.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Valid for New Users only',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 10,
-                                          color: Colors.white
-                                              .withOpacity(0.8),
-                                        ),
+                              // Promo 2
+                              Semantics(
+                                label: 'Promotion: 50% Off Sushi Zen, valid for new users only',
+                                child: Container(
+                                  width: 280,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 16),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      colors: [
+                                        Color(0xFF9D4300),
+                                        Color(0xFFFF7E2D),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: const Color(0xFF9D4300)
+                                            .withOpacity(0.1),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
                                       ),
                                     ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius:
-                                          BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'Redeem Now',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: const Color(0xFF9D4300),
+                                  child: Stack(
+                                    children: [
+                                      Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      Colors.white.withOpacity(0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  'LIMITED TIME',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                '50% Off Sushi Zen',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Valid for New Users only',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 10,
+                                                  color: Colors.white
+                                                      .withOpacity(0.8),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Redeem Now',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: const Color(0xFF9D4300),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Positioned(
-                                right: -24,
-                                bottom: -24,
-                                child: Container(
-                                  width: 96,
-                                  height: 96,
-                                  decoration: BoxDecoration(
-                                    color:
-                                        Colors.white.withOpacity(0.1),
-                                    shape: BoxShape.circle,
+                                      Positioned(
+                                        right: -24,
+                                        bottom: -24,
+                                        child: Container(
+                                          width: 96,
+                                          height: 96,
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.white.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
 
                   const SizedBox(height: 24),
@@ -955,11 +1211,29 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                   item: item,
                   restaurant: restaurant,
                   onFeedback: (msg) {
+                    ScaffoldMessenger.of(context).clearSnackBars();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(msg),
+                        content: Text(
+                          msg,
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
                         backgroundColor: AppColors.primary,
                         behavior: SnackBarBehavior.floating,
+                        dismissDirection: DismissDirection.up,
+                        margin: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).size.height - 120,
+                          left: 16,
+                          right: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        duration: const Duration(seconds: 2),
                       ),
                     );
                   },
@@ -1033,13 +1307,13 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: const BoxDecoration(
-                                  color: AppColors.primaryLight,
+                                  color: AppColors.primary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
                                   Icons.add,
                                   size: 14,
-                                  color: Color(0xFF00422B),
+                                  color: Colors.white,
                                 ),
                               ),
                             ],

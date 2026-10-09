@@ -96,18 +96,23 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
       foodItem,
       restaurantId: 'cosmetics_store',
     );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Added ${c['name']} to cart'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'VIEW CART',
-          textColor: Colors.white,
-          onPressed: () => context.push('/cart'),
-        ),
+    _showTopToast('Added ${c['name']} to cart');
+  }
+
+  void _showTopToast(String message) {
+    final overlay = Overlay.of(context);
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (context) => _TopToastWidget(
+        message: message,
+        onDismiss: () => entry.remove(),
+        onViewCart: () {
+          entry.remove();
+          context.go('/cart');
+        },
       ),
     );
+    overlay.insert(entry);
   }
 
   @override
@@ -149,9 +154,9 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () => context.push('/cart'),
+                    onPressed: () => context.go('/cart'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEC4899),
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -238,14 +243,14 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
+                  colors: [AppColors.primary, Color(0xFF1E5C43)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFEC4899).withOpacity(0.3),
+                    color: AppColors.primary.withOpacity(0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -426,7 +431,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
                                             child: Container(
                                               padding: const EdgeInsets.all(6),
                                               decoration: const BoxDecoration(
-                                                color: Color(0xFFEC4899), // Premium pink theme for cosmetics
+                                                color: AppColors.primary, // Brand deep green theme for cosmetics
                                                 shape: BoxShape.circle,
                                               ),
                                               child: const Icon(
@@ -494,6 +499,134 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+/// A lightweight overlay toast that appears at the top of the screen,
+/// auto-dismisses after 1.5 seconds, and never blocks bottom buttons.
+class _TopToastWidget extends StatefulWidget {
+  final String message;
+  final VoidCallback onDismiss;
+  final VoidCallback onViewCart;
+
+  const _TopToastWidget({
+    required this.message,
+    required this.onDismiss,
+    required this.onViewCart,
+  });
+
+  @override
+  State<_TopToastWidget> createState() => _TopToastWidgetState();
+}
+
+class _TopToastWidgetState extends State<_TopToastWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _slideAnimation = Tween<double>(begin: -60, end: 0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
+
+    _controller.forward();
+
+    // Auto-dismiss after 1.5 seconds
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (mounted) widget.onDismiss();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Positioned(
+          top: topPadding + 8 + _slideAnimation.value,
+          left: 16,
+          right: 16,
+          child: Opacity(
+            opacity: _fadeAnimation.value,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle_rounded,
+                        color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        widget.message,
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: widget.onViewCart,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'VIEW CART',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
