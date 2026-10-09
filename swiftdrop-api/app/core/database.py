@@ -5,10 +5,34 @@ from app.config import get_settings
 
 settings = get_settings()
 
-# Convert postgresql:// to postgresql+asyncpg:// for async support
-database_url = settings.DATABASE_URL
-if database_url.startswith("postgresql://"):
-    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+from urllib.parse import urlparse
+
+def normalize_database_url(url: str) -> str:
+    if not url:
+        return ""
+    # Strip whitespace and quotes
+    cleaned = url.strip().strip("'\"")
+    # Convert postgres:// or postgresql:// to postgresql+asyncpg://
+    if cleaned.startswith("postgres://"):
+        cleaned = cleaned.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif cleaned.startswith("postgresql://") and not cleaned.startswith("postgresql+asyncpg://"):
+        cleaned = cleaned.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # asyncpg expects ssl=require rather than sslmode=require
+    if "sslmode=require" in cleaned:
+        cleaned = cleaned.replace("sslmode=require", "ssl=require")
+    return cleaned
+
+def get_masked_db_target(url: str) -> str:
+    try:
+        parsed = urlparse(url)
+        host = parsed.hostname or "unknown-host"
+        port = parsed.port or 5432
+        db = parsed.path.lstrip("/") or "unknown-db"
+        return f"{host}:{port}/{db}"
+    except Exception:
+        return "invalid-url"
+
+database_url = normalize_database_url(settings.DATABASE_URL)
 
 engine = create_async_engine(
     database_url,

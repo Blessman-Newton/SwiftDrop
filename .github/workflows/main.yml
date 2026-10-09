@@ -1,0 +1,41 @@
+name: Build SwiftDrop APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: swiftdrop_flutter
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: swiftdrop_flutter
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftDrop-release-apk
+          path: swiftdrop_flutter/build/app/outputs/flutter-apk/app-release.apk
