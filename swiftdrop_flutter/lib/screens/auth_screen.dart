@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
+import '../utils/validators.dart';
 
 enum AuthMode { login, signup, otp }
 
@@ -23,6 +24,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   String? _error;
   bool _agreedToTerms = false;
   bool _usePhoneLogin = false;
+  bool _obscurePassword = true;
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
@@ -96,8 +98,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   String get _otpCode => _otpDigits.join();
 
   Future<void> _handleEmailLogin() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      _showError('Please enter email and password');
+    if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
     setState(() {
@@ -152,7 +153,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           context.go('/home');
         }
       } else {
-        _showError('Login failed. Please check your phone number and password.');
+        _showError(
+            'Login failed. Please check your phone number and password.');
       }
     } catch (e) {
       if (!mounted) return;
@@ -218,7 +220,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             name: _nameController.text.trim().isNotEmpty
                 ? _nameController.text.trim()
                 : null,
-            role: ref.read(userRoleProvider) == UserRole.rider ? 'rider' : 'customer',
+            role: ref.read(userRoleProvider) == UserRole.rider
+                ? 'rider'
+                : 'customer',
           );
       if (!mounted) return;
       setState(() => _loading = false);
@@ -456,9 +460,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           ],
           Center(
             child: Text(
-              _mode == AuthMode.login
-                  ? 'Welcome Back'
-                  : 'Create Account',
+              _mode == AuthMode.login ? 'Welcome Back' : 'Create Account',
               style: GoogleFonts.poppins(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -470,7 +472,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           Center(
             child: Text(
               _mode == AuthMode.login
-                  ? (_usePhoneLogin ? 'Sign in with phone' : 'Sign in to continue')
+                  ? (_usePhoneLogin
+                      ? 'Sign in with phone'
+                      : 'Sign in to continue')
                   : 'Join Doorush today',
               style: GoogleFonts.poppins(
                 fontSize: 14,
@@ -505,16 +509,33 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               icon: Icons.email,
               isDark: isDark,
               keyboardType: TextInputType.emailAddress,
+              validator: Validators.email,
+              textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: 14),
           ],
-          if (_mode == AuthMode.signup || _usePhoneLogin) ...[
+          if (_mode == AuthMode.signup || _mode == AuthMode.login) ...[
             _buildField(
               controller: _passwordController,
               label: 'Password',
               icon: Icons.lock,
               isDark: isDark,
-              obscure: true,
+              obscure: _obscurePassword,
+              validator: _mode == AuthMode.login ? Validators.password : null,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _submit(),
+              suffix: IconButton(
+                tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                onPressed: () => setState(
+                  () => _obscurePassword = !_obscurePassword,
+                ),
+                icon: Icon(
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: isDark ? Colors.white54 : Colors.black45,
+                ),
+              ),
             ),
             if (_mode == AuthMode.signup) ...[
               const SizedBox(height: 14),
@@ -523,7 +544,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 label: 'Confirm Password',
                 icon: Icons.lock_outline,
                 isDark: isDark,
-                obscure: true,
+                obscure: _obscurePassword,
+                suffix: IconButton(
+                  tooltip: _obscurePassword ? 'Show password' : 'Hide password',
+                  onPressed: () => setState(
+                    () => _obscurePassword = !_obscurePassword,
+                  ),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: isDark ? Colors.white54 : Colors.black45,
+                  ),
+                ),
               ),
             ],
             if (_mode == AuthMode.login) ...[
@@ -537,7 +570,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     style: GoogleFonts.poppins(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? const Color(0xFF6FFBBE) : const Color(0xFF006C49),
+                      color: isDark
+                          ? const Color(0xFF6FFBBE)
+                          : const Color(0xFF006C49),
                     ),
                   ),
                 ),
@@ -650,7 +685,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             const SizedBox(height: 20),
             Row(
               children: [
-                Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.grey.shade300)),
+                Expanded(
+                    child: Divider(
+                        color: isDark ? Colors.white12 : Colors.grey.shade300)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
@@ -662,7 +699,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     ),
                   ),
                 ),
-                Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.grey.shade300)),
+                Expanded(
+                    child: Divider(
+                        color: isDark ? Colors.white12 : Colors.grey.shade300)),
               ],
             ),
             const SizedBox(height: 20),
@@ -671,7 +710,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 if (_loading) return;
                 setState(() => _loading = true);
                 try {
-                  final user = await ref.read(currentUserProvider.notifier).loginWithGoogle();
+                  final user = await ref
+                      .read(currentUserProvider.notifier)
+                      .loginWithGoogle();
                   if (!mounted) return;
                   setState(() => _loading = false);
                   if (user != null) {
@@ -704,7 +745,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       'https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png',
                       height: 22,
                       width: 22,
-                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_mobiledata, color: Colors.blue, size: 24),
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                          Icons.g_mobiledata,
+                          color: Colors.blue,
+                          size: 24),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -773,7 +817,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             if (_loading) return;
             setState(() => _loading = true);
             try {
-              final user = await ref.read(currentUserProvider.notifier).loginWithApple();
+              final user =
+                  await ref.read(currentUserProvider.notifier).loginWithApple();
               if (!mounted) return;
               setState(() => _loading = false);
               if (user != null) {
@@ -798,7 +843,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.apple, color: isDark ? Colors.black : Colors.white, size: 22),
+                Icon(Icons.apple,
+                    color: isDark ? Colors.black : Colors.white, size: 22),
                 const SizedBox(width: 12),
                 Text(
                   'Continue with Apple',
@@ -1074,11 +1120,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     Widget? suffix,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    TextInputAction? textInputAction,
+    ValueChanged<String>? onFieldSubmitted,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      onFieldSubmitted: onFieldSubmitted,
       validator: validator,
       autovalidateMode:
           validator != null ? AutovalidateMode.onUserInteraction : null,
@@ -1129,7 +1179,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Reset Password',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1137,20 +1189,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           children: [
             Text(
               'Enter your email address to receive a password reset link.',
-              style: GoogleFonts.poppins(fontSize: 13, color: isDark ? Colors.white70 : Colors.black54),
+              style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: isDark ? Colors.white70 : Colors.black54),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: emailResetController,
               keyboardType: TextInputType.emailAddress,
-              style: GoogleFonts.poppins(color: isDark ? Colors.white : Colors.black),
+              style: GoogleFonts.poppins(
+                  color: isDark ? Colors.white : Colors.black),
               decoration: InputDecoration(
                 hintText: 'email@example.com',
-                hintStyle: GoogleFonts.poppins(color: isDark ? Colors.white38 : Colors.black38),
-                prefixIcon: Icon(Icons.email, color: isDark ? Colors.white70 : Colors.black54),
+                hintStyle: GoogleFonts.poppins(
+                    color: isDark ? Colors.white38 : Colors.black38),
+                prefixIcon: Icon(Icons.email,
+                    color: isDark ? Colors.white70 : Colors.black54),
                 filled: true,
-                fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.05),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                fillColor: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.grey.withOpacity(0.05),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
               ),
             ),
           ],
@@ -1158,7 +1219,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.poppins(color: isDark ? Colors.white70 : Colors.black54)),
+            child: Text('Cancel',
+                style: GoogleFonts.poppins(
+                    color: isDark ? Colors.white70 : Colors.black54)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -1166,11 +1229,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               if (email.isNotEmpty) {
                 Navigator.pop(ctx);
                 try {
-                  await ref.read(currentUserProvider.notifier).sendPasswordResetEmail(email);
+                  await ref
+                      .read(currentUserProvider.notifier)
+                      .sendPasswordResetEmail(email);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Password reset email sent to $email', style: GoogleFonts.poppins()),
+                        content: Text('Password reset email sent to $email',
+                            style: GoogleFonts.poppins()),
                         backgroundColor: const Color(0xFF10B981),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -1180,7 +1246,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(e.toString().replaceFirst('Exception: ', ''), style: GoogleFonts.poppins()),
+                        content: Text(
+                            e.toString().replaceFirst('Exception: ', ''),
+                            style: GoogleFonts.poppins()),
                         backgroundColor: Colors.red,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -1192,9 +1260,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF10B981),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text('Reset', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            child: Text('Reset',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

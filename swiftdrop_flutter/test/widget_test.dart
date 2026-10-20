@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/test/test_flutter_secure_storage_platform.dart';
 import 'package:flutter_secure_storage_platform_interface/flutter_secure_storage_platform_interface.dart';
@@ -172,5 +173,63 @@ void main() {
       expiresAt.millisecondsSinceEpoch,
     );
     expect(boot.initialLocation, '/rider/dashboard');
+  });
+
+  testWidgets('email login shows email and secure password fields',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authServiceProvider.overrideWithValue(AuthService.test()),
+        ],
+        child: const MaterialApp(home: AuthScreen()),
+      ),
+    );
+    await tester.pump();
+
+    final fields = find.byType(TextFormField);
+    expect(fields, findsNWidgets(2));
+    final passwordField = find.byType(TextField).at(1);
+    expect(tester.widget<TextField>(passwordField).obscureText, isTrue);
+    expect(find.byTooltip('Show password'), findsOneWidget);
+  });
+
+  testWidgets('email login validates both fields before submitting',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authServiceProvider.overrideWithValue(AuthService.test()),
+        ],
+        child: const MaterialApp(home: AuthScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Sign In'));
+    await tester.pump();
+
+    expect(find.text('Email is required'), findsOneWidget);
+    expect(find.text('Password is required'), findsOneWidget);
+  });
+
+  testWidgets('email login password visibility can be toggled',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authServiceProvider.overrideWithValue(AuthService.test()),
+        ],
+        child: const MaterialApp(home: AuthScreen()),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Show password'));
+    await tester.pump();
+
+    final passwordField = find.byType(TextField).at(1);
+    expect(tester.widget<TextField>(passwordField).obscureText, isFalse);
+    expect(find.byTooltip('Hide password'), findsOneWidget);
   });
 }

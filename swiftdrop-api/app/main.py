@@ -27,7 +27,8 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("Database tables ensured")
-    # Run column/table migrations automatically
+    # Run legacy data migrations automatically for existing deployments.
+    # Alembic is also run by the deployment command before workers start.
     try:
         done = await run_migrations()
         if done:
@@ -35,7 +36,8 @@ async def lifespan(app: FastAPI):
         else:
             print("Auto-migrations: nothing new to apply")
     except Exception as exc:
-        print(f"Auto-migration error (non-fatal): {exc}")
+        print(f"Auto-migration error: {exc}")
+        raise
     yield
     print(f"Shutting down {settings.APP_NAME} API...")
 
@@ -73,4 +75,3 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": settings.APP_NAME}
-

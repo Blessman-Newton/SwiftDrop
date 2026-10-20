@@ -80,3 +80,28 @@ Rejection is allowed before processing, and only a provider-confirmed action
 can move a refund to `completed`. Delivery failures are resolved by an admin
 through `PATCH /api/v1/admin/delivery-failures/{failure_id}` with a required
 `final_outcome` when setting `status=resolved`.
+## Alembic migrations
+
+Run migrations from the `swiftdrop-api` directory before starting the API:
+
+```bash
+alembic upgrade head
+```
+
+The Render service runs this command before Uvicorn. If it fails, the API
+process is not started, preventing application workers from serving against an
+incompatible schema.
+
+The current revision adds the nullable `users.fcm_token` column without
+altering existing user rows:
+
+```sql
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND table_name = 'users'
+  AND column_name = 'fcm_token';
+```
+
+For a production verification, the query should return one row with
+`data_type = 'text'` and `is_nullable = 'YES'`.
