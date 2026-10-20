@@ -29,12 +29,15 @@ class Settings(BaseSettings):
     COMMISSION_RATE_GAS: float = 0.05
     COMMISSION_RATE_PARCEL: float = 0.10
     COMMISSION_RATE_COSMETICS: float = 0.12
+    VENDOR_RESPONSE_WINDOW_MINUTES: int = 15
+    RIDER_ACCEPTANCE_WINDOW_MINUTES: int = 2
 
     # JWT
     JWT_SECRET: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
     # Sessions last ~30 days so users stay signed in across app restarts.
     JWT_EXPIRY_MINUTES: int = 43200  # 30 days
+    SETUP_SECRET: str = ""
 
     @model_validator(mode='after')
     def validate_jwt_secret(self) -> 'Settings':

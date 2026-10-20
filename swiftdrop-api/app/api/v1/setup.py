@@ -5,17 +5,20 @@ Access: POST /setup/reset?secret=YOUR_SECRET_KEY
 Access: POST /setup/migrate?secret=YOUR_SECRET_KEY
 """
 from fastapi import APIRouter, HTTPException, Query
+import hmac
 import subprocess
 import sys
 
 from sqlalchemy import text
 from app.core.database import engine, Base
+from app.config import get_settings
 from app.models import (
     User, RiderProfile, OTPCode,
     Restaurant, MenuItem, PromoCode,
     Category, Order, OrderItem, DispatchLog,
     Payment, SupportTicket, Payout,
     Notification, Review, Address
+    , DeliveryFailure, RefundRequest
 )
 
 async def run_migrations() -> list[str]:
@@ -33,11 +36,83 @@ async def run_migrations() -> list[str]:
                 ALTER TABLE orders ADD COLUMN idempotency_key VARCHAR(100)
             """))
             migrations_done.append("order_idempotency_key")
+        # Keep the oldest request when upgrading databases that predate the
+        # unique constraint. The application will replay that order for retries.
+        await conn.execute(text("""
+            DELETE FROM orders newer
+            USING orders older
+            WHERE newer.customer_id = older.customer_id
+              AND newer.idempotency_key IS NOT NULL
+              AND newer.idempotency_key = older.idempotency_key
+              AND newer.created_at > older.created_at
+        """))
         await conn.execute(text("""
             CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_customer_idempotency
             ON orders (customer_id, idempotency_key)
             WHERE idempotency_key IS NOT NULL
         """))
+
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_type_enum')
+                   AND NOT EXISTS (
+                       SELECT 1 FROM pg_enum
+                       WHERE enumtypid = 'order_type_enum'::regtype
+                         AND enumlabel = 'cosmetics'
+                   ) THEN
+                    ALTER TYPE order_type_enum ADD VALUE 'cosmetics';
+                END IF;
+            END $$;
+        """))
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status_enum')
+                   AND NOT EXISTS (
+                       SELECT 1 FROM pg_enum
+                       WHERE enumtypid = 'order_status_enum'::regtype
+                         AND enumlabel = 'DELIVERY_FAILED'
+                   ) THEN
+                    ALTER TYPE order_status_enum ADD VALUE 'DELIVERY_FAILED';
+                END IF;
+            END $$;
+        """))
+
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM pg_type
+                    WHERE typname = 'payment_transaction_status_enum'
+                ) THEN
+                    ALTER TYPE payment_transaction_status_enum
+                    ADD VALUE IF NOT EXISTS 'superseded';
+                    ALTER TYPE payment_transaction_status_enum
+                    ADD VALUE IF NOT EXISTS 'ambiguous';
+                END IF;
+            END $$;
+        """))
+
+        # The catalog table must exist before adding the order-item foreign key.
+        r = await conn.execute(text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables WHERE table_name = 'cosmetics'
+            )
+        """))
+        if not r.scalar():
+            await conn.execute(text("""
+                CREATE TABLE cosmetics (
+                    id UUID PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    description TEXT,
+                    price NUMERIC(10, 2) NOT NULL,
+                    image_url TEXT,
+                    is_available BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+                )
+            """))
+            migrations_done.append("created_cosmetics_table")
 
         r = await conn.execute(text("""
             SELECT column_name FROM information_schema.columns
@@ -58,6 +133,28 @@ async def run_migrations() -> list[str]:
                     ALTER TABLE order_items
                     ADD CONSTRAINT fk_order_items_menu_item_id
                     FOREIGN KEY (menu_item_id) REFERENCES menu_items(id);
+                END IF;
+            END $$;
+        """))
+        r = await conn.execute(text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'order_items' AND column_name = 'cosmetic_product_id'
+        """))
+        if not r.fetchone():
+            await conn.execute(text("""
+                ALTER TABLE order_items ADD COLUMN cosmetic_product_id UUID
+            """))
+            migrations_done.append("order_item_cosmetic_product_id")
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'fk_order_items_cosmetic_product_id'
+                ) THEN
+                    ALTER TABLE order_items
+                    ADD CONSTRAINT fk_order_items_cosmetic_product_id
+                    FOREIGN KEY (cosmetic_product_id) REFERENCES cosmetics(id);
                 END IF;
             END $$;
         """))
@@ -109,37 +206,53 @@ async def run_migrations() -> list[str]:
             """))
             migrations_done.append("delivery_pin_column")
 
-        # --- cosmetics table ---
+        for column, definition in (
+            ("vendor_response_deadline", "TIMESTAMP WITH TIME ZONE"),
+            ("vendor_responded_at", "TIMESTAMP WITH TIME ZONE"),
+            ("dispatch_offer_deadline", "TIMESTAMP WITH TIME ZONE"),
+            ("dispatch_attempts", "INTEGER NOT NULL DEFAULT 0"),
+        ):
+            r = await conn.execute(text("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'orders' AND column_name = :column
+            """), {"column": column})
+            if not r.fetchone():
+                await conn.execute(text(
+                    f"ALTER TABLE orders ADD COLUMN {column} {definition}"
+                ))
+                migrations_done.append(f"order_{column}")
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_orders_vendor_response_deadline "
+            "ON orders (vendor_response_deadline)"
+        ))
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_orders_dispatch_offer_deadline "
+            "ON orders (dispatch_offer_deadline)"
+        ))
+        await conn.run_sync(Base.metadata.create_all, tables=[
+            DeliveryFailure.__table__, RefundRequest.__table__
+        ])
         r = await conn.execute(text("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables WHERE table_name = 'cosmetics'
-            )
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'delivery_failures' AND column_name = 'resolved_by'
         """))
-        if not r.scalar():
+        if not r.fetchone():
             await conn.execute(text("""
-                CREATE TABLE cosmetics (
-                    id UUID PRIMARY KEY,
-                    name VARCHAR(200) NOT NULL,
-                    description TEXT,
-                    price NUMERIC(10, 2) NOT NULL,
-                    image_url TEXT,
-                    is_available BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-                )
+                ALTER TABLE delivery_failures
+                ADD COLUMN resolved_by UUID REFERENCES users(id)
             """))
-            await conn.execute(text("""
-                INSERT INTO cosmetics (id, name, description, price, image_url, is_available) VALUES
-                ('a0000000-0000-0000-0000-000000000001', 'Cocoa Butter Lotion', 'Rich nourishing body cream for smooth skin.', 45.00, 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400', true),
-                ('a0000000-0000-0000-0000-000000000002', 'Shea Moisture Hair Oil', 'Pure Ghanaian raw shea butter infusion.', 60.00, 'https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400', true),
-                ('a0000000-0000-0000-0000-000000000003', 'Matte Lipstick (Ruby)', 'Long-lasting vibrant matte lip color.', 35.00, 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?w=400', true),
-                ('a0000000-0000-0000-0000-000000000004', 'Aloe Vera Facial Gel', 'Soothes and hydrates skin naturally.', 25.00, 'https://images.unsplash.com/photo-1556228578-0d85b1a4d571?w=400', true),
-                ('a0000000-0000-0000-0000-000000000005', 'Coconut Oil Lip Balm', 'Protects lips against dryness and wind.', 12.00, 'https://images.unsplash.com/photo-1617897903246-719242758050?w=400', true)
-            """))
-            migrations_done.append("created_cosmetics_table_and_seeded_data")
+            migrations_done.append("delivery_failure_resolved_by")
+        migrations_done.append("delivery_failure_and_refund_tables_checked")
 
     return migrations_done
 
 router = APIRouter(prefix="/setup", tags=["setup"])
+
+
+def _validate_setup_secret(secret: str) -> None:
+    configured_secret = get_settings().SETUP_SECRET
+    if not configured_secret or not hmac.compare_digest(secret, configured_secret):
+        raise HTTPException(status_code=403, detail="Invalid setup secret")
 
 
 @router.post("/initialize")
@@ -149,8 +262,7 @@ async def initialize_database(secret: str = Query(..., description="Setup secret
     This is a one-time setup endpoint - disable after use!
     """
     # Simple security check
-    if secret != "SWIFTDROP_SETUP_2026":
-        raise HTTPException(status_code=403, detail="Invalid secret key")
+    _validate_setup_secret(secret)
     
     try:
         # Run the initialization script
@@ -192,8 +304,7 @@ async def migrate_database(secret: str = Query(..., description="Setup secret ke
     """
     Add missing columns to existing tables and promote admin user
     """
-    if secret != "SWIFTDROP_SETUP_2026":
-        raise HTTPException(status_code=403, detail="Invalid secret key")
+    _validate_setup_secret(secret)
 
     try:
         migrations_done = await run_migrations()
@@ -248,8 +359,7 @@ async def reset_database(secret: str = Query(..., description="Setup secret key"
     Drop all tables and recreate with seed data.
     WARNING: This will delete all data!
     """
-    if secret != "SWIFTDROP_SETUP_2026":
-        raise HTTPException(status_code=403, detail="Invalid secret key")
+    _validate_setup_secret(secret)
     
     try:
         async with engine.begin() as conn:
@@ -297,8 +407,7 @@ async def promote_to_admin(
     Promote a user to admin role.
     One-time setup endpoint - use with caution!
     """
-    if secret != "SWIFTDROP_SETUP_2026":
-        raise HTTPException(status_code=403, detail="Invalid secret key")
+    _validate_setup_secret(secret)
     
     try:
         async with engine.begin() as conn:
@@ -341,8 +450,7 @@ async def force_promote(
     user_id: str = Query(..., description="User ID to promote")
 ):
     """Force promote user to admin - debug endpoint"""
-    if secret != "SWIFTDROP_SETUP_2026":
-        raise HTTPException(status_code=403, detail="Invalid secret key")
+    _validate_setup_secret(secret)
     
     try:
         async with engine.begin() as conn:

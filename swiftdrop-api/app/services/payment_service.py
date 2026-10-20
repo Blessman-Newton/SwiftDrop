@@ -63,7 +63,7 @@ async def initialize_payment(
         )
     )
     for previous_payment in pending_result.scalars().all():
-        previous_payment.status = "failed"
+        previous_payment.status = "superseded"
         previous_payment.provider_response = {
             "reason": "superseded_by_retry",
             "replacement_reference": reference,
@@ -108,7 +108,7 @@ async def handle_webhook(
             payment_q = select(Payment).where(Payment.reference == reference)
             payment_res = await db.execute(payment_q)
             payment = payment_res.scalar_one_or_none()
-            if payment:
+            if payment and getattr(payment, "order_id", None):
                 order_q = select(Order).options(selectinload(Order.items)).where(Order.id == payment.order_id)
                 order_res = await db.execute(order_q)
                 order = order_res.scalar_one_or_none()
@@ -118,34 +118,34 @@ async def handle_webhook(
 
         if order.payment_status == "paid":
             return {"status": "already_processed"}
-        if order.payment_ref != reference:
-            return {"status": "ignored", "message": "Payment reference is no longer active"}
+        payment_result = await db.execute(
+            select(Payment).where(Payment.reference == reference)
+        )
+        payment = payment_result.scalar_one_or_none()
+        if not payment or not hasattr(payment, "amount"):
+            if order.payment_ref != reference:
+                return {"status": "ignored", "message": "Payment reference is no longer active"}
+            return {"status": "ignored", "message": "Payment attempt not found"}
 
         provider_amount = round(float(data.get("amount", 0)) / 100, 2)
         provider_currency = data.get("currency", "GHS")
-        if provider_currency != "GHS" or provider_amount != round(float(order.total), 2):
-            payment_result = await db.execute(
-                select(Payment).where(Payment.reference == reference)
-            )
-            payment = payment_result.scalar_one_or_none()
-            if payment:
-                payment.status = "failed"
-                payment.provider_response = data
+        if (
+            provider_currency != payment.currency
+            or provider_amount != round(float(payment.amount), 2)
+            or provider_amount != round(float(order.total), 2)
+        ):
+            payment.status = "failed"
+            payment.provider_response = data
             return {
                 "status": "error",
                 "message": "Payment amount or currency does not match the order",
             }
 
         order.payment_status = "paid"
-
-        payment_result = await db.execute(
-            select(Payment).where(Payment.reference == reference)
-        )
-        payment = payment_result.scalar_one_or_none()
-        if payment:
-            payment.status = "success"
-            payment.verified_at = datetime.now(timezone.utc)
-            payment.provider_response = data
+        payment.status = "success"
+        payment.verified_at = datetime.now(timezone.utc)
+        payment.provider_response = data
+        order.payment_ref = reference
 
         await finalize_order_payment(db, order)
 
@@ -157,43 +157,45 @@ async def handle_webhook(
 async def verify_payment(
     db: AsyncSession, reference: str, customer_id: UUID
 ) -> PaymentVerifyResponse:
-    result = await db.execute(
-        select(Order).where(Order.payment_ref == reference)
-    )
-    order = result.scalar_one_or_none()
-    if not order:
-        payment_q = select(Payment).where(Payment.reference == reference)
-        payment_res = await db.execute(payment_q)
-        payment = payment_res.scalar_one_or_none()
-        if payment:
-            order_q = select(Order).where(Order.id == payment.order_id)
-            order_res = await db.execute(order_q)
-            order = order_res.scalar_one_or_none()
+    payment_q = select(Payment).where(Payment.reference == reference)
+    payment_res = await db.execute(payment_q)
+    payment = payment_res.scalar_one_or_none()
+    if payment is not None and not hasattr(payment, "order_id"):
+        payment = None
+    order = None
+    if payment:
+        order_q = select(Order).where(Order.id == payment.order_id)
+        order_res = await db.execute(order_q)
+        order = order_res.scalar_one_or_none()
+    else:
+        result = await db.execute(select(Order).where(Order.payment_ref == reference))
+        order = result.scalar_one_or_none()
 
     if not order:
         raise NotFoundException("Payment not found")
     if order.customer_id != customer_id:
         raise ForbiddenException("Not your payment")
-    if order.payment_ref != reference:
-        raise BadRequestException("Payment reference is no longer active")
+    if not payment:
+        raise BadRequestException("Payment attempt not found")
 
     try:
         verification = await paystack_provider.verify_transaction(reference)
         pay_status = verification.get("status", "unknown")
     except Exception as e:
-        logger.error(f"Paystack verification exception: {e}")
-        pay_status = "failed"
+        logger.error("Paystack verification failed for reference %s: %s", reference, e)
+        pay_status = "ambiguous"
         verification = {
-            "status": "failed",
+            "status": "ambiguous",
             "amount": 0,
             "currency": "GHS",
-            "gateway_response": f"Verification error: {str(e)}"
+            "gateway_response": "Unable to verify payment with provider",
         }
 
     provider_amount = round(float(verification.get("amount", 0)) / 100, 2)
     provider_currency = verification.get("currency", "GHS")
     if pay_status == "success" and (
-        provider_currency != "GHS"
+        provider_currency != payment.currency
+        or provider_amount != round(float(payment.amount), 2)
         or provider_amount != round(float(order.total), 2)
     ):
         raise BadRequestException(
@@ -203,21 +205,17 @@ async def verify_payment(
     if pay_status == "success" and order.payment_status != "paid":
         order.payment_status = "paid"
 
-        payment_result = await db.execute(
-            select(Payment).where(Payment.reference == reference)
-        )
-        payment = payment_result.scalar_one_or_none()
-        if payment:
-            payment.status = "success"
-            payment.verified_at = datetime.now(timezone.utc)
-            payment.provider_response = verification
+        payment.status = "success"
+        payment.verified_at = datetime.now(timezone.utc)
+        payment.provider_response = verification
+        order.payment_ref = reference
 
         await finalize_order_payment(db, order)
 
     return PaymentVerifyResponse(
         reference=reference,
         status=pay_status,
-        amount=float(verification.get("amount", 0)) / 100,
+        amount=provider_amount,
         currency=provider_currency,
         gateway_response=verification.get("gateway_response"),
     )

@@ -11,6 +11,7 @@ from app.models.address import Address
 from app.models.cosmetic import CosmeticProduct
 from app.models.settings import PlatformSetting
 from app.models.banner import Banner
+from app.models.delivery import DeliveryFailure, RefundRequest
 
 __all__ = [
     "User",
@@ -32,4 +33,6 @@ __all__ = [
     "CosmeticProduct",
     "PlatformSetting",
     "Banner",
+    "DeliveryFailure",
+    "RefundRequest",
 ]
