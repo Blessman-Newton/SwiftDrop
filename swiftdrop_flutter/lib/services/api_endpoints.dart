@@ -42,6 +42,8 @@ class ApiEndpoints {
 
   // Notifications
   static const String notifications = '/api/v1/notifications';
+  static const String registerNotificationToken =
+      '/api/v1/notifications/register-token';
   static String notificationRead(String id) => '/api/v1/notifications/$id/read';
   static const String notificationsReadAll = '/api/v1/notifications/read-all';
 

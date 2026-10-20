@@ -22,7 +22,7 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
   String _selectedSize = '12.5 kg';
   String _fillType = 'Maximum Fill'; // Maximum Fill or Customize Fill
   final _customAmountController = TextEditingController(text: '100');
-  
+
   DateTime _deliveryDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _deliveryTime = const TimeOfDay(hour: 14, minute: 0);
 
@@ -57,15 +57,18 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
-      if (permission == LocationPermission.deniedForever || permission == LocationPermission.denied) {
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.medium),
       ).timeout(const Duration(seconds: 8));
 
       final tomtom = TomTomService();
-      final reverseResult = await tomtom.reverseGeocode(LatLng(pos.latitude, pos.longitude));
+      final reverseResult =
+          await tomtom.reverseGeocode(LatLng(pos.latitude, pos.longitude));
       if (reverseResult != null && reverseResult.address.isNotEmpty) {
         if (mounted) {
           setState(() {
@@ -160,9 +163,11 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
     });
 
     try {
-      final formattedTime = '${_deliveryTime.hour.toString().padLeft(2, '0')}:${_deliveryTime.minute.toString().padLeft(2, '0')}';
-      final formattedDate = '${_deliveryDate.year}-${_deliveryDate.month.toString().padLeft(2, '0')}-${_deliveryDate.day.toString().padLeft(2, '0')}';
-      
+      final formattedTime =
+          '${_deliveryTime.hour.toString().padLeft(2, '0')}:${_deliveryTime.minute.toString().padLeft(2, '0')}';
+      final formattedDate =
+          '${_deliveryDate.year}-${_deliveryDate.month.toString().padLeft(2, '0')}-${_deliveryDate.day.toString().padLeft(2, '0')}';
+
       final orderResult = await OrderService().createOrder(
         orderType: 'parcel',
         restaurantName: 'LPG Gas Depot (Tarkwa)',
@@ -170,7 +175,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
         deliveryAddress: _deliveryAddress,
         items: [
           {
-            'name': 'LPG Refill ($_selectedSize - $_fillType - $_deliveryMode - $_deliverySpeed Speed)',
+            'name':
+                'LPG Refill ($_selectedSize - $_fillType - $_deliveryMode - $_deliverySpeed Speed)',
             'quantity': 1,
             'price': _basePrice,
           }
@@ -180,6 +186,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
         tax: 0.0,
         total: _totalPrice,
         metadata: {
+          'cylinder_size': _selectedSize,
+          'quantity': 1,
+          'delivery_speed': _deliverySpeed,
           'delivery_mode': _deliveryMode,
           'scheduled_date': formattedDate,
           'scheduled_time': formattedTime,
@@ -187,12 +196,14 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
       );
 
       if (mounted) {
-        final orderId = orderResult != null ? orderResult['id'] as String? : null;
+        final orderId =
+            orderResult != null ? orderResult['id'] as String? : null;
         showDialog(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             title: Row(
               children: [
                 Icon(Icons.check_circle, color: AppColors.primary, size: 28),
@@ -217,7 +228,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                     context.go('/orders');
                   }
                 },
-                child: const Text('Track Order', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                child: const Text('Track Order',
+                    style: TextStyle(
+                        color: AppColors.primary, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -245,7 +258,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkSurface
+              : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -255,7 +270,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
@@ -263,14 +279,17 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            Text('Review Your Refill Booking', style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('Review Your Refill Booking',
+                style: GoogleFonts.inter(
+                    fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             _reviewRow('Gas Size/Type', '$_selectedSize ($_fillType)'),
             _reviewRow('Quantity', '1 Cylinder'),
             _reviewRow('Delivery Address', _deliveryAddress),
             _reviewRow('Delivery Type', '$_deliveryMode Delivery'),
             if (_deliveryMode == 'Scheduled') ...[
-              _reviewRow('Scheduled Date', '${_deliveryDate.day}/${_deliveryDate.month}/${_deliveryDate.year}'),
+              _reviewRow('Scheduled Date',
+                  '${_deliveryDate.day}/${_deliveryDate.month}/${_deliveryDate.year}'),
               _reviewRow('Scheduled Time', _deliveryTime.format(context)),
             ],
             _reviewRow('Delivery Speed', '$_deliverySpeed Speed'),
@@ -279,8 +298,14 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total Amount', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('₵${_totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                Text('Total Amount',
+                    style: GoogleFonts.inter(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('₵${_totalPrice.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary)),
               ],
             ),
             const SizedBox(height: 28),
@@ -295,9 +320,12 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                child: Text('Book Refill', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text('Book Refill',
+                    style: GoogleFonts.inter(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -312,7 +340,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$label: ', style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w600)),
+          Text('$label: ',
+              style: GoogleFonts.inter(
+                  color: Colors.grey, fontWeight: FontWeight.w600)),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -329,11 +359,13 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final formattedDate = '${_deliveryDate.day}/${_deliveryDate.month}/${_deliveryDate.year}';
+    final formattedDate =
+        '${_deliveryDate.day}/${_deliveryDate.month}/${_deliveryDate.year}';
     final formattedTime = _deliveryTime.format(context);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor:
+          isDark ? AppColors.darkBackground : AppColors.lightBackground,
       appBar: AppBar(
         title: Text(
           'LPG Gas Refill Service',
@@ -386,7 +418,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                         const SizedBox(height: 4),
                         Text(
                           'Safe, certified cylinder scales & leakage checks.',
-                          style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withOpacity(0.9)),
+                          style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: Colors.white.withOpacity(0.9)),
                         ),
                       ],
                     ),
@@ -401,7 +435,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             // Gas Cylinder Size Selector
             Text(
               'Select Cylinder Size',
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -414,10 +449,12 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                   final size = _sizes[i];
                   final isSelected = _selectedSize == size;
                   return ChoiceChip(
-                    label: Text(size, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                    label: Text(size,
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
                     selected: isSelected,
                     selectedColor: AppColors.primary,
-                    labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.black87),
+                    labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : Colors.black87),
                     onSelected: (val) {
                       if (val) {
                         setState(() {
@@ -434,7 +471,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             // Fill Option (Maximum or Customize)
             Text(
               'Select Fill Type',
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
@@ -459,11 +497,14 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       child: Column(
                         children: [
                           Icon(Icons.battery_full,
-                              color: _fillType == 'Maximum Fill' ? AppColors.primary : Colors.grey),
+                              color: _fillType == 'Maximum Fill'
+                                  ? AppColors.primary
+                                  : Colors.grey),
                           const SizedBox(height: 8),
                           Text(
                             'Maximum Fill',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],
                       ),
@@ -491,11 +532,14 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       child: Column(
                         children: [
                           Icon(Icons.edit_road,
-                              color: _fillType == 'Customize Fill' ? AppColors.primary : Colors.grey),
+                              color: _fillType == 'Customize Fill'
+                                  ? AppColors.primary
+                                  : Colors.grey),
                           const SizedBox(height: 8),
                           Text(
                             'Customize Fill',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],
                       ),
@@ -509,7 +553,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             if (_fillType == 'Customize Fill') ...[
               Text(
                 'Enter Custom Cedi Amount (GHS)',
-                style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                    fontSize: 14, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -519,7 +564,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                 decoration: InputDecoration(
                   prefixText: '₵ ',
                   hintText: 'Minimum GHS 20.00',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: Colors.white,
                 ),
@@ -530,7 +576,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             // Delivery Address Selection
             Text(
               'Delivery Address & Directions',
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Container(
@@ -538,13 +585,15 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkSurface : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
+                border: Border.all(
+                    color: isDark ? Colors.transparent : Colors.grey.shade200),
               ),
               child: Column(
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: AppColors.primary, size: 24),
+                      const Icon(Icons.location_on,
+                          color: AppColors.primary, size: 24),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -578,7 +627,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                     height: 40,
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final result = await context.push<AddressSelectionResult>(
+                        final result =
+                            await context.push<AddressSelectionResult>(
                           '/address-selection',
                           extra: {
                             'address': _deliveryAddress,
@@ -597,12 +647,14 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       icon: const Icon(Icons.map, size: 18),
                       label: Text(
                         'Set on Map / Add Address',
-                        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.inter(
+                            fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(color: AppColors.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -614,7 +666,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             // Delivery Option Selection
             Text(
               'Delivery Option',
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
@@ -629,18 +682,24 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                             ? AppColors.primary.withOpacity(0.08)
                             : (isDark ? AppColors.darkSurface : Colors.white),
                         border: Border.all(
-                          color: _deliveryMode == 'Instant' ? AppColors.primary : Colors.grey.shade200,
+                          color: _deliveryMode == 'Instant'
+                              ? AppColors.primary
+                              : Colors.grey.shade200,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         children: [
-                          Icon(Icons.bolt, color: _deliveryMode == 'Instant' ? AppColors.primary : Colors.grey),
+                          Icon(Icons.bolt,
+                              color: _deliveryMode == 'Instant'
+                                  ? AppColors.primary
+                                  : Colors.grey),
                           const SizedBox(height: 8),
                           Text(
                             'Instant Delivery',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],
                       ),
@@ -658,18 +717,24 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                             ? AppColors.primary.withOpacity(0.08)
                             : (isDark ? AppColors.darkSurface : Colors.white),
                         border: Border.all(
-                          color: _deliveryMode == 'Scheduled' ? AppColors.primary : Colors.grey.shade200,
+                          color: _deliveryMode == 'Scheduled'
+                              ? AppColors.primary
+                              : Colors.grey.shade200,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         children: [
-                          Icon(Icons.calendar_month, color: _deliveryMode == 'Scheduled' ? AppColors.primary : Colors.grey),
+                          Icon(Icons.calendar_month,
+                              color: _deliveryMode == 'Scheduled'
+                                  ? AppColors.primary
+                                  : Colors.grey),
                           const SizedBox(height: 8),
                           Text(
                             'Schedule Delivery',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],
                       ),
@@ -684,7 +749,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             if (_deliveryMode == 'Scheduled') ...[
               Text(
                 'Scheduled Delivery Details',
-                style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                    fontSize: 15, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Container(
@@ -692,7 +758,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
+                  border: Border.all(
+                      color:
+                          isDark ? Colors.transparent : Colors.grey.shade200),
                 ),
                 child: Column(
                   children: [
@@ -701,14 +769,19 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.calendar_month, color: AppColors.primary),
+                            const Icon(Icons.calendar_month,
+                                color: AppColors.primary),
                             const SizedBox(width: 10),
-                            Text('Date', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                            Text('Date',
+                                style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                         TextButton(
                           onPressed: () => _selectDate(context),
-                          child: Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          child: Text(formattedDate,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -718,14 +791,19 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.access_time, color: AppColors.primary),
+                            const Icon(Icons.access_time,
+                                color: AppColors.primary),
                             const SizedBox(width: 10),
-                            Text('Time Slot', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                            Text('Time Slot',
+                                style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600)),
                           ],
                         ),
                         TextButton(
                           onPressed: () => _selectTime(context),
-                          child: Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          child: Text(formattedTime,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),
@@ -738,7 +816,8 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             // Delivery Speed (Standard vs Express)
             Text(
               'Delivery Speed',
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
+              style:
+                  GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Row(
@@ -753,7 +832,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                             ? AppColors.primary.withOpacity(0.08)
                             : (isDark ? AppColors.darkSurface : Colors.white),
                         border: Border.all(
-                          color: _deliverySpeed == 'Standard' ? AppColors.primary : Colors.grey.shade200,
+                          color: _deliverySpeed == 'Standard'
+                              ? AppColors.primary
+                              : Colors.grey.shade200,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(16),
@@ -766,21 +847,29 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                             children: [
                               Text(
                                 'Standard Speed',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                               if (_deliverySpeed == 'Standard')
-                                const Icon(Icons.check_circle, color: AppColors.primary, size: 18),
+                                const Icon(Icons.check_circle,
+                                    color: AppColors.primary, size: 18),
                             ],
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            _deliveryMode == 'Instant' ? 'Delivered in 1-2 hours' : 'Delivered on scheduled slot',
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
+                            _deliveryMode == 'Instant'
+                                ? 'Delivered in 1-2 hours'
+                                : 'Delivered on scheduled slot',
+                            style: GoogleFonts.inter(
+                                fontSize: 11, color: Colors.grey),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '₵15.00',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.primary),
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -798,7 +887,9 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                             ? AppColors.primary.withOpacity(0.08)
                             : (isDark ? AppColors.darkSurface : Colors.white),
                         border: Border.all(
-                          color: _deliverySpeed == 'Express' ? AppColors.primary : Colors.grey.shade200,
+                          color: _deliverySpeed == 'Express'
+                              ? AppColors.primary
+                              : Colors.grey.shade200,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(16),
@@ -811,21 +902,29 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                             children: [
                               Text(
                                 'Express Speed',
-                                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                               if (_deliverySpeed == 'Express')
-                                const Icon(Icons.check_circle, color: AppColors.primary, size: 18),
+                                const Icon(Icons.check_circle,
+                                    color: AppColors.primary, size: 18),
                             ],
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            _deliveryMode == 'Instant' ? 'Delivered in 20-30 mins' : 'Priority slot priority delivery',
-                            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
+                            _deliveryMode == 'Instant'
+                                ? 'Delivered in 20-30 mins'
+                                : 'Priority slot priority delivery',
+                            style: GoogleFonts.inter(
+                                fontSize: 11, color: Colors.grey),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             '₵25.00',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.primary),
+                            style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -848,24 +947,38 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Refill Value', style: GoogleFonts.inter(color: Colors.grey.shade600)),
-                      Text('₵${_basePrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      Text('Refill Value',
+                          style:
+                              GoogleFonts.inter(color: Colors.grey.shade600)),
+                      Text('₵${_basePrice.toStringAsFixed(2)}',
+                          style:
+                              GoogleFonts.inter(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Delivery Service Fee', style: GoogleFonts.inter(color: Colors.grey.shade600)),
-                      Text('₵${_deliveryFee.toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      Text('Delivery Service Fee',
+                          style:
+                              GoogleFonts.inter(color: Colors.grey.shade600)),
+                      Text('₵${_deliveryFee.toStringAsFixed(2)}',
+                          style:
+                              GoogleFonts.inter(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const Divider(height: 20),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Total Estimated Cost', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text('₵${_totalPrice.toStringAsFixed(2)}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.primary)),
+                      Text('Total Estimated Cost',
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text('₵${_totalPrice.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 17,
+                              color: AppColors.primary)),
                     ],
                   ),
                 ],
@@ -882,11 +995,14 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
                 child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : Text('Book Refill Now', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.bold)),
+                    : Text('Book Refill Now',
+                        style: GoogleFonts.inter(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],

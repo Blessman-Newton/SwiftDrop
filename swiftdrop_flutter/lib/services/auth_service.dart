@@ -10,19 +10,28 @@ import '../models/models.dart';
 import 'api_client.dart';
 import 'api_endpoints.dart';
 import 'analytics_service.dart';
+import 'fcm_service.dart';
 
 class AuthService {
   static const _sessionKey = AppBootstrap.sessionKey;
 
   final ApiClient _api = ApiClient();
-  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  late final FirebaseAuth _firebaseAuth;
+  late final GoogleSignIn _googleSignIn;
   final AnalyticsService _analytics = AnalyticsService();
   final StreamController<void> _sessionExpired =
       StreamController<void>.broadcast();
   bool _closed = false;
 
   AuthService() {
+    _firebaseAuth = FirebaseAuth.instance;
+    _googleSignIn = GoogleSignIn();
+    _api.onSessionInvalid = _handleInvalidSession;
+  }
+
+  /// Creates an auth service for widget tests that only exercise cached
+  /// sessions and routing. It deliberately does not touch Firebase plugins.
+  AuthService.test() {
     _api.onSessionInvalid = _handleInvalidSession;
   }
 
@@ -58,7 +67,8 @@ class AuthService {
       }
 
       final idToken = await credential.user?.getIdToken();
-      if (idToken == null) throw Exception('Failed to get authentication token');
+      if (idToken == null)
+        throw Exception('Failed to get authentication token');
 
       final response = await _api.dio.post(
         ApiEndpoints.signUp,
@@ -102,7 +112,8 @@ class AuthService {
       );
 
       final idToken = await credential.user?.getIdToken();
-      if (idToken == null) throw Exception('Failed to get authentication token');
+      if (idToken == null)
+        throw Exception('Failed to get authentication token');
 
       final response = await _api.dio.post(
         ApiEndpoints.login,
@@ -174,15 +185,18 @@ class AuthService {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final userCredential =
+          await _firebaseAuth.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
-      if (idToken == null) throw Exception('Failed to get authentication token');
+      if (idToken == null)
+        throw Exception('Failed to get authentication token');
 
       final response = await _api.dio.post(
         '/api/v1/auth/social-login',
@@ -229,9 +243,11 @@ class AuthService {
         accessToken: appleCredential.authorizationCode,
       );
 
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final userCredential =
+          await _firebaseAuth.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
-      if (idToken == null) throw Exception('Failed to get authentication token');
+      if (idToken == null)
+        throw Exception('Failed to get authentication token');
 
       final response = await _api.dio.post(
         '/api/v1/auth/social-login',
@@ -241,7 +257,8 @@ class AuthService {
           'firebase_uid': userCredential.user?.uid,
           'email': userCredential.user?.email,
           'name': appleCredential.givenName != null
-              ? '${appleCredential.givenName} ${appleCredential.familyName ?? ''}'.trim()
+              ? '${appleCredential.givenName} ${appleCredential.familyName ?? ''}'
+                  .trim()
               : null,
         },
       );
@@ -310,10 +327,12 @@ class AuthService {
     return null;
   }
 
-  Future<User> _acceptSession(String token, Map<String, dynamic> userData) async {
+  Future<User> _acceptSession(
+      String token, Map<String, dynamic> userData) async {
     final user = _parseUser(userData);
     await _api.saveToken(token);
     await AppBootstrap.persistSession(user, token);
+    await FCMService().registerCurrentToken();
     return user;
   }
 

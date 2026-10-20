@@ -40,7 +40,7 @@
         </intent>
         <intent>
             <action android:name="com.google.android.gms.auth.api.signin"/>
-            <data android:packageName="com.blessman.swiftdrop"/>
         </intent>
+        <package android:name="com.blessman.swiftdrop" />
     </queries>
 </manifest>

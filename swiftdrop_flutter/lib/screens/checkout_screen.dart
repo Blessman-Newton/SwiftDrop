@@ -2,8 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pay_with_paystack/pay_with_paystack.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -17,7 +15,6 @@ import 'momo_payment_screen.dart';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/providers.dart';
 import '../providers/auth_provider.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
@@ -72,7 +69,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   late String _deliveryAddress;
   double? _deliveryLat;
   double? _deliveryLng;
-  bool _isLoadingLocation = false;
   MoMoPaymentResult? _momoPayment;
   bool _isPayForMeSelected = false;
 
@@ -125,7 +121,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   Future<void> _loadCurrentLocation() async {
-    setState(() => _isLoadingLocation = true);
     try {
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
@@ -133,7 +128,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
-        setState(() => _isLoadingLocation = false);
         return;
       }
 
@@ -149,25 +143,22 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
 
       if (pos == null || !mounted) {
-        setState(() => _isLoadingLocation = false);
         return;
       }
 
+      final currentPosition = pos;
       final tomtom = TomTomService();
       final result =
-          await tomtom.reverseGeocode(LatLng(pos!.latitude, pos!.longitude));
+          await tomtom.reverseGeocode(LatLng(currentPosition.latitude, currentPosition.longitude));
       if (mounted && result != null) {
         setState(() {
           _deliveryAddress = result.address;
-          _deliveryLat = pos!.latitude;
-          _deliveryLng = pos!.longitude;
-          _isLoadingLocation = false;
+          _deliveryLat = currentPosition.latitude;
+          _deliveryLng = currentPosition.longitude;
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoadingLocation = false);
-      }
+      if (mounted) {}
     }
   }
 
@@ -282,7 +273,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Delivery Method Section ─────────────────────────────────────────────────
+  // â”€â”€â”€ Delivery Method Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildDeliveryMethod(Color surface, Color text, Color subtext) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -319,7 +310,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             value: 'pickup',
             icon: Icons.storefront,
             title: 'Pick up from restaurant',
-            subtitle: 'No delivery fee • collect it yourself',
+            subtitle: 'No delivery fee â€¢ collect it yourself',
             text: text,
             subtext: subtext,
           ),
@@ -343,7 +334,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: selected
-              ? AppColors.primary.withOpacity(0.06)
+              ? AppColors.primary.withValues(alpha: 0.06)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -384,7 +375,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Delivery Speed Section ──────────────────────────────────────────────────
+  // â”€â”€â”€ Delivery Speed Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildDeliverySpeedSection(Color surface, Color text, Color subtext) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -459,7 +450,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withOpacity(0.06)
+              ? AppColors.primary.withValues(alpha: 0.06)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -516,7 +507,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Delivery Address Section ────────────────────────────────────────────────
+  // â”€â”€â”€ Delivery Address Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildDeliveryAddress(Color surface, Color text, Color subtext) {
     return GestureDetector(
       onTap: _openAddressSelection,
@@ -600,7 +591,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Order Summary ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Order Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildOrderSummary(Color surface, Color text, Color subtext) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -728,7 +719,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   decoration: BoxDecoration(
                     color: !_isPayForMeSelected
-                        ? AppColors.primary.withOpacity(0.08)
+                        ? AppColors.primary.withValues(alpha: 0.08)
                         : surface,
                     border: Border.all(
                       color: !_isPayForMeSelected
@@ -770,7 +761,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   decoration: BoxDecoration(
                     color: _isPayForMeSelected
-                        ? AppColors.primary.withOpacity(0.08)
+                        ? AppColors.primary.withValues(alpha: 0.08)
                         : surface,
                     border: Border.all(
                       color: _isPayForMeSelected
@@ -849,7 +840,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         const SizedBox(height: 4),
                         if (_momoPayment != null) ...[
                           Text(
-                            '${_getProviderName(_momoPayment!.provider)} •••• ${_momoPayment!.phoneNumber.substring(_momoPayment!.phoneNumber.length - 4)}',
+                            '${_getProviderName(_momoPayment!.provider)} â€¢â€¢â€¢â€¢ ${_momoPayment!.phoneNumber.substring(_momoPayment!.phoneNumber.length - 4)}',
                             style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
@@ -952,7 +943,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Status Banner ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Status Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildStatusBanner() {
     final isError =
         _statusMessage.contains('failed') || _statusMessage.contains('error');
@@ -984,7 +975,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Pay Button ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Pay Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildPayButton() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -1072,7 +1063,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Price Row ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Price Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildPriceRow(String label, double value, Color text,
       {bool isDiscount = false}) {
     return Padding(
@@ -1094,7 +1085,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   String _getProviderName(String id) {
     switch (id) {
       case 'mtn':
@@ -1108,7 +1099,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
-  // ─── Navigation ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _openAddressSelection() async {
     final result = await Navigator.of(context).push<AddressSelectionResult>(
       MaterialPageRoute(
@@ -1139,7 +1130,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
-  // ─── Payment Processing ──────────────────────────────────────────────────────
+  // â”€â”€â”€ Payment Processing â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Future<void> _processPayment() async {
     if (!ApiClient().isAuthenticated) {
       setState(() => _statusMessage = 'Please log in to place an order');
@@ -1168,7 +1159,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       final finalPrice = ci.foodItem.price +
           ci.extras.fold(0.0, (sum, ext) => sum + ext.price * ext.quantity);
       return {
-        'menu_item_id': ci.foodItem.id,
+        if (widget.orderType == 'cosmetics')
+          'cosmetic_product_id': ci.foodItem.id
+        else
+          'menu_item_id': ci.foodItem.id,
         'name': '${ci.foodItem.name}$extrasText',
         'quantity': ci.quantity,
         'price': finalPrice,
@@ -1337,137 +1331,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     } catch (_) {}
   }
 
-  void _showPaymentVerificationDialog(String reference, {String? deliveryPin}) {
-    bool isVerifying = false;
-    Timer? verificationTimer;
-    int checkCount = 0;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            if (verificationTimer == null) {
-              verificationTimer =
-                  Timer.periodic(const Duration(seconds: 4), (timer) async {
-                checkCount++;
-                if (checkCount > 15) {
-                  timer.cancel();
-                  if (mounted) {
-                    setDialogState(() => isVerifying = false);
-                  }
-                  return;
-                }
-
-                try {
-                  final verifyResult =
-                      await OrderService().verifyPayment(reference);
-                  if (verifyResult != null &&
-                      verifyResult['status'] == 'success') {
-                    timer.cancel();
-                    Navigator.of(dialogContext).pop();
-                    _showOrderPlaced(deliveryPin: deliveryPin);
-                  }
-                } catch (_) {}
-              });
-            }
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16)),
-              title: Text(
-                'Complete Payment',
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 8),
-                  const CircularProgressIndicator(color: AppColors.primary),
-                  const SizedBox(height: 20),
-                  Text(
-                    'We launched the Paystack secure checkout page. Please complete payment there, then return to the app.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                        fontSize: 14, color: const Color(0xFF4B5563)),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Waiting for payment confirmation...',
-                    style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontStyle: FontStyle.italic,
-                        color: Colors.grey),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    verificationTimer?.cancel();
-                    Navigator.of(dialogContext).pop();
-                    setState(() {
-                      _isProcessing = false;
-                      _statusMessage =
-                          'Payment pending check. You can verify it in your orders list.';
-                    });
-                  },
-                  child: Text('Cancel',
-                      style: GoogleFonts.inter(color: Colors.red)),
-                ),
-                ElevatedButton(
-                  onPressed: isVerifying
-                      ? null
-                      : () async {
-                          setDialogState(() => isVerifying = true);
-                          try {
-                            final verifyResult =
-                                await OrderService().verifyPayment(reference);
-                            if (verifyResult != null &&
-                                verifyResult['status'] == 'success') {
-                              verificationTimer?.cancel();
-                              Navigator.of(dialogContext).pop();
-                              _showOrderPlaced(deliveryPin: deliveryPin);
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      'Payment not completed yet or pending. Try again soon.',
-                                      style: GoogleFonts.inter()),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          } catch (_) {}
-                          setDialogState(() => isVerifying = false);
-                        },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                  child: isVerifying
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : Text('Verify Now',
-                          style:
-                              GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) {
-      verificationTimer?.cancel();
-    });
-  }
-
   void _showOrderPlaced({String? deliveryPin}) {
     showDialog(
       context: context,
@@ -1503,7 +1366,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     fontSize: 13, color: const Color(0xFF6C7A71)),
               ),
 
-              // ── Delivery PIN Card ──────────────────────────────────
+              // â”€â”€ Delivery PIN Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
               if (deliveryPin != null) ...[
                 const SizedBox(height: 20),
                 Container(
@@ -1558,7 +1421,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   ),
                 ),
               ],
-              // ───────────────────────────────────────────────────────
+              // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
               const SizedBox(height: 24),
               SizedBox(
@@ -1639,10 +1502,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withOpacity(0.05)
+                    ? Colors.white.withValues(alpha: 0.05)
                     : const Color(0xFFF1F7F2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
               ),
               child: Text(
                 _deliveryAddress,
@@ -1708,7 +1571,6 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   void _showPayForMeDialog(String orderId, {String? deliveryPin}) {
     final payLink = 'https://pay.swiftdrop.com/pay-for-me/$orderId';
-    bool isSimulating = false;
 
     showDialog(
       context: context,
@@ -1777,139 +1639,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (isSimulating)
-                    const Center(
-                      child:
-                          CircularProgressIndicator(color: AppColors.primary),
-                    )
-                  else
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: ElevatedButton.icon(
-                        icon:
-                            const Icon(Icons.sports_esports_outlined, size: 20),
-                        label: Text(
-                          'Simulate Friend Paid',
-                          style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: () async {
-                          setDialogState(() {
-                            isSimulating = true;
-                          });
-                          final success = await OrderService()
-                              .triggerMockPaymentCallback(orderId);
-                          if (success) {
-                            if (mounted) {
-                              Navigator.pop(dialogContext); // close link dialog
-                              // Clear Cart
-                              ref.read(cartProvider.notifier).clearCart();
-                              // Show success dialog
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (ctx) => AlertDialog(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24)),
-                                  title: const Row(
-                                    children: [
-                                      Icon(Icons.check_circle,
-                                          color: AppColors.primary, size: 28),
-                                      SizedBox(width: 10),
-                                      Text('Payment Confirmed!'),
-                                    ],
-                                  ),
-                                  content: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Your friend completed the payment successfully. Your order is now placed!',
-                                        style: GoogleFonts.inter(height: 1.4),
-                                      ),
-                                      if (deliveryPin != null) ...[
-                                        const SizedBox(height: 16),
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primary
-                                                .withOpacity(0.08),
-                                            borderRadius:
-                                                BorderRadius.circular(12),
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.lock,
-                                                  color: AppColors.primary),
-                                              const SizedBox(width: 12),
-                                              Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    'DELIVERY PIN',
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 10,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: AppColors.primary,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    deliveryPin,
-                                                    style: GoogleFonts.inter(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      letterSpacing: 1.5,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        Navigator.pop(ctx);
-                                        context.go('/orders');
-                                      },
-                                      child: const Text('View Orders',
-                                          style: TextStyle(
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.bold)),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                          } else {
-                            if (mounted) {
-                              setDialogState(() {
-                                isSimulating = false;
-                              });
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        'Simulation failed. Please try again.')),
-                              );
-                            }
-                          }
-                        },
-                      ),
+                  Text(
+                    'Payment status will update automatically after the payer completes the request.',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      height: 1.4,
+                      color: Colors.grey[700],
                     ),
+                  ),
                 ],
               ),
               actions: [
