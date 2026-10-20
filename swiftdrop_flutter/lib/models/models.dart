@@ -363,6 +363,7 @@ class Restaurant {
   final String deliveryTime;
   final String deliveryFee;
   final String distance;
+  final double minimumOrder;
   final String imageUrl;
   final bool isPopular;
   final bool isNew;
@@ -381,6 +382,7 @@ class Restaurant {
     required this.deliveryTime,
     required this.deliveryFee,
     required this.distance,
+    this.minimumOrder = 0,
     required this.imageUrl,
     this.isPopular = false,
     this.isNew = false,
@@ -407,6 +409,7 @@ class Restaurant {
       deliveryTime: (json['delivery_time'] as String?) ?? '',
       deliveryFee: deliveryFee == 0 ? 'Free' : 'GHS ${deliveryFee.toStringAsFixed(2)}',
       distance: '',
+      minimumOrder: (json['minimum_order'] as num?)?.toDouble() ?? 0,
       imageUrl: (json['image_url'] as String?) ?? '',
       isPopular: (json['tags'] as List?)?.contains('Top Rated') ?? false,
       isTrending: (json['tags'] as List?)?.contains('Trending') ?? false,
@@ -432,6 +435,7 @@ class Restaurant {
       deliveryTime: (json['delivery_time'] as String?) ?? '',
       deliveryFee: deliveryFee == 0 ? 'Free' : 'GHS ${deliveryFee.toStringAsFixed(2)}',
       distance: '',
+      minimumOrder: (json['minimum_order'] as num?)?.toDouble() ?? 0,
       imageUrl: (json['image_url'] as String?) ?? '',
       isPopular: (json['tags'] as List?)?.contains('Top Rated') ?? false,
       isTrending: (json['tags'] as List?)?.contains('Trending') ?? false,
@@ -882,4 +886,40 @@ class ParcelBooking {
       promoCode: promoCode ?? this.promoCode,
     );
   }
+
+  Map<String, dynamic> toMap() => {
+        'pickupLocation': pickupLocation,
+        'pickupLat': pickupLat,
+        'pickupLng': pickupLng,
+        'deliveryLocation': deliveryLocation,
+        'deliveryLat': deliveryLat,
+        'deliveryLng': deliveryLng,
+        'packageType': packageType,
+        'weight': weight,
+        'lengthCm': lengthCm,
+        'widthCm': widthCm,
+        'heightCm': heightCm,
+        'riderNotes': riderNotes,
+        'deliveryService': deliveryService,
+        'insuranceIncluded': insuranceIncluded,
+        'promoCode': promoCode,
+      };
+
+  factory ParcelBooking.fromMap(Map<String, dynamic> map) => ParcelBooking(
+        pickupLocation: map['pickupLocation'] as String? ?? '',
+        pickupLat: (map['pickupLat'] as num?)?.toDouble(),
+        pickupLng: (map['pickupLng'] as num?)?.toDouble(),
+        deliveryLocation: map['deliveryLocation'] as String? ?? '',
+        deliveryLat: (map['deliveryLat'] as num?)?.toDouble(),
+        deliveryLng: (map['deliveryLng'] as num?)?.toDouble(),
+        packageType: map['packageType'] as String? ?? 'box',
+        weight: (map['weight'] as num?)?.toDouble() ?? 5,
+        lengthCm: (map['lengthCm'] as num?)?.toDouble(),
+        widthCm: (map['widthCm'] as num?)?.toDouble(),
+        heightCm: (map['heightCm'] as num?)?.toDouble(),
+        riderNotes: map['riderNotes'] as String?,
+        deliveryService: map['deliveryService'] as String? ?? 'swift',
+        insuranceIncluded: map['insuranceIncluded'] as bool? ?? false,
+        promoCode: map['promoCode'] as String?,
+      );
 }

@@ -4,11 +4,14 @@ import '../models/models.dart';
 
 class AppColors {
   static const primary = Color(0xFF123526);
-  static const primaryLight = Color(0xFF10B981);
+  static const primaryLight = Color(0xFF29B573);
+  static const deepGreen = Color(0xFF0B5C38);
+  static const paleMint = Color(0xFFF2FAF5);
+  static const nearBlack = Color(0xFF081F16);
   static const accent = Color(0xFFFF7E2D);
   static const accentDark = Color(0xFF9D4300);
 
-  static const lightBackground = Color(0xFFF4FBF4);
+  static const lightBackground = paleMint;
   static const lightSurface = Colors.white;
   static const lightCard = Colors.white;
 
@@ -24,9 +27,8 @@ class AppColors {
       isDark ? Colors.white : const Color(0xFF111813);
   static Color textSecondary(bool isDark) =>
       isDark ? const Color(0xFF93A1B5) : const Color(0xFF6C7A71);
-  static Color border(bool isDark) => isDark
-      ? Colors.white.withOpacity(0.06)
-      : Colors.black.withOpacity(0.05);
+  static Color border(bool isDark) =>
+      isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
 
   /// Single source of truth for order-status color.
   static Color status(OrderStatus s) {
@@ -64,6 +66,12 @@ class AppText {
   static TextStyle heading(bool isDark) => GoogleFonts.inter(
         fontSize: 18,
         fontWeight: FontWeight.w800,
+        color: AppColors.textPrimary(isDark),
+      );
+
+  static TextStyle display(bool isDark) => GoogleFonts.spaceGrotesk(
+        fontSize: 26,
+        fontWeight: FontWeight.w700,
         color: AppColors.textPrimary(isDark),
       );
 

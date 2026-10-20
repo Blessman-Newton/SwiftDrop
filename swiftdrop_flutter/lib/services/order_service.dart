@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:uuid/uuid.dart';
 import 'api_client.dart';
 import 'api_endpoints.dart';
 
@@ -23,7 +24,9 @@ class OrderService {
     String? promoCode,
     List<Map<String, dynamic>>? items,
     Map<String, dynamic>? metadata,
+    String? idempotencyKey,
   }) async {
+    final requestKey = idempotencyKey ?? const Uuid().v4();
     try {
       final response = await _api.dio.post(
         ApiEndpoints.orders,
@@ -44,6 +47,7 @@ class OrderService {
           'promo_code': promoCode,
           'items': items ?? [],
           'metadata': metadata,
+          'idempotency_key': requestKey,
         },
       );
       if (response.statusCode == 200) {
@@ -125,7 +129,8 @@ class OrderService {
   /// Verify payment
   Future<Map<String, dynamic>?> verifyPayment(String reference) async {
     try {
-      final response = await _api.dio.get(ApiEndpoints.verifyPayment(reference));
+      final response =
+          await _api.dio.get(ApiEndpoints.verifyPayment(reference));
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;
       }
@@ -138,7 +143,8 @@ class OrderService {
   /// Trigger mock payment callback for Pay For Me
   Future<bool> triggerMockPaymentCallback(String orderId) async {
     try {
-      final response = await _api.dio.post('/api/v1/payments/mock-callback/$orderId');
+      final response =
+          await _api.dio.post('/api/v1/payments/mock-callback/$orderId');
       return response.statusCode == 200;
     } on DioException catch (_) {
       return false;

@@ -1,38 +1,71 @@
-import 'dart:convert';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app_bootstrap.dart';
 import '../models/models.dart';
 import '../services/auth_service.dart';
 
-final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+class RouterRefresh extends ChangeNotifier {
+  void bump() => notifyListeners();
+}
 
-final currentUserProvider =
-    StateNotifierProvider<AuthNotifier, User?>((ref) {
-  return AuthNotifier(ref.read(authServiceProvider));
+final routerRefreshProvider = Provider<RouterRefresh>((ref) {
+  final refresh = RouterRefresh();
+  ref.onDispose(refresh.dispose);
+  return refresh;
+});
+
+final authServiceProvider = Provider<AuthService>((ref) {
+  final service = AuthService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+final currentUserProvider = StateNotifierProvider<AuthNotifier, User?>((ref) {
+  return AuthNotifier(
+    ref.watch(authServiceProvider),
+    ref.watch(routerRefreshProvider),
+  );
 });
 
 final userRoleProvider =
     StateNotifierProvider<UserRoleNotifier, UserRole?>((ref) {
-  return UserRoleNotifier();
+  return UserRoleNotifier(ref.watch(routerRefreshProvider));
 });
 
 class AuthNotifier extends StateNotifier<User?> {
   final AuthService _authService;
+  final RouterRefresh _routerRefresh;
+  StreamSubscription<void>? _sessionSub;
 
-  AuthNotifier(this._authService) : super(null) {
-    _initLocal();
+  AuthNotifier(this._authService, this._routerRefresh)
+      : super(AppBootstrap.current.user) {
+    _sessionSub = _authService.sessionExpired.listen((_) => _expireSession());
   }
 
-  Future<void> _initLocal() async {
-    final user = await _authService.getCachedUser();
+  @override
+  void dispose() {
+    _sessionSub?.cancel();
+    super.dispose();
+  }
+
+  void _set(User? user) {
     state = user;
+    _routerRefresh.bump();
+  }
+
+  void _expireSession() {
+    if (!mounted) return;
+    state = null;
+    _routerRefresh.bump();
   }
 
   Future<void> refreshFromApi() async {
     final user = await _authService.getCurrentUser();
-    if (user != null) {
-      state = user;
-    }
+    if (!mounted) return;
+    if (user == null && state == null) return;
+    _set(user);
   }
 
   Future<User?> signUp({
@@ -50,7 +83,7 @@ class AuthNotifier extends StateNotifier<User?> {
       role: role,
     );
     if (user != null) {
-      state = user;
+      _set(user);
     }
     return user;
   }
@@ -64,26 +97,43 @@ class AuthNotifier extends StateNotifier<User?> {
       password: password,
     );
     if (user != null) {
-      state = user;
+      _set(user);
+    }
+    return user;
+  }
+
+  Future<User?> loginWithPhone({
+    required String phone,
+    required String password,
+  }) async {
+    final user = await _authService.loginWithPhone(
+      phone: phone,
+      password: password,
+    );
+    if (user != null) {
+      _set(user);
     }
     return user;
   }
 
   Future<User?> loginWithGoogle() async {
-    await Future.delayed(const Duration(seconds: 1));
-    final dummyUser = User(
-      uid: 'google_user_123',
-      email: 'swiftdrop.user@gmail.com',
-      displayName: 'Swift Customer',
-      phoneNumber: '+233200000000',
-      walletBalance: 150.0,
-      loyaltyPoints: 120,
-      membershipTier: 'Gold',
-    );
-    state = dummyUser;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('swiftdrop_active_session', jsonEncode(dummyUser.toMap()));
-    return dummyUser;
+    final user = await _authService.loginWithGoogle();
+    if (user != null) {
+      _set(user);
+    }
+    return user;
+  }
+
+  Future<User?> loginWithApple() async {
+    final user = await _authService.loginWithApple();
+    if (user != null) {
+      _set(user);
+    }
+    return user;
+  }
+
+  Future<bool> sendPasswordResetEmail(String email) async {
+    return await _authService.sendPasswordResetEmail(email);
   }
 
   Future<bool> sendOtp(String phone) async {
@@ -94,7 +144,7 @@ class AuthNotifier extends StateNotifier<User?> {
   Future<bool> verifyOtp(String phone, String code) async {
     final user = await _authService.verifyOtpApi(phone, code);
     if (user != null) {
-      state = user;
+      _set(user);
       return true;
     }
     return false;
@@ -102,34 +152,28 @@ class AuthNotifier extends StateNotifier<User?> {
 
   Future<void> signOut() async {
     await _authService.signOut();
+    if (!mounted) return;
     state = null;
+    _routerRefresh.bump();
   }
 }
 
 class UserRoleNotifier extends StateNotifier<UserRole?> {
-  static const _roleKey = 'swiftdrop_user_role';
+  final RouterRefresh _routerRefresh;
 
-  UserRoleNotifier() : super(null) {
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final roleIndex = prefs.getInt(_roleKey);
-    if (roleIndex != null && roleIndex < UserRole.values.length) {
-      state = UserRole.values[roleIndex];
-    }
-  }
+  UserRoleNotifier(this._routerRefresh) : super(AppBootstrap.current.role);
 
   Future<void> setRole(UserRole role) async {
     state = role;
+    _routerRefresh.bump();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_roleKey, role.index);
+    await prefs.setInt(AppBootstrap.roleKey, role.index);
   }
 
   Future<void> clearRole() async {
     state = null;
+    _routerRefresh.bump();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_roleKey);
+    await prefs.remove(AppBootstrap.roleKey);
   }
 }

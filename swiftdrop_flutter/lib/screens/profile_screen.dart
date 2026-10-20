@@ -324,9 +324,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: TextButton.icon(
-                  onPressed: () {
-                    ref.read(currentUserProvider.notifier).signOut();
-                    context.go('/role-selection');
+                  onPressed: () async {
+                    // Clears the token, the cached session and the remembered
+                    // location before leaving the protected area.
+                    await ref.read(currentUserProvider.notifier).signOut();
+                    if (context.mounted) context.go('/role-selection');
                   },
                   icon: const Icon(Icons.logout_rounded, color: Color(0xFFBA1A1A)),
                   label: Text(

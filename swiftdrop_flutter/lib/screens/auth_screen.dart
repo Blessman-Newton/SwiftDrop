@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
 
@@ -28,6 +29,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   final List<String> _otpDigits = ['', '', '', '', '', ''];
   int _otpIndex = 0;
@@ -47,6 +49,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _countdownTimer?.cancel();
     _errorTimer?.cancel();
     super.dispose();
@@ -126,6 +129,39 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _handlePhoneLogin() async {
+    if (_phoneController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showError('Please enter phone number and password');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final user = await ref.read(currentUserProvider.notifier).loginWithPhone(
+            phone: _phoneController.text.trim(),
+            password: _passwordController.text,
+          );
+      if (!mounted) return;
+      setState(() => _loading = false);
+      if (user != null) {
+        final userRole = ref.read(userRoleProvider);
+        if (userRole == UserRole.rider) {
+          context.go('/rider/dashboard');
+        } else {
+          context.go('/home');
+        }
+      } else {
+        _showError('Login failed. Please check your phone number and password.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _handlePhoneOtpLogin() async {
     if (_phoneController.text.isEmpty) {
       _showError('Please enter your phone number');
       return;
@@ -160,6 +196,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
     if (_passwordController.text.length < 8) {
       _showError('Password must be at least 8 characters');
+      return;
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      _showError('Passwords do not match');
       return;
     }
     if (!_agreedToTerms) {
@@ -467,6 +507,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 14),
+          ],
+          if (_mode == AuthMode.signup || _usePhoneLogin) ...[
             _buildField(
               controller: _passwordController,
               label: 'Password',
@@ -474,6 +516,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
               isDark: isDark,
               obscure: true,
             ),
+            if (_mode == AuthMode.signup) ...[
+              const SizedBox(height: 14),
+              _buildField(
+                controller: _confirmPasswordController,
+                label: 'Confirm Password',
+                icon: Icons.lock_outline,
+                isDark: isDark,
+                obscure: true,
+              ),
+            ],
             if (_mode == AuthMode.login) ...[
               const SizedBox(height: 8),
               Align(
@@ -616,6 +668,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             const SizedBox(height: 20),
             GestureDetector(
               onTap: () async {
+                if (_loading) return;
                 setState(() => _loading = true);
                 try {
                   final user = await ref.read(currentUserProvider.notifier).loginWithGoogle();
@@ -629,7 +682,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 } catch (e) {
                   if (mounted) {
                     setState(() => _loading = false);
-                    _showError(e.toString());
+                    _showError(e.toString().replaceFirst('Exception: ', ''));
                   }
                 }
               },
@@ -666,42 +719,100 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 ),
               ),
             ),
-          ],
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _mode == AuthMode.login
-                    ? "Don't have an account? "
-                    : 'Already have an account? ',
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  color: isDark ? Colors.white54 : Colors.black45,
+            const SizedBox(height: 12),
+            _buildAppleSignInButton(isDark),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Text(
+                    _mode == AuthMode.login
+                        ? "Don't have an account? "
+                        : 'Already have an account? ',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      color: isDark ? Colors.white54 : Colors.black45,
+                    ),
+                  ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() {
-                  _mode = _mode == AuthMode.login
-                      ? AuthMode.signup
-                      : AuthMode.login;
-                  _usePhoneLogin = false;
-                }),
-                child: Text(
-                  _mode == AuthMode.login ? 'Sign Up' : 'Sign In',
+                GestureDetector(
+                  onTap: () => setState(() {
+                    _mode = _mode == AuthMode.login
+                        ? AuthMode.signup
+                        : AuthMode.login;
+                    _usePhoneLogin = false;
+                  }),
+                  child: Text(
+                    _mode == AuthMode.login ? 'Sign Up' : 'Sign In',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDark
+                          ? const Color(0xFF6FFBBE)
+                          : const Color(0xFF006C49),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppleSignInButton(bool isDark) {
+    return FutureBuilder<bool>(
+      future: SignInWithApple.isAvailable(),
+      builder: (context, snapshot) {
+        if (snapshot.data != true) return const SizedBox.shrink();
+        return GestureDetector(
+          onTap: () async {
+            if (_loading) return;
+            setState(() => _loading = true);
+            try {
+              final user = await ref.read(currentUserProvider.notifier).loginWithApple();
+              if (!mounted) return;
+              setState(() => _loading = false);
+              if (user != null) {
+                context.go('/home');
+              } else {
+                _showError('Apple sign in failed');
+              }
+            } catch (e) {
+              if (mounted) {
+                setState(() => _loading = false);
+                _showError(e.toString().replaceFirst('Exception: ', ''));
+              }
+            }
+          },
+          child: Container(
+            width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white : Colors.black,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.apple, color: isDark ? Colors.black : Colors.white, size: 22),
+                const SizedBox(width: 12),
+                Text(
+                  'Continue with Apple',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isDark
-                        ? const Color(0xFF6FFBBE)
-                        : const Color(0xFF006C49),
+                    color: isDark ? Colors.black : Colors.white,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1050,17 +1161,32 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             child: Text('Cancel', style: GoogleFonts.poppins(color: isDark ? Colors.white70 : Colors.black54)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final email = emailResetController.text.trim();
               if (email.isNotEmpty) {
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('A password reset link has been sent to $email.', style: GoogleFonts.poppins()),
-                    backgroundColor: const Color(0xFF10B981),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                try {
+                  await ref.read(currentUserProvider.notifier).sendPasswordResetEmail(email);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Password reset email sent to $email', style: GoogleFonts.poppins()),
+                        backgroundColor: const Color(0xFF10B981),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(e.toString().replaceFirst('Exception: ', ''), style: GoogleFonts.poppins()),
+                        backgroundColor: Colors.red,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                }
               }
             },
             style: ElevatedButton.styleFrom(

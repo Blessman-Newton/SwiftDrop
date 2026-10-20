@@ -92,6 +92,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final base = widget.deliveryFee;
     return _deliverySpeed == 'Express' ? base + 13.0 : base;
   }
+
   double get _effectiveTotal =>
       widget.total - widget.deliveryFee + _effectiveDeliveryFee;
 
@@ -130,7 +131,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
       }
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
         setState(() => _isLoadingLocation = false);
         return;
       }
@@ -152,7 +154,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       }
 
       final tomtom = TomTomService();
-      final result = await tomtom.reverseGeocode(LatLng(pos!.latitude, pos!.longitude));
+      final result =
+          await tomtom.reverseGeocode(LatLng(pos!.latitude, pos!.longitude));
       if (mounted && result != null) {
         setState(() {
           _deliveryAddress = result.address;
@@ -188,7 +191,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 _activePaymentUrl = null;
                 _webViewController = null;
                 _isProcessing = false;
-                _statusMessage = 'Payment checked. You can verify manually or try again.';
+                _statusMessage =
+                    'Payment checked. You can verify manually or try again.';
               });
             },
           ),
@@ -212,7 +216,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               },
               child: Text(
                 'Close',
-                style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold),
+                style: GoogleFonts.inter(
+                    color: Colors.red, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -350,8 +355,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ),
         child: Row(
           children: [
-            Icon(icon,
-                color: selected ? AppColors.primary : subtext, size: 22),
+            Icon(icon, color: selected ? AppColors.primary : subtext, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -425,7 +429,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: _speedCard(
                   label: 'Express',
                   duration: '15 - 20 mins',
-                  price: 'GHS ${(widget.deliveryFee + 13.0).toStringAsFixed(2)}',
+                  price:
+                      'GHS ${(widget.deliveryFee + 13.0).toStringAsFixed(2)}',
                   isSelected: _deliverySpeed == 'Express',
                   text: text,
                   subtext: subtext,
@@ -453,10 +458,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.06) : Colors.transparent,
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.06)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.primary : const Color.fromRGBO(128, 128, 128, 0.2),
+            color: isSelected
+                ? AppColors.primary
+                : const Color.fromRGBO(128, 128, 128, 0.2),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -475,7 +484,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   ),
                 ),
                 Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
                   color: isSelected ? AppColors.primary : subtext,
                   size: 18,
                 ),
@@ -531,7 +542,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 color: const Color(0xFFEEF6EE),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.location_on, color: AppColors.primary, size: 20),
+              child: const Icon(Icons.location_on,
+                  color: AppColors.primary, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -550,7 +562,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: const Color(0xFFEEF6EE),
                           borderRadius: BorderRadius.circular(4),
@@ -607,10 +620,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         children: [
           Text(
             'Order Summary',
-            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: text),
+            style: GoogleFonts.inter(
+                fontSize: 18, fontWeight: FontWeight.w700, color: text),
           ),
           const SizedBox(height: 4),
-          Text(widget.restaurantName, style: GoogleFonts.inter(fontSize: 13, color: subtext)),
+          Text(widget.restaurantName,
+              style: GoogleFonts.inter(fontSize: 13, color: subtext)),
           const SizedBox(height: 12),
           if (widget.orderType == 'food') ...[
             ...widget.cartItems.map((ci) => Padding(
@@ -625,7 +640,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                       Text(
                         'GHS ${(ci.foodItem.price * ci.quantity).toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                        style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: text),
                       ),
                     ],
                   ),
@@ -635,13 +653,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               _buildAddressRow('Pickup', widget.parcelPickup!, text, subtext),
             if (widget.parcelDelivery != null) ...[
               const SizedBox(height: 8),
-              _buildAddressRow('Drop-off', widget.parcelDelivery!, text, subtext),
+              _buildAddressRow(
+                  'Drop-off', widget.parcelDelivery!, text, subtext),
             ],
           ],
           const Divider(height: 24),
           _buildPriceRow('Subtotal', widget.subtotal, text),
           if (widget.discount > 0)
-            _buildPriceRow('Discount', -widget.discount, AppColors.primary, isDiscount: true),
+            _buildPriceRow('Discount', -widget.discount, AppColors.primary,
+                isDiscount: true),
           _buildPriceRow(
               _isPickup && _isFood ? 'Delivery Fee (Pickup)' : 'Delivery Fee',
               _effectiveDeliveryFee,
@@ -651,10 +671,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: text)),
+              Text('Total',
+                  style: GoogleFonts.inter(
+                      fontSize: 16, fontWeight: FontWeight.w700, color: text)),
               Text(
                 'GHS ${_effectiveTotal.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.primary),
+                style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary),
               ),
             ],
           ),
@@ -663,7 +688,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
-  Widget _buildAddressRow(String label, String address, Color text, Color subtext) {
+  Widget _buildAddressRow(
+      String label, String address, Color text, Color subtext) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -677,8 +703,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.inter(fontSize: 11, color: subtext)),
-              Text(address, style: GoogleFonts.inter(fontSize: 13, color: text)),
+              Text(label,
+                  style: GoogleFonts.inter(fontSize: 11, color: subtext)),
+              Text(address,
+                  style: GoogleFonts.inter(fontSize: 13, color: text)),
             ],
           ),
         ),
@@ -696,11 +724,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: GestureDetector(
                 onTap: () => setState(() => _isPayForMeSelected = false),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: !_isPayForMeSelected ? AppColors.primary.withOpacity(0.08) : surface,
+                    color: !_isPayForMeSelected
+                        ? AppColors.primary.withOpacity(0.08)
+                        : surface,
                     border: Border.all(
-                      color: !_isPayForMeSelected ? AppColors.primary : Colors.grey.shade200,
+                      color: !_isPayForMeSelected
+                          ? AppColors.primary
+                          : Colors.grey.shade200,
                       width: 2,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -708,14 +741,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.payment, size: 18, color: !_isPayForMeSelected ? AppColors.primary : Colors.grey),
+                      Icon(Icons.payment,
+                          size: 18,
+                          color: !_isPayForMeSelected
+                              ? AppColors.primary
+                              : Colors.grey),
                       const SizedBox(width: 8),
                       Text(
                         'Pay Myself',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
-                          color: !_isPayForMeSelected ? AppColors.primary : text,
+                          color:
+                              !_isPayForMeSelected ? AppColors.primary : text,
                         ),
                       ),
                     ],
@@ -728,11 +766,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: GestureDetector(
                 onTap: () => setState(() => _isPayForMeSelected = true),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: _isPayForMeSelected ? AppColors.primary.withOpacity(0.08) : surface,
+                    color: _isPayForMeSelected
+                        ? AppColors.primary.withOpacity(0.08)
+                        : surface,
                     border: Border.all(
-                      color: _isPayForMeSelected ? AppColors.primary : Colors.grey.shade200,
+                      color: _isPayForMeSelected
+                          ? AppColors.primary
+                          : Colors.grey.shade200,
                       width: 2,
                     ),
                     borderRadius: BorderRadius.circular(12),
@@ -740,7 +783,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.share, size: 18, color: _isPayForMeSelected ? AppColors.primary : Colors.grey),
+                      Icon(Icons.share,
+                          size: 18,
+                          color: _isPayForMeSelected
+                              ? AppColors.primary
+                              : Colors.grey),
                       const SizedBox(width: 8),
                       Text(
                         'Pay for Me',
@@ -781,7 +828,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ),
                     child: Icon(
                       Icons.phone_android,
-                      color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                      color: _momoPayment != null
+                          ? AppColors.primary
+                          : const Color(0xFF6B7280),
                       size: 20,
                     ),
                   ),
@@ -792,35 +841,49 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       children: [
                         Text(
                           'Mobile Money Account',
-                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: subtext),
+                          style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: subtext),
                         ),
                         const SizedBox(height: 4),
                         if (_momoPayment != null) ...[
                           Text(
                             '${_getProviderName(_momoPayment!.provider)} •••• ${_momoPayment!.phoneNumber.substring(_momoPayment!.phoneNumber.length - 4)}',
-                            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                            style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: text),
                           ),
                           Text(
                             _momoPayment!.displayName,
-                            style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                            style:
+                                GoogleFonts.inter(fontSize: 12, color: subtext),
                           ),
                         ] else ...[
                           Text(
                             'Add Mobile Money',
-                            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: text),
+                            style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: text),
                           ),
                           Text(
                             'MTN MoMo, Telecel Cash, AirtelTigo',
-                            style: GoogleFonts.inter(fontSize: 12, color: subtext),
+                            style:
+                                GoogleFonts.inter(fontSize: 12, color: subtext),
                           ),
                         ],
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: _momoPayment != null ? const Color(0xFFEEF6EE) : const Color(0xFFF3F4F6),
+                      color: _momoPayment != null
+                          ? const Color(0xFFEEF6EE)
+                          : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -828,7 +891,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: _momoPayment != null ? AppColors.primary : const Color(0xFF6B7280),
+                        color: _momoPayment != null
+                            ? AppColors.primary
+                            : const Color(0xFF6B7280),
                       ),
                     ),
                   ),
@@ -866,7 +931,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     children: [
                       Text(
                         'Share Payment Request',
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.bold, color: text),
+                        style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: text),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -886,7 +954,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   // ─── Status Banner ───────────────────────────────────────────────────────────
   Widget _buildStatusBanner() {
-    final isError = _statusMessage.contains('failed') || _statusMessage.contains('error');
+    final isError =
+        _statusMessage.contains('failed') || _statusMessage.contains('error');
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -959,7 +1028,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
                 shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
               ),
               child: _isProcessing
                   ? Row(
@@ -968,12 +1038,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFF006C49)),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2.5, color: Color(0xFF006C49)),
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          _statusMessage.isNotEmpty ? _statusMessage : 'Processing...',
-                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF006C49)),
+                          _statusMessage.isNotEmpty
+                              ? _statusMessage
+                              : 'Processing...',
+                          style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF006C49)),
                         ),
                       ],
                     )
@@ -984,7 +1060,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         const SizedBox(width: 8),
                         Text(
                           'Pay GHS ${_effectiveTotal.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: GoogleFonts.inter(
+                              fontSize: 16, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -996,7 +1073,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   // ─── Price Row ───────────────────────────────────────────────────────────────
-  Widget _buildPriceRow(String label, double value, Color text, {bool isDiscount = false}) {
+  Widget _buildPriceRow(String label, double value, Color text,
+      {bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -1019,10 +1097,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   // ─── Helpers ─────────────────────────────────────────────────────────────────
   String _getProviderName(String id) {
     switch (id) {
-      case 'mtn': return 'MTN MoMo';
-      case 'telecel': return 'Telecel Cash';
-      case 'airteltigo': return 'AirtelTigo';
-      default: return 'MoMo';
+      case 'mtn':
+        return 'MTN MoMo';
+      case 'telecel':
+        return 'Telecel Cash';
+      case 'airteltigo':
+        return 'AirtelTigo';
+      default:
+        return 'MoMo';
     }
   }
 
@@ -1065,7 +1147,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
 
     if (!_isPayForMeSelected && _momoPayment == null) {
-      setState(() => _statusMessage = 'Please add a Mobile Money payment method');
+      setState(
+          () => _statusMessage = 'Please add a Mobile Money payment method');
       return;
     }
 
@@ -1078,20 +1161,19 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
 
     // Step 1: Create order
-    final orderItems = widget.cartItems
-        .map((ci) {
-          final extrasText = ci.extras.isEmpty
-              ? ''
-              : ' (${ci.extras.map((e) => '${e.quantity}x ${e.name}').join(', ')})';
-          final finalPrice = ci.foodItem.price +
-              ci.extras.fold(0.0, (sum, ext) => sum + ext.price * ext.quantity);
-          return {
-            'name': '${ci.foodItem.name}$extrasText',
-            'quantity': ci.quantity,
-            'price': finalPrice,
-          };
-        })
-        .toList();
+    final orderItems = widget.cartItems.map((ci) {
+      final extrasText = ci.extras.isEmpty
+          ? ''
+          : ' (${ci.extras.map((e) => '${e.quantity}x ${e.name}').join(', ')})';
+      final finalPrice = ci.foodItem.price +
+          ci.extras.fold(0.0, (sum, ext) => sum + ext.price * ext.quantity);
+      return {
+        'menu_item_id': ci.foodItem.id,
+        'name': '${ci.foodItem.name}$extrasText',
+        'quantity': ci.quantity,
+        'price': finalPrice,
+      };
+    }).toList();
 
     final orderResult = await OrderService().createOrder(
       orderType: widget.orderType,
@@ -1114,7 +1196,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       discount: widget.discount,
       total: _effectiveTotal,
       promoCode: widget.promoCode,
-      items: (widget.orderType == 'food' || widget.orderType == 'cosmetics') ? orderItems : null,
+      items: (widget.orderType == 'food' || widget.orderType == 'cosmetics')
+          ? orderItems
+          : null,
+      metadata: {
+        'restaurant_id': widget.restaurantId,
+      },
     );
 
     if (orderResult == null || orderResult['id'] == null) {
@@ -1168,7 +1255,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             onPageFinished: (String url) {
               _checkPaymentOnBackend(reference, deliveryPin);
               // Auto-fill user MoMo phone number inside Paystack input elements
-              if (_momoPayment != null && _momoPayment!.phoneNumber.isNotEmpty) {
+              if (_momoPayment != null &&
+                  _momoPayment!.phoneNumber.isNotEmpty) {
                 final phone = _momoPayment!.phoneNumber;
                 final js = """
                   setTimeout(function() {
@@ -1207,7 +1295,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   void _startVerificationTimer(String reference, String? deliveryPin) {
     _verificationTimer?.cancel();
     int checkCount = 0;
-    _verificationTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+    _verificationTimer =
+        Timer.periodic(const Duration(seconds: 4), (timer) async {
       checkCount++;
       if (checkCount > 30) {
         timer.cancel();
@@ -1230,7 +1319,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     });
   }
 
-  Future<void> _checkPaymentOnBackend(String reference, String? deliveryPin) async {
+  Future<void> _checkPaymentOnBackend(
+      String reference, String? deliveryPin) async {
     try {
       final verifyResult = await OrderService().verifyPayment(reference);
       if (verifyResult != null && verifyResult['status'] == 'success') {
@@ -1259,7 +1349,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             if (verificationTimer == null) {
-              verificationTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
+              verificationTimer =
+                  Timer.periodic(const Duration(seconds: 4), (timer) async {
                 checkCount++;
                 if (checkCount > 15) {
                   timer.cancel();
@@ -1268,10 +1359,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   }
                   return;
                 }
-                
+
                 try {
-                  final verifyResult = await OrderService().verifyPayment(reference);
-                  if (verifyResult != null && verifyResult['status'] == 'success') {
+                  final verifyResult =
+                      await OrderService().verifyPayment(reference);
+                  if (verifyResult != null &&
+                      verifyResult['status'] == 'success') {
                     timer.cancel();
                     Navigator.of(dialogContext).pop();
                     _showOrderPlaced(deliveryPin: deliveryPin);
@@ -1281,7 +1374,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             }
 
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               title: Text(
                 'Complete Payment',
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold),
@@ -1295,12 +1389,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   Text(
                     'We launched the Paystack secure checkout page. Please complete payment there, then return to the app.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF4B5563)),
+                    style: GoogleFonts.inter(
+                        fontSize: 14, color: const Color(0xFF4B5563)),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Waiting for payment confirmation...',
-                    style: GoogleFonts.inter(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+                    style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey),
                   ),
                 ],
               ),
@@ -1311,39 +1409,54 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     Navigator.of(dialogContext).pop();
                     setState(() {
                       _isProcessing = false;
-                      _statusMessage = 'Payment pending check. You can verify it in your orders list.';
+                      _statusMessage =
+                          'Payment pending check. You can verify it in your orders list.';
                     });
                   },
-                  child: Text('Cancel', style: GoogleFonts.inter(color: Colors.red)),
+                  child: Text('Cancel',
+                      style: GoogleFonts.inter(color: Colors.red)),
                 ),
                 ElevatedButton(
-                  onPressed: isVerifying ? null : () async {
-                    setDialogState(() => isVerifying = true);
-                    try {
-                      final verifyResult = await OrderService().verifyPayment(reference);
-                      if (verifyResult != null && verifyResult['status'] == 'success') {
-                        verificationTimer?.cancel();
-                        Navigator.of(dialogContext).pop();
-                        _showOrderPlaced(deliveryPin: deliveryPin);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Payment not completed yet or pending. Try again soon.', style: GoogleFonts.inter()),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    } catch (_) {}
-                    setDialogState(() => isVerifying = false);
-                  },
+                  onPressed: isVerifying
+                      ? null
+                      : () async {
+                          setDialogState(() => isVerifying = true);
+                          try {
+                            final verifyResult =
+                                await OrderService().verifyPayment(reference);
+                            if (verifyResult != null &&
+                                verifyResult['status'] == 'success') {
+                              verificationTimer?.cancel();
+                              Navigator.of(dialogContext).pop();
+                              _showOrderPlaced(deliveryPin: deliveryPin);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Payment not completed yet or pending. Try again soon.',
+                                      style: GoogleFonts.inter()),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          } catch (_) {}
+                          setDialogState(() => isVerifying = false);
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: isVerifying 
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : Text('Verify Now', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                  child: isVerifying
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white))
+                      : Text('Verify Now',
+                          style:
+                              GoogleFonts.inter(fontWeight: FontWeight.bold)),
                 ),
               ],
             );
@@ -1395,7 +1508,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 const SizedBox(height: 20),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
@@ -1524,7 +1638,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.05) : const Color(0xFFF1F7F2),
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : const Color(0xFFF1F7F2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.primary.withOpacity(0.2)),
               ),
@@ -1575,7 +1691,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             ),
             child: Text(
@@ -1600,14 +1717,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
                   const Icon(Icons.share, color: AppColors.primary, size: 24),
                   const SizedBox(width: 8),
                   Text(
                     'Pay For Me Link',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18),
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                 ],
               ),
@@ -1617,11 +1736,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 children: [
                   Text(
                     'Send this request link to anyone to pay for this order. We will process your order immediately after they pay.',
-                    style: GoogleFonts.inter(fontSize: 13, height: 1.4, color: Colors.grey[700]),
+                    style: GoogleFonts.inter(
+                        fontSize: 13, height: 1.4, color: Colors.grey[700]),
                   ),
                   const SizedBox(height: 16),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
@@ -1633,17 +1754,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           child: Text(
                             payLink,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(fontSize: 12, color: Colors.black87),
+                            style: GoogleFonts.inter(
+                                fontSize: 12, color: Colors.black87),
                           ),
                         ),
                         const SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.copy, size: 20, color: AppColors.primary),
+                          icon: const Icon(Icons.copy,
+                              size: 20, color: AppColors.primary),
                           onPressed: () {
                             Clipboard.setData(ClipboardData(text: payLink));
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Payment link copied to clipboard!'),
+                                content:
+                                    Text('Payment link copied to clipboard!'),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
@@ -1655,28 +1779,33 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   const SizedBox(height: 20),
                   if (isSimulating)
                     const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                      child:
+                          CircularProgressIndicator(color: AppColors.primary),
                     )
                   else
                     SizedBox(
                       width: double.infinity,
                       height: 44,
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.sports_esports_outlined, size: 20),
+                        icon:
+                            const Icon(Icons.sports_esports_outlined, size: 20),
                         label: Text(
                           'Simulate Friend Paid',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: GoogleFonts.inter(
+                              fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () async {
                           setDialogState(() {
                             isSimulating = true;
                           });
-                          final success = await OrderService().triggerMockPaymentCallback(orderId);
+                          final success = await OrderService()
+                              .triggerMockPaymentCallback(orderId);
                           if (success) {
                             if (mounted) {
                               Navigator.pop(dialogContext); // close link dialog
@@ -1687,17 +1816,20 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 context: context,
                                 barrierDismissible: false,
                                 builder: (ctx) => AlertDialog(
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24)),
                                   title: const Row(
                                     children: [
-                                      Icon(Icons.check_circle, color: AppColors.primary, size: 28),
+                                      Icon(Icons.check_circle,
+                                          color: AppColors.primary, size: 28),
                                       SizedBox(width: 10),
                                       Text('Payment Confirmed!'),
                                     ],
                                   ),
                                   content: Column(
                                     mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Your friend completed the payment successfully. Your order is now placed!',
@@ -1708,21 +1840,26 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                         Container(
                                           padding: const EdgeInsets.all(12),
                                           decoration: BoxDecoration(
-                                            color: AppColors.primary.withOpacity(0.08),
-                                            borderRadius: BorderRadius.circular(12),
+                                            color: AppColors.primary
+                                                .withOpacity(0.08),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                           child: Row(
                                             children: [
-                                              const Icon(Icons.lock, color: AppColors.primary),
+                                              const Icon(Icons.lock,
+                                                  color: AppColors.primary),
                                               const SizedBox(width: 12),
                                               Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     'DELIVERY PIN',
                                                     style: GoogleFonts.inter(
                                                       fontSize: 10,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       color: AppColors.primary,
                                                     ),
                                                   ),
@@ -1730,7 +1867,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                                     deliveryPin,
                                                     style: GoogleFonts.inter(
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       letterSpacing: 1.5,
                                                     ),
                                                   ),
@@ -1748,7 +1886,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                         Navigator.pop(ctx);
                                         context.go('/orders');
                                       },
-                                      child: const Text('View Orders', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                                      child: const Text('View Orders',
+                                          style: TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ),
@@ -1760,7 +1901,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 isSimulating = false;
                               });
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Simulation failed. Please try again.')),
+                                const SnackBar(
+                                    content: Text(
+                                        'Simulation failed. Please try again.')),
                               );
                             }
                           }
@@ -1774,7 +1917,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   onPressed: () {
                     Navigator.pop(dialogContext);
                   },
-                  child: const Text('Cancel Request', style: TextStyle(color: Colors.grey)),
+                  child: const Text('Cancel Request',
+                      style: TextStyle(color: Colors.grey)),
                 ),
               ],
             );

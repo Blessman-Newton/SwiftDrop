@@ -28,18 +28,15 @@ final promosProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   return service.getPromoCodes();
 });
 
-final recommendedFoodProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+final recommendedFoodProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
   final restaurants = await ref.watch(restaurantsProvider.future);
   final service = ref.watch(restaurantServiceProvider);
-
-  final List<Future<List<FoodItem>>> futures =
-      restaurants.map((r) => service.getMenuItems(r.id)).toList();
-  final results = await Future.wait(futures);
+  final menus = await service.getRecommendedMenus();
 
   final List<Map<String, dynamic>> foodWithRestaurant = [];
-  for (int i = 0; i < restaurants.length; i++) {
-    final r = restaurants[i];
-    final items = results[i];
+  for (final r in restaurants) {
+    final items = menus[r.id] ?? const <FoodItem>[];
     for (final item in items) {
       foodWithRestaurant.add({
         'foodItem': item,

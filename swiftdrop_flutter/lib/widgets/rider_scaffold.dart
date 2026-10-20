@@ -16,12 +16,17 @@ class RiderScaffold extends ConsumerStatefulWidget {
 class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith('/rider/dashboard')) return 0;
-    if (location.startsWith('/rider/orders')) return 1;
-    if (location.startsWith('/rider/active-delivery') ||
-        location.startsWith('/rider/navigation')) return 1;
+    if (location.startsWith('/rider/dashboard')) {
+      return 0;
+    }
+    if (location.startsWith('/rider/orders') ||
+        location.startsWith('/rider/active-delivery') ||
+        location.startsWith('/rider/request') ||
+        location.startsWith('/rider/navigation')) {
+      return 1;
+    }
     if (location.startsWith('/rider/earnings')) return 2;
-    return 0;
+    return 3;
   }
 
   @override
@@ -30,7 +35,8 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
     final isDark = ref.watch(riderDarkModeProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121814) : const Color(0xFFF4FBF4),
+      backgroundColor:
+          isDark ? const Color(0xFF121814) : const Color(0xFFF4FBF4),
       body: ToastOverlay(
         child: widget.child,
       ),
@@ -50,19 +56,20 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
           ),
         ),
         child: BackdropFilter(
-          filter: const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+          filter:
+              const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _RiderNavItem(
-                icon: Icons.dashboard_rounded,
-                label: 'Dashboard',
+                icon: Icons.home_rounded,
+                label: 'Home',
                 isActive: index == 0,
                 onTap: () => context.go('/rider/dashboard'),
                 isDark: isDark,
               ),
               _RiderNavItem(
-                icon: Icons.local_shipping_rounded,
+                icon: Icons.receipt_long_rounded,
                 label: 'Orders',
                 isActive: index == 1,
                 onTap: () => context.go('/rider/orders'),
@@ -77,13 +84,9 @@ class _RiderScaffoldState extends ConsumerState<RiderScaffold> {
               ),
               _RiderNavItem(
                 icon: Icons.person_rounded,
-                label: 'Profile',
-                isActive: false,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Profile coming soon!')),
-                  );
-                },
+                label: 'Account',
+                isActive: index == 3,
+                onTap: () => context.go('/rider/account'),
                 isDark: isDark,
               ),
             ],
@@ -125,7 +128,9 @@ class _RiderNavItem extends StatelessWidget {
               size: 20,
               color: isActive
                   ? const Color(0xFF059669)
-                  : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                  : (isDark
+                      ? const Color(0xFF64748B)
+                      : const Color(0xFF94A3B8)),
             ),
             const SizedBox(height: 2),
             Text(
@@ -135,7 +140,9 @@ class _RiderNavItem extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: isActive
                     ? const Color(0xFF059669)
-                    : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+                    : (isDark
+                        ? const Color(0xFF64748B)
+                        : const Color(0xFF94A3B8)),
               ),
             ),
           ],

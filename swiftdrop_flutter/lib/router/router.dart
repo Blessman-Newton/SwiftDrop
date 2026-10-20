@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../app_bootstrap.dart';
 import '../providers/providers.dart';
 import '../providers/auth_provider.dart';
 import '../screens/splash_screen.dart';
@@ -26,6 +27,8 @@ import '../screens/rider/rider_active_delivery_screen.dart';
 import '../screens/rider/rider_navigation_screen.dart';
 import '../screens/rider/rider_earnings_screen.dart';
 import '../screens/rider/rider_orders_screen.dart';
+import '../screens/rider/rider_incoming_request_screen.dart';
+import '../screens/rider/rider_account_screen.dart';
 import '../widgets/main_scaffold.dart';
 import '../widgets/rider_scaffold.dart';
 import '../models/models.dart';
@@ -44,8 +47,14 @@ CustomTransitionPage<void> _fadeTransitionPage(BuildContext context, GoRouterSta
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  return GoRouter(
-    initialLocation: '/splash',
+  final refresh = ref.read(routerRefreshProvider);
+  var disposed = false;
+
+  final router = GoRouter(
+    // Restores the last screen the user was on instead of always replaying
+    // the splash screen after the OS recycles the process.
+    initialLocation: AppBootstrap.current.initialLocation,
+    refreshListenable: refresh,
     errorBuilder: (context, state) => _RouteErrorScreen(uri: state.uri.toString()),
     routes: [
       GoRoute(
@@ -157,6 +166,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // Rider routes
+      GoRoute(
+        path: '/rider/request',
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const RiderIncomingRequestScreen()),
+      ),
       ShellRoute(
         builder: (_, state, child) => RiderScaffold(child: child),
         routes: [
@@ -175,6 +189,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/rider/earnings',
               builder: (_, __) => const RiderEarningsScreen()),
+          GoRoute(
+              path: '/rider/account',
+              builder: (_, __) => const RiderAccountScreen()),
         ],
       ),
     ],
@@ -182,44 +199,54 @@ final routerProvider = Provider<GoRouter>((ref) {
       final location = state.matchedLocation;
 
       // Always allow these screens without redirect
-      final allowedLocations = [
-        '/splash',
-        '/onboarding',
-        '/role-selection',
-        '/auth',
-      ];
-      if (allowedLocations.contains(location)) {
+      if (kTransientLocations.contains(location)) {
         return null;
       }
+
+      // Guards against a redirect firing while the router is being torn down.
+      if (disposed) return null;
 
       final onboardingDone = ref.read(onboardingDoneProvider);
       final user = ref.read(currentUserProvider);
       final role = ref.read(userRoleProvider);
 
+      // Returns null when [target] is already the current location, which
+      // keeps GoRouter from looping on a self-redirect.
+      String? require(String target) => target == location ? null : target;
+
       // Step 1: First time user - no onboarding done
-      if (!onboardingDone) return '/onboarding';
+      if (!onboardingDone) return require('/onboarding');
 
       // Step 2: Onboarding done, no role selected yet
-      if (role == null) return '/role-selection';
+      if (role == null) return require('/role-selection');
 
       // Step 3: Role selected but not logged in (guest goes directly to home)
       if (user == null) {
-        if (role == UserRole.guest) return '/home';
-        return '/auth';
+        if (role == UserRole.guest) return require('/home');
+        return require('/auth');
       }
 
       // Step 4: Logged in - check role access
       if (role == UserRole.rider && !location.startsWith('/rider')) {
-        return '/rider/dashboard';
+        return require('/rider/dashboard');
       }
       if (role != UserRole.rider && location.startsWith('/rider')) {
-        return '/home';
+        return require('/home');
       }
 
-      // Allow access
+      // Allowed - remember it (path *and* query) so the next launch can
+      // restore this exact screen.
+      AppBootstrap.rememberLocation(state.uri.toString());
       return null;
     },
   );
+
+  ref.onDispose(() {
+    disposed = true;
+    router.dispose();
+  });
+
+  return router;
 });
 
 class _RouteErrorScreen extends StatelessWidget {
