@@ -21,12 +21,29 @@ class SignUpRequest(BaseModel):
 class EmailLoginRequest(BaseModel):
     email: EmailStr
     password: str
+    firebase_uid: str | None = None
+    id_token: str | None = None
+
+
+class PhoneLoginRequest(BaseModel):
+    phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
+    password: str
+
+
+class SocialLoginRequest(BaseModel):
+    provider: str = Field(..., pattern=r"^(google|apple)$")
+    id_token: str
+    firebase_uid: str | None = None
+    email: str | None = None
+    name: str | None = None
+    photo_url: str | None = None
 
 
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: "UserResponse"
+    custom_token: str | None = None
 
 
 class UserResponse(BaseModel):

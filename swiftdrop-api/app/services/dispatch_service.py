@@ -26,7 +26,14 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 async def get_available_orders(db: AsyncSession) -> list[dict]:
     result = await db.execute(
         select(Order)
-        .where(Order.status.in_(["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]), Order.rider_id.is_(None))
+        .where(
+            (
+                (Order.order_type != "food") & Order.status.in_(["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"])
+            ) | (
+                (Order.order_type == "food") & Order.status.in_(["PREPARING", "READY_FOR_PICKUP"])
+            ),
+            Order.rider_id.is_(None)
+        )
         .order_by(Order.created_at.asc())
     )
     orders = result.scalars().all()
@@ -79,8 +86,9 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
     order = result.scalar_one_or_none()
     if not order:
         raise NotFoundException("Order not found")
-    if order.status not in ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]:
-        raise BadRequestException("Order not available for pickup")
+    allowed_statuses = ["PREPARING", "READY_FOR_PICKUP"] if order.order_type == "food" else ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]
+    if order.status not in allowed_statuses:
+        raise BadRequestException("Order not available for pickup yet. Merchant must accept it first.")
     if order.rider_id is not None:
         raise BadRequestException("Order already assigned")
 
@@ -102,10 +110,14 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
     rider = rider_result.scalar_one_or_none()
     rider_name = rider.name if rider else "Your rider"
 
+    is_gas_refill = order.restaurant_name == "LPG Gas Depot (Tarkwa)"
+    title = "Rider Assigned 🎉" if is_gas_refill else "Rider Assigned"
+    body = f"{rider_name} has accepted your gas refill request." if is_gas_refill else f"Good news! {rider_name} has been assigned to deliver your order. They will arrive at the merchant shortly to pick it up."
+
     customer_notification = Notification(
         user_id=order.customer_id,
-        title="Rider Assigned",
-        body=f"Good news! {rider_name} has been assigned to deliver your order. They will arrive at the merchant shortly to pick it up.",
+        title=title,
+        body=body,
         type="order",
         metadata_={
             "order_id": str(order_id),

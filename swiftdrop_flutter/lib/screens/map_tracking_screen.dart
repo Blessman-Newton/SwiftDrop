@@ -29,7 +29,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   int _activeStep = 0;
   int _zoomLevel = 14;
   Timer? _orderPollTimer;
-  Timer? _riderLocationTimer;
   Timer? _mapTimer;
   AnimationController? _pulseController;
 
@@ -113,7 +112,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       }
 
       final isMoving = activeOrder.status == OrderStatus.pickedUp ||
-                       activeOrder.status == OrderStatus.enRoute;
+          activeOrder.status == OrderStatus.enRoute;
       if (!isMoving) return;
 
       if (_riderProgressIndex < _routePoints.length - 1) {
@@ -144,8 +143,10 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     final activeOrder = orders.where((o) => o.status.isActive).toList();
     if (activeOrder.isNotEmpty) {
       final order = activeOrder.first;
-      final pickup = TomTomService.parseLatLng(order.pickupLat, order.pickupLng);
-      final delivery = TomTomService.parseLatLng(order.deliveryLat, order.deliveryLng);
+      final pickup =
+          TomTomService.parseLatLng(order.pickupLat, order.pickupLng);
+      final delivery =
+          TomTomService.parseLatLng(order.deliveryLat, order.deliveryLng);
       setState(() {
         _destinationPosition = delivery;
         _mapCenter = pickup;
@@ -175,14 +176,20 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
 
   int _statusToStep(String? apiStatus) {
     switch (apiStatus) {
-      case 'CREATED': return 0;
+      case 'CREATED':
+        return 0;
       case 'CONFIRMED':
-      case 'PREPARING': return 1;
+      case 'PREPARING':
+        return 1;
       case 'READY_FOR_PICKUP':
-      case 'PICKED_UP': return 2;
-      case 'EN_ROUTE': return 2;
-      case 'DELIVERED': return 3;
-      default: return 0;
+      case 'PICKED_UP':
+        return 2;
+      case 'EN_ROUTE':
+        return 2;
+      case 'DELIVERED':
+        return 3;
+      default:
+        return 0;
     }
   }
 
@@ -202,38 +209,17 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             if (newStep != _activeStep) {
               setState(() => _activeStep = newStep);
             }
-            // Start rider location polling when order is picked up
-            if ((active['status'] == 'PICKED_UP' || active['status'] == 'EN_ROUTE') &&
-                _riderLocationTimer == null) {
-              _startRiderLocationPolling();
-              _startRiderSimulation();
-            }
-          }
-        }
-      } catch (_) {}
-    });
-  }
-
-  void _startRiderLocationPolling() {
-    _riderLocationTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
-      if (!mounted) return;
-      try {
-        final orderService = OrderService();
-        final orders = await orderService.listOrders();
-        if (orders.isNotEmpty) {
-          final active = orders.firstWhere(
-            (o) => o['status'] != 'DELIVERED' && o['status'] != 'CANCELLED',
-            orElse: () => {},
-          );
-          if (active.isNotEmpty) {
             final riderLat = active['rider_lat'] as num?;
             final riderLng = active['rider_lng'] as num?;
-            if (riderLat != null && riderLng != null && mounted) {
-              final newPos = LatLng(riderLat.toDouble(), riderLng.toDouble());
+            if (riderLat != null && riderLng != null) {
               setState(() {
-                _driverPosition = newPos;
+                _driverPosition =
+                    LatLng(riderLat.toDouble(), riderLng.toDouble());
               });
+              _startRiderSimulation();
             }
+          } else {
+            _orderPollTimer?.cancel();
           }
         }
       } catch (_) {}
@@ -243,7 +229,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   @override
   void dispose() {
     _orderPollTimer?.cancel();
-    _riderLocationTimer?.cancel();
     _simulationTimer?.cancel();
     _mapTimer?.cancel();
     _callTimer?.cancel();
@@ -259,7 +244,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   void _showInAppNotification(String title, String body) {
-    setState(() => _inAppNotification = {'title': title, 'body': body, 'visible': true});
+    setState(() =>
+        _inAppNotification = {'title': title, 'body': body, 'visible': true});
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) setState(() => _inAppNotification = null);
     });
@@ -365,11 +351,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     _callTimer?.cancel();
     setState(() => _callState = 'ended');
     Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) setState(() {
-        _isCalling = false;
-        _callState = null;
-        _callDuration = 0;
-      });
+      if (mounted)
+        setState(() {
+          _isCalling = false;
+          _callState = null;
+          _callDuration = 0;
+        });
     });
   }
 
@@ -423,8 +410,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 label: const Text('Browse & order'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                 ),
@@ -461,7 +448,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     final stepDetails = _getStepDetails(_activeStep);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor:
+          isDark ? AppColors.darkBackground : AppColors.lightBackground,
       body: Stack(
         children: [
           Column(
@@ -564,7 +552,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ),
             ),
             Semantics(
-              label: _isOfflineCached ? 'Offline mode enabled, tap to sync' : 'Tap to cache for offline',
+              label: _isOfflineCached
+                  ? 'Offline mode enabled, tap to sync'
+                  : 'Tap to cache for offline',
               child: GestureDetector(
                 onTap: () {
                   setState(() => _isSyncing = true);
@@ -576,62 +566,65 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   });
                 },
                 child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _isOfflineCached
-                      ? Colors.amber.shade100.withOpacity(0.8)
-                      : const Color(0xFF10b981).withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(
+                  duration: const Duration(milliseconds: 300),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
                     color: _isOfflineCached
-                        ? Colors.amber.shade300.withOpacity(0.4)
-                        : AppColors.primary.withOpacity(0.2),
+                        ? Colors.amber.shade100.withOpacity(0.8)
+                        : const Color(0xFF10b981).withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: _isOfflineCached
+                          ? Colors.amber.shade300.withOpacity(0.4)
+                          : AppColors.primary.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isSyncing)
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 1.5,
+                            color: _isOfflineCached
+                                ? Colors.amber
+                                : AppColors.primary,
+                          ),
+                        )
+                      else if (_isOfflineCached) ...[
+                        Icon(Icons.wifi_off_rounded,
+                            size: 13, color: Colors.amber.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          'OFFLINE CACHE',
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.amber.shade700,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ] else ...[
+                        Icon(Icons.wifi_rounded,
+                            size: 13, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'ONLINE',
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isSyncing)
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 1.5,
-                          color: _isOfflineCached ? Colors.amber : AppColors.primary,
-                        ),
-                      )
-                    else if (_isOfflineCached) ...[
-                      Icon(Icons.wifi_off_rounded,
-                          size: 13, color: Colors.amber.shade700),
-                      const SizedBox(width: 4),
-                      Text(
-                        'OFFLINE CACHE',
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.amber.shade700,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ] else ...[
-                      Icon(Icons.wifi_rounded,
-                          size: 13, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        'ONLINE',
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
               ),
-            ),
             ),
           ],
         ),
@@ -678,10 +671,14 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                        BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 6,
+                            offset: Offset(0, 3)),
                       ],
                     ),
-                    child: const Icon(Icons.local_shipping, color: Colors.white, size: 20),
+                    child: const Icon(Icons.local_shipping,
+                        color: Colors.white, size: 20),
                   ),
                 ),
               if (_destinationPosition != null)
@@ -695,10 +692,14 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
                       boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
+                        BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 6,
+                            offset: Offset(0, 3)),
                       ],
                     ),
-                    child: const Icon(Icons.location_on, color: Colors.white, size: 22),
+                    child: const Icon(Icons.location_on,
+                        color: Colors.white, size: 22),
                   ),
                 ),
             ],
@@ -713,29 +714,25 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         isDark ? Colors.black.withOpacity(0.9) : Colors.white.withOpacity(0.95);
     return Column(
       children: [
-        _buildControlBtn(
-          Icons.add_rounded, bgColor, isDark, () {
+        _buildControlBtn(Icons.add_rounded, bgColor, isDark, () {
           if (_mapReady) {
             final zoom = _mapController.camera.zoom + 1;
             _mapController.move(_mapController.camera.center, zoom);
           }
         }),
         const SizedBox(height: 8),
-        _buildControlBtn(
-          Icons.remove_rounded, bgColor, isDark, () {
+        _buildControlBtn(Icons.remove_rounded, bgColor, isDark, () {
           if (_mapReady) {
             final zoom = _mapController.camera.zoom - 1;
             _mapController.move(_mapController.camera.center, zoom);
           }
         }),
         const SizedBox(height: 8),
-        _buildControlBtn(
-          Icons.navigation_rounded, bgColor, isDark, () {
+        _buildControlBtn(Icons.navigation_rounded, bgColor, isDark, () {
           if (_mapReady && _driverPosition != null) {
             _mapController.move(_driverPosition!, 15);
           }
-        },
-            color: AppColors.primary),
+        }, color: AppColors.primary),
       ],
     );
   }
@@ -747,7 +744,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: isDark ? Colors.black.withOpacity(0.9) : Colors.white.withOpacity(0.95),
+          color: isDark
+              ? Colors.black.withOpacity(0.9)
+              : Colors.white.withOpacity(0.95),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -779,7 +778,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     );
   }
 
-  Widget _buildControlBtn(IconData icon, Color bg, bool isDark, VoidCallback onTap,
+  Widget _buildControlBtn(
+      IconData icon, Color bg, bool isDark, VoidCallback onTap,
       {Color? color}) {
     return GestureDetector(
       onTap: onTap,
@@ -844,8 +844,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       onTap: () {
         setState(() => _notificationGranted = !_notificationGranted);
         if (_notificationGranted) {
-          _showInAppNotification(
-              'Notifications Enabled', 'You will receive push alerts for delivery updates.');
+          _showInAppNotification('Notifications Enabled',
+              'You will receive push alerts for delivery updates.');
         }
       },
       child: Container(
@@ -879,8 +879,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                     color: Colors.amber,
                     shape: BoxShape.circle,
                   ),
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -907,7 +907,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             ),
           ],
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.black.withOpacity(0.03),
           ),
         ),
         child: Column(
@@ -954,7 +956,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             ),
           ],
         ),
-        ],
+      ],
     );
   }
 
@@ -1037,7 +1039,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                           width: 32 + (12 * _pulseController!.value),
                           height: 32 + (12 * _pulseController!.value),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.2 * (1.0 - _pulseController!.value)),
+                            color: AppColors.primary.withOpacity(
+                                0.2 * (1.0 - _pulseController!.value)),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -1069,8 +1072,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   color: isActive
                       ? AppColors.primary
                       : isCompleted
-                          ? (isDark ? Colors.grey.shade300 : Colors.grey.shade700)
-                          : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                          ? (isDark
+                              ? Colors.grey.shade300
+                              : Colors.grey.shade700)
+                          : (isDark
+                              ? Colors.grey.shade600
+                              : Colors.grey.shade400),
                   letterSpacing: 0.3,
                 ),
               ),
@@ -1183,7 +1190,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               color: AppColors.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.lock_outline_rounded, color: AppColors.primary, size: 18),
+            child: Icon(Icons.lock_outline_rounded,
+                color: AppColors.primary, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1246,7 +1254,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+            color:
+                isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
           ),
         ),
       ),
@@ -1287,34 +1296,35 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       });
                     },
                     child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade500,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.shade300.withOpacity(0.3),
-                          blurRadius: 6,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star_rounded,
-                            size: 14, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Rate Order',
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade500,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.amber.shade300.withOpacity(0.3),
+                            blurRadius: 6,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded,
+                              size: 14, color: Colors.white),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Rate Order',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
                   ),
                 )
               else ...[
@@ -1323,10 +1333,13 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   child: GestureDetector(
                     onTap: () async {
                       final phone = activeOrder?.riderPhone ?? '+233240000000';
-                      final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
-                      final Uri whatsappUri = Uri.parse('https://wa.me/${cleanPhone.replaceAll('+', '')}');
+                      final cleanPhone =
+                          phone.replaceAll(RegExp(r'[^\d+]'), '');
+                      final Uri whatsappUri = Uri.parse(
+                          'https://wa.me/${cleanPhone.replaceAll('+', '')}');
                       if (await canLaunchUrl(whatsappUri)) {
-                        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+                        await launchUrl(whatsappUri,
+                            mode: LaunchMode.externalApplication);
                       } else {
                         final Uri smsUri = Uri.parse('sms:$cleanPhone');
                         if (await canLaunchUrl(smsUri)) {
@@ -1335,8 +1348,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       }
                     },
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
                         color: const Color(0xFF10b981).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
@@ -1365,15 +1378,16 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   child: GestureDetector(
                     onTap: () async {
                       final phone = activeOrder?.riderPhone ?? '+233240000000';
-                      final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+                      final cleanPhone =
+                          phone.replaceAll(RegExp(r'[^\d+]'), '');
                       final Uri telUri = Uri.parse('tel:$cleanPhone');
                       if (await canLaunchUrl(telUri)) {
                         await launchUrl(telUri);
                       }
                     },
                     child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -1443,7 +1457,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                               color: AppColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.delivery_dining_rounded, color: AppColors.primary, size: 18),
+                            child: Icon(Icons.delivery_dining_rounded,
+                                color: AppColors.primary, size: 18),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -1455,14 +1470,17 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                                   style: GoogleFonts.inter(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
-                                    color: isDark ? Colors.white : Colors.black87,
+                                    color:
+                                        isDark ? Colors.white : Colors.black87,
                                   ),
                                 ),
                                 Text(
                                   details['status'],
                                   style: GoogleFonts.inter(
                                     fontSize: 9,
-                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade500,
+                                    color: isDark
+                                        ? Colors.grey.shade400
+                                        : Colors.grey.shade500,
                                   ),
                                 ),
                               ],
@@ -1474,8 +1492,10 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildTooltipStat('ETA', '${details['eta']} min', isDark),
-                          _buildTooltipStat('Status', _activeStep == 3 ? 'Done' : 'Active', isDark),
+                          _buildTooltipStat(
+                              'ETA', '${details['eta']} min', isDark),
+                          _buildTooltipStat('Status',
+                              _activeStep == 3 ? 'Done' : 'Active', isDark),
                           _buildTooltipStat('Rating', '4.9 ★', isDark),
                         ],
                       ),
@@ -1622,7 +1642,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: isDark
                       ? Colors.black.withOpacity(0.2)
@@ -1733,8 +1754,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                                color: Color(0xFF10b981)),
+                            borderSide:
+                                const BorderSide(color: Color(0xFF10b981)),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
@@ -1795,7 +1816,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               style: GoogleFonts.inter(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: isMe ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                color: isMe
+                    ? Colors.white
+                    : (isDark ? Colors.white : Colors.black87),
                 height: 1.4,
               ),
             ),
@@ -1804,9 +1827,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               msg['timestamp'],
               style: GoogleFonts.inter(
                 fontSize: 8,
-                color: isMe
-                    ? Colors.white.withOpacity(0.6)
-                    : Colors.grey.shade400,
+                color:
+                    isMe ? Colors.white.withOpacity(0.6) : Colors.grey.shade400,
               ),
               textAlign: TextAlign.right,
             ),
@@ -2012,7 +2034,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+            color:
+                isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
           ),
         ),
       ),
@@ -2025,7 +2048,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               color: Colors.amber.shade100.withOpacity(0.8),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.star_rounded, size: 18, color: Colors.amber.shade600),
+            child: Icon(Icons.star_rounded,
+                size: 18, color: Colors.amber.shade600),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -2057,7 +2081,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.grey.shade100,
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.close_rounded,
@@ -2079,8 +2105,13 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             'The Burger Loft',
             _restaurantRating,
             (v) => setState(() => _restaurantRating = v),
-            const ['Poor / Cold Food', 'Could be better', 'Good & Tasty',
-                'Great Selection!', 'Exceptional Quality!'],
+            const [
+              'Poor / Cold Food',
+              'Could be better',
+              'Good & Tasty',
+              'Great Selection!',
+              'Exceptional Quality!'
+            ],
             isDark,
           ),
           const SizedBox(height: 20),
@@ -2089,9 +2120,13 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             'SwiftRider #42',
             _deliveryRating,
             (v) => setState(() => _deliveryRating = v),
-            const ['Slow / Unprofessional', 'Below Expectations',
-                'Friendly & Standard', 'Fast & Courteous',
-                'Unbelievably Swift & Polite!'],
+            const [
+              'Slow / Unprofessional',
+              'Below Expectations',
+              'Friendly & Standard',
+              'Fast & Courteous',
+              'Unbelievably Swift & Polite!'
+            ],
             isDark,
           ),
           const SizedBox(height: 20),
@@ -2156,7 +2191,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                     size: 32,
                     color: star <= rating
                         ? Colors.amber.shade400
-                        : (isDark ? Colors.grey.shade700 : Colors.grey.shade200),
+                        : (isDark
+                            ? Colors.grey.shade700
+                            : Colors.grey.shade200),
                   ),
                 ),
               );
@@ -2181,8 +2218,14 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
 
   Widget _buildQuickTags(bool isDark) {
     final tags = [
-      'Tasty Food', 'Fresh & Hot', 'Generous Portion', 'Friendly Rider',
-      'Perfect Pack', 'Super Fast', 'Polite Interaction', 'Great Price',
+      'Tasty Food',
+      'Fresh & Hot',
+      'Generous Portion',
+      'Friendly Rider',
+      'Perfect Pack',
+      'Super Fast',
+      'Polite Interaction',
+      'Great Price',
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2234,7 +2277,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                     fontWeight: FontWeight.w800,
                     color: selected
                         ? Colors.white
-                        : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        : (isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600),
                   ),
                 ),
               ),
@@ -2348,7 +2393,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+            color:
+                isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
           ),
         ),
       ),
@@ -2383,12 +2429,10 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 SizedBox(
                   height: 44,
                   child: OutlinedButton(
-                    onPressed: () =>
-                        setState(() => _showFeedbackModal = false),
+                    onPressed: () => setState(() => _showFeedbackModal = false),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark
-                          ? Colors.grey.shade300
-                          : Colors.grey.shade700,
+                      foregroundColor:
+                          isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                       side: BorderSide(
                         color: isDark
                             ? Colors.white.withOpacity(0.1)
@@ -2529,4 +2573,3 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     );
   }
 }
-

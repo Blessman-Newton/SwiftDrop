@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -68,17 +67,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
           _controller.forward();
         }
       });
-      Future.microtask(() {
-        if (mounted) {
-          ref.read(currentUserProvider.notifier).refreshFromApi();
-        }
-      });
     });
 
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted && !_navigated) {
         _navigated = true;
-        context.go('/onboarding');
+        // Hand off to the router instead of hard-coding a destination: it
+        // resolves onboarding/role/session state and sends a returning user
+        // straight back to their screen.
+        context.go('/home');
       }
     });
   }

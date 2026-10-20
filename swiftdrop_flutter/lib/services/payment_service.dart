@@ -34,7 +34,8 @@ class PaymentService {
   /// Verify payment by reference
   Future<Map<String, dynamic>?> verify(String reference) async {
     try {
-      final response = await _api.dio.get(ApiEndpoints.verifyPayment(reference));
+      final response =
+          await _api.dio.get(ApiEndpoints.verifyPayment(reference));
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;
       }

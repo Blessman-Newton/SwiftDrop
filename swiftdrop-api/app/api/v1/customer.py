@@ -121,6 +121,69 @@ async def order_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dep),
 ):
+    # Process and activate scheduled gas refill bookings approaching their slot time
+    from sqlalchemy.orm import selectinload
+    from app.services.order_service import update_order_status
+    from app.services.dispatch_service import auto_match_rider
+    from app.models.notification import Notification
+
+    scheduled_query = (
+        select(Order)
+        .options(selectinload(Order.items))
+        .where(
+            Order.customer_id == current_user.id,
+            Order.status == "CREATED",
+            Order.restaurant_name == "LPG Gas Depot (Tarkwa)"
+        )
+    )
+    scheduled_result = await db.execute(scheduled_query)
+    scheduled_orders = scheduled_result.scalars().all()
+    
+    now_dt = datetime.now()
+    for s_order in scheduled_orders:
+        delivery_mode = s_order.metadata_.get("delivery_mode") if s_order.metadata_ else None
+        if delivery_mode == "Scheduled":
+            s_date_str = s_order.metadata_.get("scheduled_date")
+            s_time_str = s_order.metadata_.get("scheduled_time")
+            try:
+                s_dt = datetime.strptime(f"{s_date_str} {s_time_str}", "%Y-%m-%d %H:%M")
+                time_diff = s_dt - now_dt
+                if time_diff.total_seconds() <= 7200: # Within 2 hours
+                    await update_order_status(db, s_order.id, "CONFIRMED")
+                    
+                    prep_notification = Notification(
+                        user_id=s_order.customer_id,
+                        title="Preparing for Delivery",
+                        body=f"We are preparing your scheduled gas refill delivery for {s_date_str} {s_time_str}.",
+                        type="order",
+                        metadata_={
+                            "order_id": str(s_order.id),
+                            "status": "preparing_delivery",
+                        },
+                    )
+                    db.add(prep_notification)
+                    
+                    find_notification = Notification(
+                        user_id=s_order.customer_id,
+                        title="Finding a Rider",
+                        body="We are finding a rider for your scheduled gas refill delivery.",
+                        type="order",
+                        metadata_={
+                            "order_id": str(s_order.id),
+                            "status": "finding_rider",
+                        },
+                    )
+                    db.add(find_notification)
+                    
+                    try:
+                        await auto_match_rider(db, s_order.id)
+                    except Exception:
+                        pass
+                    
+                    await db.flush()
+            except Exception:
+                pass
+
     query = (
         select(Order)
         .where(Order.customer_id == current_user.id)

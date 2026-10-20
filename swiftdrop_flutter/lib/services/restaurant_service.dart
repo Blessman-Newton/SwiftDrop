@@ -27,14 +27,32 @@ class RestaurantService {
   Future<Restaurant?> getRestaurant(String restaurantId) async {
     try {
       String actualId = restaurantId;
-      final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
       if (!uuidRegex.hasMatch(restaurantId)) {
         final list = await getRestaurants();
         final match = list.firstWhere(
-          (r) => r.id == restaurantId || r.slug == restaurantId || r.name.toLowerCase() == restaurantId.toLowerCase(),
+          (r) =>
+              r.id == restaurantId ||
+              r.slug == restaurantId ||
+              r.name.toLowerCase() == restaurantId.toLowerCase(),
           orElse: () => list.firstWhere(
-            (r) => r.slug.replaceAll("'", "") == restaurantId.replaceAll("'", "") || r.name.toLowerCase().replaceAll("'", "") == restaurantId.toLowerCase().replaceAll("'", ""),
-            orElse: () => Restaurant(id: restaurantId, name: '', slug: '', rating: 0, tags: const [], deliveryTime: '', deliveryFee: '', distance: '', imageUrl: '', menu: const []),
+            (r) =>
+                r.slug.replaceAll("'", "") ==
+                    restaurantId.replaceAll("'", "") ||
+                r.name.toLowerCase().replaceAll("'", "") ==
+                    restaurantId.toLowerCase().replaceAll("'", ""),
+            orElse: () => Restaurant(
+                id: restaurantId,
+                name: '',
+                slug: '',
+                rating: 0,
+                tags: const [],
+                deliveryTime: '',
+                deliveryFee: '',
+                distance: '',
+                imageUrl: '',
+                menu: const []),
           ),
         );
         if (match.name.isNotEmpty) {
@@ -51,17 +69,36 @@ class RestaurantService {
     }
   }
 
-  Future<List<FoodItem>> getMenuItems(String restaurantId, {String? category}) async {
+  Future<List<FoodItem>> getMenuItems(String restaurantId,
+      {String? category}) async {
     try {
       String actualId = restaurantId;
-      final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+      final uuidRegex = RegExp(
+          r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
       if (!uuidRegex.hasMatch(restaurantId)) {
         final list = await getRestaurants();
         final match = list.firstWhere(
-          (r) => r.id == restaurantId || r.slug == restaurantId || r.name.toLowerCase() == restaurantId.toLowerCase(),
+          (r) =>
+              r.id == restaurantId ||
+              r.slug == restaurantId ||
+              r.name.toLowerCase() == restaurantId.toLowerCase(),
           orElse: () => list.firstWhere(
-            (r) => r.slug.replaceAll("'", "") == restaurantId.replaceAll("'", "") || r.name.toLowerCase().replaceAll("'", "") == restaurantId.toLowerCase().replaceAll("'", ""),
-            orElse: () => Restaurant(id: restaurantId, name: '', slug: '', rating: 0, tags: const [], deliveryTime: '', deliveryFee: '', distance: '', imageUrl: '', menu: const []),
+            (r) =>
+                r.slug.replaceAll("'", "") ==
+                    restaurantId.replaceAll("'", "") ||
+                r.name.toLowerCase().replaceAll("'", "") ==
+                    restaurantId.toLowerCase().replaceAll("'", ""),
+            orElse: () => Restaurant(
+                id: restaurantId,
+                name: '',
+                slug: '',
+                rating: 0,
+                tags: const [],
+                deliveryTime: '',
+                deliveryFee: '',
+                distance: '',
+                imageUrl: '',
+                menu: const []),
           ),
         );
         if (match.name.isNotEmpty) {
@@ -84,6 +121,26 @@ class RestaurantService {
     }
   }
 
+  Future<Map<String, List<FoodItem>>> getRecommendedMenus() async {
+    try {
+      final response = await _client.dio.get(
+        '${ApiEndpoints.restaurants}/menus/recommended',
+      );
+      final grouped = <String, List<FoodItem>>{};
+      for (final item in (response.data as List)) {
+        final data = item as Map<String, dynamic>;
+        final restaurantId = data['restaurant_id'] as String?;
+        if (restaurantId == null) continue;
+        grouped.putIfAbsent(restaurantId, () => []).add(
+              FoodItem.fromApiResponse(data),
+            );
+      }
+      return grouped;
+    } on DioException {
+      return {};
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getPromoCodes() async {
     try {
       final response = await _client.dio.get(
@@ -95,7 +152,8 @@ class RestaurantService {
     }
   }
 
-  Future<Map<String, dynamic>> validatePromoCode(String code, double orderTotal) async {
+  Future<Map<String, dynamic>> validatePromoCode(
+      String code, double orderTotal) async {
     try {
       final response = await _client.dio.post(
         '${ApiEndpoints.restaurants}/promos/validate',

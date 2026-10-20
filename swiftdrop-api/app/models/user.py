@@ -28,6 +28,7 @@ class User(Base):
     wallet_balance: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0, nullable=True)
     loyalty_points: Mapped[int] = mapped_column(default=0, nullable=True)
     membership_tier: Mapped[str] = mapped_column(String(20), default="Bronze", nullable=True)
+    fcm_token: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

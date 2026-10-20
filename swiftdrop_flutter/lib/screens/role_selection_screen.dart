@@ -36,7 +36,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'SwiftDrop',
+                  'DooRush',
                   style: GoogleFonts.inter(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -54,7 +54,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Select how you want to use SwiftDrop',
+                  'Select how you want to use DooRush',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: Colors.grey,

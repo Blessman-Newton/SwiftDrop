@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class OrderItemCreate(BaseModel):
+    menu_item_id: str | None = None
     name: str = Field(..., max_length=200)
     quantity: int = Field(1, ge=1)
     price: float = Field(..., gt=0)
@@ -35,6 +36,8 @@ class CreateOrderRequest(BaseModel):
     total: float = Field(..., gt=0)
     promo_code: str | None = None
     items: list[OrderItemCreate] = []
+    metadata: dict | None = None
+    idempotency_key: str = Field(..., min_length=16, max_length=100)
 
 
 class OrderResponse(BaseModel):

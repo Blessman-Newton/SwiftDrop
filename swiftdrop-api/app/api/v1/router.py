@@ -15,11 +15,13 @@ from app.api.v1 import (
     riders,
     restaurants,
     setup,
+    banners,
 )
 
 api_router = APIRouter(prefix="/api/v1")
 
 api_router.include_router(auth.router)
+api_router.include_router(banners.router, prefix="/banners", tags=["Banners"])
 api_router.include_router(orders.router)
 api_router.include_router(payments.router)
 api_router.include_router(riders.router)

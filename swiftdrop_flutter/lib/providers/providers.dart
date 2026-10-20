@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../app_bootstrap.dart';
 import '../models/models.dart';
 import '../services/order_service.dart';
 import '../services/customer_service.dart';
@@ -10,8 +11,7 @@ import 'auth_provider.dart';
 
 // ==================== CART (with persistence) ====================
 
-final cartProvider =
-    StateNotifierProvider<CartNotifier, List<CartItem>>((ref) {
+final cartProvider = StateNotifierProvider<CartNotifier, List<CartItem>>((ref) {
   return CartNotifier();
 });
 
@@ -21,6 +21,8 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   }
 
   String? _restaurantId;
+  Future<void> _saveQueue = Future<void>.value();
+  bool _hasLocalMutation = false;
 
   String? get restaurantId => _restaurantId;
 
@@ -28,7 +30,9 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
 
   /// Returns true if the cart belongs to a different restaurant.
   bool belongsToRestaurant(String restaurantId) {
-    return _restaurantId != null && _restaurantId != restaurantId && state.isNotEmpty;
+    return _restaurantId != null &&
+        _restaurantId != restaurantId &&
+        state.isNotEmpty;
   }
 
   Future<void> _load() async {
@@ -40,20 +44,25 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
         final list = (jsonDecode(json) as List)
             .map((e) => CartItem.fromMap(e as Map<String, dynamic>))
             .toList();
-        state = list;
+        if (!_hasLocalMutation) {
+          state = list;
+        }
       } catch (_) {}
     }
   }
 
   Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = jsonEncode(state.map((ci) => ci.toMap()).toList());
-    await prefs.setString('swiftdrop_cart', json);
-    if (_restaurantId != null) {
-      await prefs.setString('swiftdrop_cart_restaurant', _restaurantId!);
-    } else {
-      await prefs.remove('swiftdrop_cart_restaurant');
-    }
+    _saveQueue = _saveQueue.then((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final json = jsonEncode(state.map((ci) => ci.toMap()).toList());
+      await prefs.setString('swiftdrop_cart', json);
+      if (_restaurantId != null) {
+        await prefs.setString('swiftdrop_cart_restaurant', _restaurantId!);
+      } else {
+        await prefs.remove('swiftdrop_cart_restaurant');
+      }
+    });
+    await _saveQueue;
   }
 
   /// Adds an item for a specific restaurant. If the cart has items from a
@@ -62,8 +71,12 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
     addCustomItem(item, const [], 1, restaurantId: restaurantId);
   }
 
-  void addCustomItem(FoodItem item, List<CartExtra> extras, int quantity, {String? restaurantId}) {
-    if (restaurantId != null && _restaurantId != null && _restaurantId != restaurantId) {
+  void addCustomItem(FoodItem item, List<CartExtra> extras, int quantity,
+      {String? restaurantId}) {
+    _hasLocalMutation = true;
+    if (restaurantId != null &&
+        _restaurantId != null &&
+        _restaurantId != restaurantId) {
       state = [];
     }
     if (restaurantId != null) _restaurantId = restaurantId;
@@ -90,12 +103,16 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
             state[i],
       ];
     } else {
-      state = [...state, CartItem(foodItem: item, quantity: quantity, extras: extras)];
+      state = [
+        ...state,
+        CartItem(foodItem: item, quantity: quantity, extras: extras)
+      ];
     }
     _save();
   }
 
   void removeItem(String foodItemId) {
+    _hasLocalMutation = true;
     final index = state.indexWhere((ci) => ci.foodItem.id == foodItemId);
     if (index >= 0) {
       if (state[index].quantity > 1) {
@@ -115,6 +132,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   }
 
   void increaseQuantity(CartItem target) {
+    _hasLocalMutation = true;
     final index = state.indexOf(target);
     if (index >= 0) {
       state = [
@@ -129,6 +147,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   }
 
   void decreaseQuantity(CartItem target) {
+    _hasLocalMutation = true;
     final index = state.indexOf(target);
     if (index >= 0) {
       if (state[index].quantity > 1) {
@@ -151,6 +170,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
   }
 
   void clearCart() {
+    _hasLocalMutation = true;
     state = [];
     _restaurantId = null;
     _save();
@@ -158,8 +178,7 @@ class CartNotifier extends StateNotifier<List<CartItem>> {
 
   int get itemCount => state.fold(0, (sum, ci) => sum + ci.quantity);
 
-  double get subtotal =>
-      state.fold(0, (sum, ci) => sum + ci.totalPrice);
+  double get subtotal => state.fold(0, (sum, ci) => sum + ci.totalPrice);
 }
 
 final selectedRestaurantProvider = StateProvider<Restaurant?>((ref) => null);
@@ -208,40 +227,6 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
     _startPolling();
   }
 
-  // TEMP DEMO order — remove.
-  static final Order _demoOrder = Order(
-    id: 'ord_demo_track',
-    restaurantId: 'demo',
-    restaurantName: "Amina's Locals",
-    items: [
-      CartItem(
-        foodItem: const FoodItem(
-          id: 'demo_jollof',
-          name: 'Jollof Rice',
-          description: 'hot meal',
-          price: 80,
-          imageUrl: '',
-          category: FoodCategory.popular,
-        ),
-        quantity: 1,
-      ),
-    ],
-    totalPrice: 86.40,
-    status: OrderStatus.enRoute,
-    createdAt: DateTime.now(),
-    trackingStep: 4,
-    riderName: 'Kwame Mensah',
-    riderPhone: '+233200000000',
-    riderVehicleType: 'Motorbike',
-    orderType: 'food',
-    pickupAddress: "Amina's Locals, Sunyani",
-    pickupLat: 7.3399,
-    pickupLng: -2.3269,
-    deliveryAddress: 'Home: 123 Oak Street, Sunyani',
-    deliveryLat: 7.3350,
-    deliveryLng: -2.3300,
-  );
-
   final _orderService = OrderService();
   Timer? _pollTimer;
 
@@ -261,39 +246,46 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
     try {
       final apiOrders = await _orderService.listOrders();
       if (apiOrders.isNotEmpty) {
-        state = apiOrders.map((o) => Order(
-          id: o['id'] ?? '',
-          restaurantId: '',
-          restaurantName: o['restaurant_name'] ?? '',
-          items: (o['items'] as List?)?.map((i) => CartItem(
-            foodItem: FoodItem(
-              id: '',
-              name: i['name'] ?? '',
-              description: '',
-              price: (i['price'] as num?)?.toDouble() ?? 0,
-              imageUrl: '',
-              category: FoodCategory.popular,
-            ),
-            quantity: i['quantity'] ?? 1,
-          )).toList() ?? [],
-          totalPrice: (o['total'] as num?)?.toDouble() ?? 0,
-          status: _mapStatus(o['status']),
-          createdAt: o['created_at'] != null ? DateTime.parse(o['created_at']) : DateTime.now(),
-          orderType: o['order_type'] ?? 'food',
-          riderId: o['rider_id'] as String?,
-          riderName: o['rider_name'] as String?,
-          riderPhone: o['rider_phone'] as String?,
-          riderAvatar: o['rider_avatar'] as String?,
-          riderVehicleType: o['rider_vehicle_type'] as String?,
-          pickupAddress: o['pickup_address'] as String?,
-          pickupLat: (o['pickup_lat'] as num?)?.toDouble(),
-          pickupLng: (o['pickup_lng'] as num?)?.toDouble(),
-          deliveryAddress: o['delivery_address'] as String?,
-          deliveryLat: (o['delivery_lat'] as num?)?.toDouble(),
-          deliveryLng: (o['delivery_lng'] as num?)?.toDouble(),
-          deliveryPin: o['delivery_pin'] as String?,
-          trackingUrl: o['tracking_url'] as String?,
-        )).toList();
+        state = apiOrders
+            .map((o) => Order(
+                  id: o['id'] ?? '',
+                  restaurantId: '',
+                  restaurantName: o['restaurant_name'] ?? '',
+                  items: (o['items'] as List?)
+                          ?.map((i) => CartItem(
+                                foodItem: FoodItem(
+                                  id: '',
+                                  name: i['name'] ?? '',
+                                  description: '',
+                                  price: (i['price'] as num?)?.toDouble() ?? 0,
+                                  imageUrl: '',
+                                  category: FoodCategory.popular,
+                                ),
+                                quantity: i['quantity'] ?? 1,
+                              ))
+                          .toList() ??
+                      [],
+                  totalPrice: (o['total'] as num?)?.toDouble() ?? 0,
+                  status: _mapStatus(o['status']),
+                  createdAt: o['created_at'] != null
+                      ? DateTime.parse(o['created_at'])
+                      : DateTime.now(),
+                  orderType: o['order_type'] ?? 'food',
+                  riderId: o['rider_id'] as String?,
+                  riderName: o['rider_name'] as String?,
+                  riderPhone: o['rider_phone'] as String?,
+                  riderAvatar: o['rider_avatar'] as String?,
+                  riderVehicleType: o['rider_vehicle_type'] as String?,
+                  pickupAddress: o['pickup_address'] as String?,
+                  pickupLat: (o['pickup_lat'] as num?)?.toDouble(),
+                  pickupLng: (o['pickup_lng'] as num?)?.toDouble(),
+                  deliveryAddress: o['delivery_address'] as String?,
+                  deliveryLat: (o['delivery_lat'] as num?)?.toDouble(),
+                  deliveryLng: (o['delivery_lng'] as num?)?.toDouble(),
+                  deliveryPin: o['delivery_pin'] as String?,
+                  trackingUrl: o['tracking_url'] as String?,
+                ))
+            .toList();
         return;
       }
     } catch (_) {}
@@ -346,8 +338,8 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
     _save();
   }
 
-  void reorder(List<CartItem> items, String restaurantId,
-      String restaurantName) {
+  void reorder(
+      List<CartItem> items, String restaurantId, String restaurantName) {
     final total =
         items.fold(0.0, (sum, ci) => sum + ci.foodItem.price * ci.quantity);
     placeOrder(restaurantId, restaurantName, items, total);
@@ -356,10 +348,7 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
   void updateOrderStatus(String orderId, OrderStatus newStatus) {
     state = [
       for (final order in state)
-        if (order.id == orderId)
-          order.copyWith(status: newStatus)
-        else
-          order,
+        if (order.id == orderId) order.copyWith(status: newStatus) else order,
     ];
     _save();
   }
@@ -367,10 +356,7 @@ class OrdersNotifier extends StateNotifier<List<Order>> {
   void updateTrackingStep(String orderId, int step) {
     state = [
       for (final order in state)
-        if (order.id == orderId)
-          order.copyWith(trackingStep: step)
-        else
-          order,
+        if (order.id == orderId) order.copyWith(trackingStep: step) else order,
     ];
     _save();
   }
@@ -430,7 +416,8 @@ final riderAssignedOrderProvider = Provider<Order?>((ref) {
 
 enum SortOption { rating, distance, deliveryTime, priceLow }
 
-final sortOptionProvider = StateProvider<SortOption>((ref) => SortOption.rating);
+final sortOptionProvider =
+    StateProvider<SortOption>((ref) => SortOption.rating);
 final selectedCuisinesProvider = StateProvider<Set<String>>((ref) => {});
 final maxPriceLevelProvider = StateProvider<int>((ref) => 3);
 
@@ -440,23 +427,22 @@ final promoCodeProvider = StateProvider<String?>((ref) => null);
 
 final onboardingDoneProvider =
     StateNotifierProvider<OnboardingDoneNotifier, bool>((ref) {
-  return OnboardingDoneNotifier();
+  return OnboardingDoneNotifier(ref.watch(routerRefreshProvider));
 });
 
 class OnboardingDoneNotifier extends StateNotifier<bool> {
-  OnboardingDoneNotifier() : super(false) {
-    _load();
-  }
+  final RouterRefresh _routerRefresh;
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getBool('swiftdrop_onboarding_done') ?? false;
-  }
+  /// Seeded from the launch-time bootstrap so the first redirect does not
+  /// misread an existing user as a brand new one.
+  OnboardingDoneNotifier(this._routerRefresh)
+      : super(AppBootstrap.current.onboardingDone);
 
   Future<void> complete() async {
     state = true;
+    _routerRefresh.bump();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('swiftdrop_onboarding_done', true);
+    await prefs.setBool(AppBootstrap.onboardingKey, true);
   }
 }
 
@@ -468,17 +454,47 @@ final parcelBookingProvider =
 });
 
 class ParcelBookingNotifier extends StateNotifier<ParcelBooking> {
-  ParcelBookingNotifier() : super(const ParcelBooking());
+  static const _storageKey = 'swiftdrop_parcel_booking';
+
+  ParcelBookingNotifier() : super(const ParcelBooking()) {
+    _load();
+  }
+
+  /// Restores an in-progress booking so a process restart doesn't lose what
+  /// the user already typed.
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final json = prefs.getString(_storageKey);
+    if (json == null) return;
+    try {
+      state = ParcelBooking.fromMap(jsonDecode(json) as Map<String, dynamic>);
+    } catch (_) {}
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_storageKey, jsonEncode(state.toMap()));
+  }
+
+  Future<void> _clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_storageKey);
+  }
 
   void updatePickup(String pickup, {double? lat, double? lng}) {
-    state = state.copyWith(pickupLocation: pickup, pickupLat: lat, pickupLng: lng);
+    state =
+        state.copyWith(pickupLocation: pickup, pickupLat: lat, pickupLng: lng);
+    _save();
   }
 
   void updateDelivery(String delivery, {double? lat, double? lng}) {
-    state = state.copyWith(deliveryLocation: delivery, deliveryLat: lat, deliveryLng: lng);
+    state = state.copyWith(
+        deliveryLocation: delivery, deliveryLat: lat, deliveryLng: lng);
+    _save();
   }
 
-  void updatePackage(String type, double weight, {double? l, double? w, double? h, String? notes}) {
+  void updatePackage(String type, double weight,
+      {double? l, double? w, double? h, String? notes}) {
     state = state.copyWith(
       packageType: type,
       weight: weight,
@@ -487,6 +503,7 @@ class ParcelBookingNotifier extends StateNotifier<ParcelBooking> {
       heightCm: h,
       riderNotes: notes,
     );
+    _save();
   }
 
   void updateService(String service, {bool? insurance}) {
@@ -494,18 +511,22 @@ class ParcelBookingNotifier extends StateNotifier<ParcelBooking> {
       deliveryService: service,
       insuranceIncluded: insurance ?? state.insuranceIncluded,
     );
+    _save();
   }
 
   void toggleInsurance() {
     state = state.copyWith(insuranceIncluded: !state.insuranceIncluded);
+    _save();
   }
 
   void applyPromo(String code) {
     state = state.copyWith(promoCode: code);
+    _save();
   }
 
   void reset() {
     state = const ParcelBooking();
+    _clear();
   }
 }
 
@@ -522,7 +543,8 @@ class UserProfile {
     this.membershipTier = 'Gold',
   });
 
-  UserProfile copyWith({double? walletBalance, int? points, String? membershipTier}) {
+  UserProfile copyWith(
+      {double? walletBalance, int? points, String? membershipTier}) {
     return UserProfile(
       walletBalance: walletBalance ?? this.walletBalance,
       points: points ?? this.points,

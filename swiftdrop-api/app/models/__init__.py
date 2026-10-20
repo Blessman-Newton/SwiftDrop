@@ -10,6 +10,7 @@ from app.models.review import Review
 from app.models.address import Address
 from app.models.cosmetic import CosmeticProduct
 from app.models.settings import PlatformSetting
+from app.models.banner import Banner
 
 __all__ = [
     "User",
@@ -30,4 +31,5 @@ __all__ = [
     "Address",
     "CosmeticProduct",
     "PlatformSetting",
+    "Banner",
 ]

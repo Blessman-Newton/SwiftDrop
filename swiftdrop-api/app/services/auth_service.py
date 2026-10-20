@@ -10,6 +10,7 @@ from app.core.security import create_access_token, decode_access_token, generate
 from app.models.restaurant import Restaurant
 from app.models.user import OTPCode, RiderProfile, User
 from app.schemas.auth import TokenResponse, UserResponse
+from app.services.firebase_service import create_custom_token, verify_firebase_id_token
 from app.services.sms_service import send_otp_sms
 
 
@@ -48,9 +49,17 @@ async def sign_up(
     phone: str,
     name: str | None = None,
     role: str = "customer",
+    firebase_uid: str | None = None,
+    id_token: str | None = None,
 ) -> TokenResponse:
     phone = _normalize_phone(phone)
     email = email.strip().lower()
+
+    if id_token:
+        decoded = verify_firebase_id_token(id_token)
+        if not decoded:
+            raise UnauthorizedException("Invalid authentication token")
+        firebase_uid = decoded.get("uid", firebase_uid)
 
     existing_phone = await db.execute(select(User).where(User.phone == phone))
     if existing_phone.scalar_one_or_none():
@@ -91,8 +100,20 @@ async def sign_up(
     return TokenResponse(access_token=token, user=_user_to_response(user))
 
 
-async def login_with_email(db: AsyncSession, email: str, password: str) -> TokenResponse:
+async def login_with_email(
+    db: AsyncSession,
+    email: str,
+    password: str,
+    firebase_uid: str | None = None,
+    id_token: str | None = None,
+) -> TokenResponse:
     email = email.strip().lower()
+
+    if id_token:
+        decoded = verify_firebase_id_token(id_token)
+        if not decoded:
+            raise UnauthorizedException("Invalid authentication token")
+        firebase_uid = decoded.get("uid", firebase_uid)
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -105,6 +126,88 @@ async def login_with_email(db: AsyncSession, email: str, password: str) -> Token
 
     if not user.is_active:
         raise ForbiddenException("Account has been deactivated. Contact admin.")
+
+    token = _create_token(user)
+    return TokenResponse(access_token=token, user=_user_to_response(user))
+
+
+async def login_with_phone_password(
+    db: AsyncSession,
+    phone: str,
+    password: str,
+) -> TokenResponse:
+    phone = _normalize_phone(phone)
+
+    result = await db.execute(select(User).where(User.phone == phone))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise UnauthorizedException("Invalid phone number or password")
+
+    if not user.password_hash or not verify_password(password, user.password_hash):
+        raise UnauthorizedException("Invalid phone number or password. If you signed up with OTP, please set a password first.")
+
+    if not user.is_active:
+        raise ForbiddenException("Account has been deactivated. Contact admin.")
+
+    custom_token = create_custom_token(str(user.id))
+
+    token = _create_token(user)
+    return TokenResponse(
+        access_token=token,
+        user=_user_to_response(user),
+        custom_token=custom_token,
+    )
+
+
+async def social_login(
+    db: AsyncSession,
+    provider: str,
+    id_token: str,
+    firebase_uid: str | None = None,
+    email: str | None = None,
+    name: str | None = None,
+    photo_url: str | None = None,
+) -> TokenResponse:
+    decoded = verify_firebase_id_token(id_token)
+    if not decoded:
+        raise UnauthorizedException("Invalid authentication token")
+
+    firebase_uid = decoded.get("uid", firebase_uid)
+    email = email or decoded.get("email")
+    name = name or decoded.get("name") or decoded.get("display_name")
+    photo_url = photo_url or decoded.get("picture") or decoded.get("photo_url")
+
+    if not email:
+        raise BadRequestException("Email required for social login")
+
+    email = email.strip().lower()
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+
+    if user:
+        if not user.is_active:
+            raise ForbiddenException("Account has been deactivated. Contact admin.")
+        token = _create_token(user)
+        return TokenResponse(access_token=token, user=_user_to_response(user))
+
+    phone = decoded.get("phone_number") or f"+000{str(UUID(int=0))[:8]}"
+    existing_phone = await db.execute(select(User).where(User.phone == phone))
+    if existing_phone.scalar_one_or_none():
+        phone = f"+{firebase_uid[:13]}"
+
+    user = User(
+        phone=phone,
+        email=email,
+        password_hash=hash_password(f"social_{firebase_uid}"),
+        name=name,
+        role="customer",
+        avatar_url=photo_url,
+        is_verified=True,
+    )
+    db.add(user)
+    await db.flush()
 
     token = _create_token(user)
     return TokenResponse(access_token=token, user=_user_to_response(user))

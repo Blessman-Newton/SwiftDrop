@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,6 +67,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   bool _showCartFeedback = false;
   String _cartFeedbackMsg = '';
   String? _appliedPromo;
+  String? _scheduledSlot;
   String _selectedAddress = 'Home: 123 Oak Street';
   double? _selectedLat;
   double? _selectedLng;
@@ -142,23 +144,44 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       _isDark ? const Color(0xFFBEC6E0) : const Color(0xFF5C647A);
   static const Color _primaryContainer = AppColors.primaryLight; // #10B981
   static const Color _onPrimaryContainer = Color(0xFF00422B);
-  static const Color _tertiaryContainer = AppColors.accent; // #FF7E2D
-  static const Color _onTertiaryFixed = Color(0xFF341100);
-  static const Color _tertiary = AppColors.accentDark; // #9D4300
 
   double _computeSubtotal(List<CartItem> cart) {
     return cart.fold(0.0, (sum, ci) => sum + ci.foodItem.price * ci.quantity);
   }
 
-  double _applyPromo(double subtotal) {
-    if (_appliedPromo == null) return 0;
-    final disc = _promoDiscounts[_appliedPromo!];
+  /// Promo discount for the applied code. Live codes from the promo service
+  /// win so the math matches the backend rules (min order, type, value);
+  /// the local map stays as an offline/legacy fallback.
+  double _applyPromo(double subtotal, List<Map<String, dynamic>> promos) {
+    final code = _appliedPromo;
+    if (code == null) return 0;
+
+    final remote = _findRemotePromo(promos, code);
+    if (remote != null) {
+      final minOrder = (remote['minimum_order'] as num?)?.toDouble() ?? 0;
+      if (subtotal < minOrder) return 0;
+      final value = (remote['discount_value'] as num?)?.toDouble() ?? 0;
+      final isPercentage = remote['discount_type'] == 'percentage';
+      final amount = isPercentage ? subtotal * value / 100 : value;
+      return amount.clamp(0.0, subtotal).toDouble();
+    }
+
+    final disc = _promoDiscounts[code];
     if (disc == null) return 0;
-    if (_appliedPromo == 'FREE5') return disc;
-    if (subtotal >= 30 || _appliedPromo == 'WELCOME10') {
+    if (code == 'FREE5') return disc;
+    if (subtotal >= 30 || code == 'WELCOME10') {
       return subtotal * disc;
     }
     return 0;
+  }
+
+  Map<String, dynamic>? _findRemotePromo(
+      List<Map<String, dynamic>> promos, String code) {
+    for (final promo in promos) {
+      final promoCode = (promo['code'] as String?)?.toUpperCase();
+      if (promoCode == code.toUpperCase()) return promo;
+    }
+    return null;
   }
 
   int get _cartItemCount {
@@ -281,8 +304,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       );
     }
 
+    final promos = ref.watch(promosProvider).value ?? const <Map<String, dynamic>>[];
     final subtotal = _computeSubtotal(cart);
-    final discount = _applyPromo(subtotal);
+    final discount = _applyPromo(subtotal, promos);
     final deliveryFee = restaurant.deliveryFee == 'Free' ? 0.0 : 2.99;
     final tax = (subtotal - discount) * 0.08;
     final total = (subtotal - discount) + deliveryFee + tax;
@@ -300,7 +324,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             controller: _scrollController,
             slivers: [
               _buildHeaderSliver(isDark),
-              SliverToBoxAdapter(child: _buildPromoBanner()),
+              _buildQuickActions(),
+              _buildPromoSection(promos),
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _CategoryTabDelegate(
@@ -311,29 +336,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                   textColor: _onSurfaceVariant,
                 ),
               ),
-              if (_selectedCategory == 'Drinks') ...[
+              _sectionHeading(_headingForSelection),
+              _menuGrid(_filteredItems),
+              if (_selectedCategory != 'Drinks' && _drinkItems.isNotEmpty) ...[
                 _sectionHeading('Craft Drinks'),
-                _drinksGrid(_filteredItems),
-              ] else ...[
-                _sectionHeading(_selectedCategory == 'Popular'
-                    ? 'Popular Items'
-                    : _selectedCategory),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (ctx, i) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _buildFoodCard(_filteredItems[i]),
-                      ),
-                      childCount: _filteredItems.length,
-                    ),
-                  ),
-                ),
-                if (_drinkItems.isNotEmpty) ...[
-                  _sectionHeading('Craft Drinks'),
-                  _drinksGrid(_drinkItems),
-                ],
+                _menuGrid(_drinkItems),
               ],
               const SliverToBoxAdapter(child: SizedBox(height: 96)),
             ],
@@ -352,11 +359,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     );
   }
 
-  static const double _heroHeight = 256;
-  static const double _cardOverlap = 44;
+  static const double _heroHeight = 280;
+  static const double _cardOverlap = 56;
 
-  /// Hero banner + info card combined so the card visibly overlaps (sits on
-  /// top of) the banner, matching the reference design.
+  /// Full-width cover image with the rounded info card overlapping its bottom
+  /// edge — the premium header used by top food-delivery apps.
   Widget _buildHeaderSliver(bool isDark) {
     return SliverToBoxAdapter(
       child: FadeTransition(
@@ -393,83 +400,84 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       height: _heroHeight,
       width: double.infinity,
       child: Stack(
-              fit: StackFit.expand,
+        fit: StackFit.expand,
+        children: [
+          AppImage(
+              url: _restaurant.imageUrl,
+              fit: BoxFit.cover,
+              fallbackSeed: _restaurant.name),
+          // Gradient scrim keeps the overlay controls legible on any photo.
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x59000000),
+                  Color(0x00000000),
+                  Color(0x00000000),
+                  Color(0xB3000000),
+                ],
+                stops: [0.0, 0.35, 0.55, 1.0],
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                AppImage(
-                    url: _restaurant.imageUrl,
-                    fit: BoxFit.cover,
-                    fallbackSeed: _restaurant.name),
-                // Hero gradient (dark top + bottom for control legibility)
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0x66000000),
-                        Color(0x00000000),
-                        Color(0x00000000),
-                        Color(0x99000000),
-                      ],
-                      stops: [0.0, 0.4, 0.6, 1.0],
-                    ),
-                  ),
+                _HeroButton(
+                  icon: Icons.arrow_back,
+                  onTap: () => Navigator.of(context).pop(),
                 ),
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 8,
-                  left: 16,
-                  right: 16,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      _HeroButton(
-                        icon: Icons.arrow_back,
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                      Row(
-                        children: [
-                          _HeroButton(
-                            icon: Icons.ios_share,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Shared ${_restaurant.name}',
-                                      style: GoogleFonts.inter()),
-                                  backgroundColor: AppColors.primary,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _HeroButton(
-                            icon: isFav ? Icons.favorite : Icons.favorite_border,
-                            iconColor: const Color(0xFFBA1A1A),
-                            onTap: () => ref
-                                .read(favoritesProvider.notifier)
-                                .toggle(widget.restaurantId),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                Row(
+                  children: [
+                    _HeroButton(icon: Icons.ios_share, onTap: _onShare),
+                    const SizedBox(width: 8),
+                    _HeroButton(
+                      icon: isFav ? Icons.favorite : Icons.favorite_border,
+                      iconColor: const Color(0xFFBA1A1A),
+                      onTap: () => ref
+                          .read(favoritesProvider.notifier)
+                          .toggle(widget.restaurantId),
+                    ),
+                  ],
                 ),
               ],
             ),
-          );
+          ),
+        ],
+      ),
+    );
   }
 
+  void _onShare() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Shared ${_restaurant.name}',
+            style: GoogleFonts.inter()),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Rounded white card overlapping the bottom of the cover image: name +
+  /// rating on top, then delivery time, fee and minimum order underneath.
   Widget _buildInfoCard() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(24),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _cLowest,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, _isDark ? 0.25 : 0.06),
-            blurRadius: 25,
+            color: Color.fromRGBO(0, 0, 0, _isDark ? 0.25 : 0.08),
+            blurRadius: 24,
             offset: const Offset(0, 10),
           ),
         ],
@@ -481,76 +489,64 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _restaurant.name,
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                        color: _onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _restaurant.tags.map(_buildTagChip).toList(),
-                    ),
-                  ],
+                child: Text(
+                  _restaurant.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                    color: _onSurface,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _cHigh,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.star_rounded, color: _tertiary, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      _restaurant.rating.toString(),
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _onSurface,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _ratingPill(),
             ],
           ),
-          const SizedBox(height: 24),
+          if (_restaurant.tags.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _restaurant.tags.map(_buildTagChip).toList(),
+            ),
+          ],
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.only(top: 24),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: _outlineVariant)),
+              color: _cLow,
+              borderRadius: BorderRadius.circular(16),
             ),
             child: IntrinsicHeight(
               child: Row(
                 children: [
                   Expanded(
-                    child: _statCell(
-                        Icons.schedule, _restaurant.deliveryTime),
+                    child: _infoCell(
+                      icon: Icons.schedule_rounded,
+                      label: 'Delivery time',
+                      value: _restaurant.deliveryTime.isEmpty
+                          ? '—'
+                          : _restaurant.deliveryTime,
+                    ),
                   ),
                   VerticalDivider(width: 1, color: _outlineVariant),
                   Expanded(
-                    child: _statCell(
-                        Icons.delivery_dining, _restaurant.deliveryFee),
+                    child: _infoCell(
+                      icon: Icons.delivery_dining_rounded,
+                      label: 'Delivery fee',
+                      value: _restaurant.deliveryFee.isEmpty
+                          ? '—'
+                          : _restaurant.deliveryFee,
+                    ),
                   ),
                   VerticalDivider(width: 1, color: _outlineVariant),
                   Expanded(
-                    child: _statCell(
-                        Icons.straighten, _restaurant.distance.isEmpty
-                            ? '—'
-                            : _restaurant.distance),
+                    child: _infoCell(
+                      icon: Icons.receipt_long_rounded,
+                      label: 'Min. order',
+                      value: _minOrderLabel,
+                    ),
                   ),
                 ],
               ),
@@ -559,6 +555,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         ],
       ),
     );
+  }
+
+  String get _minOrderLabel {
+    final min = _restaurant.minimumOrder;
+    if (min <= 0) return 'Any';
+    return min % 1 == 0
+        ? 'GHS ${min.toStringAsFixed(0)}'
+        : 'GHS ${min.toStringAsFixed(2)}';
   }
 
   Widget _buildTagChip(String tag) {
@@ -582,17 +586,60 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     );
   }
 
-  Widget _statCell(IconData icon, String value) {
+  Widget _ratingPill() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: _isDark ? const Color(0xFF26312B) : const Color(0xFFE7F7EF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 16),
+          const SizedBox(width: 4),
+          Text(
+            _restaurant.rating.toStringAsFixed(1),
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoCell({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(icon, color: AppColors.primary, size: 22),
-        const SizedBox(height: 4),
+        Icon(icon, color: AppColors.primaryLight, size: 20),
+        const SizedBox(height: 6),
         Text(
           value,
           textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: GoogleFonts.inter(
             fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            fontSize: 10,
             fontWeight: FontWeight.w500,
             color: _onSurfaceVariant,
           ),
@@ -601,45 +648,327 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     );
   }
 
-  Widget _buildPromoBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _tertiaryContainer,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+  // ── Quick actions (Group Order / Order for Later) ──
+
+  static const List<String> _scheduleSlots = [
+    'As soon as possible',
+    'In 30 minutes',
+    'In 1 hour',
+    'Tonight \u2022 7:00 PM',
+    'Tomorrow \u2022 12:00 PM',
+  ];
+
+  Widget _buildQuickActions() {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: _actionPill(
+                icon: Icons.group_add_outlined,
+                label: 'Group Order',
+                onTap: _showGroupOrderSheet,
+              ),
             ),
-            child: const Icon(Icons.percent, color: _onTertiaryFixed, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _actionPill(
+                icon: Icons.schedule_outlined,
+                label: _scheduledSlot == null
+                    ? 'Order for Later'
+                    : 'Later \u2022 $_scheduledSlot',
+                onTap: _showScheduleSheet,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actionPill({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: _cLowest,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: _isDark ? Colors.white10 : const Color(0xFFE1EFE6),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '15% off orders over GHS 30',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _onTertiaryFixed,
-                  ),
+          boxShadow: [
+            BoxShadow(
+              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.18 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: Color(0xFFE7F7EF),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 16, color: AppColors.primaryLight),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
                 ),
-                Text(
-                  'Use code SWIFT15 at checkout',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showGroupOrderSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final slug = _restaurant.slug.isEmpty
+        ? _restaurant.id
+        : _restaurant.slug.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final invite =
+        'Join my order at ${_restaurant.name} on DooRush \u2022 Group code: ${slug.toUpperCase()}';
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            24, 24, 24, 24 + MediaQuery.of(ctx).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE7F7EF),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child:
+                  const Icon(Icons.group_add_outlined, color: AppColors.primaryLight),
+            ),
+            const SizedBox(height: 16),
+            Text('Start a group order',
+                style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary(isDark))),
+            const SizedBox(height: 6),
+            Text(
+                'Share this invite so friends can add their items to one shared cart.',
+                style: GoogleFonts.inter(
+                    fontSize: 13, color: AppColors.textSecondary(isDark))),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2B44) : AppColors.lightBackground,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(invite,
                   style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: _onTertiaryFixed.withOpacity(0.8),
-                  ),
+                      fontSize: 13,
+                      height: 1.4,
+                      color: AppColors.textPrimary(isDark))),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: invite));
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  _showFeedback('Group order invite copied');
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                 ),
-              ],
+                icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.white),
+                label: Text('Copy invite',
+                    style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showScheduleSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(0, 12, 0, MediaQuery.of(ctx).padding.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.schedule_outlined,
+                      color: AppColors.primaryLight, size: 22),
+                  const SizedBox(width: 8),
+                  Text('Order for later',
+                      style: GoogleFonts.inter(
+                          fontSize: 18, fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: const Icon(Icons.close_rounded, size: 22),
+                  ),
+                ],
+              ),
+            ),
+            ..._scheduleSlots.map((slot) => ListTile(
+                  dense: true,
+                  leading: Icon(
+                    _scheduledSlot == slot
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: AppColors.primaryLight,
+                  ),
+                  title: Text(slot,
+                      style: GoogleFonts.inter(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    final isFirst = slot == _scheduleSlots.first;
+                    setState(() => _scheduledSlot = slot);
+                    _showFeedback(isFirst
+                        ? 'Delivering as soon as possible'
+                        : 'Scheduled for $slot');
+                  },
+                )),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Promotions carousel ──
+
+  static const Color _promoCardBg = Color(0xFFE9F8F0);
+  static const Color _promoCardBorder = Color(0xFFCFEBDD);
+
+  /// Offers shown in the carousel. Built from the live promo catalogue with
+  /// free delivery (when the restaurant offers it) in front; local promo
+  /// codes are the fallback while the service is unreachable.
+  List<_PromoOffer> _promoOffers(List<Map<String, dynamic>> promos) {
+    final offers = <_PromoOffer>[];
+
+    if (_restaurant.deliveryFee == 'Free') {
+      offers.add(const _PromoOffer(
+        code: 'FREEDELIVERY',
+        badge: 'FREE',
+        title: 'Free delivery',
+        subtitle: 'No delivery fee on this order',
+        isFreeDelivery: true,
+      ));
+    }
+
+    if (promos.isNotEmpty) {
+      for (final promo in promos) {
+        final code = ((promo['code'] as String?) ?? '').toUpperCase();
+        if (code.isEmpty) continue;
+        final type = promo['discount_type'] as String? ?? 'percentage';
+        final value = (promo['discount_value'] as num?)?.toDouble() ?? 0;
+        final minOrder = (promo['minimum_order'] as num?)?.toDouble() ?? 0;
+        final isFlat = type == 'flat';
+        final badge = isFlat
+            ? 'GHS ${_trimNumber(value)} OFF'
+            : '${_trimNumber(value)}% OFF';
+        final description = (promo['description'] as String?)?.trim();
+        offers.add(_PromoOffer(
+          code: code,
+          badge: badge,
+          title: description == null || description.isEmpty
+              ? (isFlat
+                  ? 'GHS ${_trimNumber(value)} off your order'
+                  : '${_trimNumber(value)}% off your order')
+              : description,
+          subtitle: minOrder > 0
+              ? 'Min. order GHS ${_trimNumber(minOrder)}'
+              : 'Valid at checkout',
+          isFreeDelivery: false,
+        ));
+      }
+    } else {
+      _promoDiscounts.forEach((code, disc) {
+        final isFlat = disc >= 1;
+        offers.add(_PromoOffer(
+          code: code,
+          badge: isFlat
+              ? 'GHS ${_trimNumber(disc)} OFF'
+              : '${_trimNumber(disc * 100)}% OFF',
+          title: isFlat
+              ? 'GHS ${_trimNumber(disc)} off your order'
+              : '${_trimNumber(disc * 100)}% off your order',
+          subtitle: code == 'WELCOME10' ? 'First order only' : 'Valid at checkout',
+          isFreeDelivery: false,
+        ));
+      });
+    }
+    return offers;
+  }
+
+  String _trimNumber(double value) =>
+      value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+
+  Widget _buildPromoSection(List<Map<String, dynamic>> promos) {
+    final offers = _promoOffers(promos);
+    if (offers.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    return SliverToBoxAdapter(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeadingContent('Promotions'),
+          SizedBox(
+            height: 136,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: offers.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (ctx, i) => _promoCard(
+                offers[i],
+                applied: offers[i].code == _appliedPromo,
+              ),
             ),
           ),
         ],
@@ -647,231 +976,276 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     );
   }
 
-  Widget _sectionHeading(String title) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Text(
-          title,
-          style: GoogleFonts.inter(
-            fontSize: 22,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
+  Widget _promoCard(_PromoOffer offer, {required bool applied}) {
+    return GestureDetector(
+      onTap: () => _redeemOffer(offer),
+      child: Container(
+        width: 176,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: applied ? const Color(0xFFD6F5E6) : _promoCardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: applied ? AppColors.primaryLight : _promoCardBorder,
           ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: applied ? AppColors.primaryLight : AppColors.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    offer.badge,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  offer.isFreeDelivery
+                      ? Icons.delivery_dining_rounded
+                      : Icons.percent_rounded,
+                  size: 16,
+                  color: AppColors.primaryLight,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              offer.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                height: 1.25,
+                color: _onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              offer.subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(fontSize: 11, color: _onSurfaceVariant),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                const Icon(Icons.local_offer_rounded,
+                    size: 13, color: AppColors.primaryLight),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    offer.code,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryLight,
+                    ),
+                  ),
+                ),
+                Text(
+                  applied ? 'Applied' : 'Apply',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _drinksGrid(List<FoodItem> items) {
+  void _redeemOffer(_PromoOffer offer) {
+    if (offer.isFreeDelivery) {
+      _showFeedback('Free delivery already applied to this order');
+      return;
+    }
+    setState(() => _appliedPromo = offer.code);
+    _showFeedback('${offer.code} applied \u2022 see it at checkout');
+  }
+
+  String get _headingForSelection {
+    switch (_selectedCategory) {
+      case 'Popular':
+        return 'For You';
+      case 'Drinks':
+        return 'Craft Drinks';
+      default:
+        return _selectedCategory;
+    }
+  }
+
+  Widget _sectionHeading(String title) {
+    return SliverToBoxAdapter(child: _sectionHeadingContent(title));
+  }
+
+  Widget _sectionHeadingContent(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+      child: Text(
+        title,
+        style: GoogleFonts.inter(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: _onSurface,
+        ),
+      ),
+    );
+  }
+
+  /// Responsive two-column grid of menu cards (image, name, price, add button).
+  Widget _menuGrid(List<FoodItem> items) {
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       sliver: SliverGrid(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.78,
+          childAspectRatio: 0.72,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
         delegate: SliverChildBuilderDelegate(
-          (ctx, i) => _buildDrinkCard(items[i]),
+          (ctx, i) => _buildMenuGridCard(items[i]),
           childCount: items.length,
         ),
       ),
     );
   }
 
-  Widget _buildFoodCard(FoodItem item) {
+  Widget _buildMenuGridCard(FoodItem item) {
     final cart = ref.watch(cartProvider);
-    final qtyInCart =
-        cart.where((ci) => ci.foodItem.id == item.id).fold(0, (s, ci) => s + ci.quantity);
+    final qtyInCart = cart
+        .where((ci) => ci.foodItem.id == item.id)
+        .fold(0, (s, ci) => s + ci.quantity);
 
     return GestureDetector(
       onTap: () => _showFoodDetailSheet(item),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: _cLowest,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _isDark ? Colors.white10 : Colors.transparent),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.2 : 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.2 : 0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            SizedBox(
+              height: 112,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Text(
-                    item.name,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.description,
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      height: 1.4,
-                      color: _onSurfaceVariant,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'GHS ${item.price.toStringAsFixed(2)}',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
+                  AppImage(
+                      url: item.imageUrl,
+                      fit: BoxFit.cover,
+                      fallbackSeed: item.name),
+                  if (qtyInCart > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
                         ),
-                      ),
-                      Container(
-                        width: 32,
-                        height: 32,
                         decoration: const BoxDecoration(
-                          color: _primaryContainer,
+                          color: Color(0xFFD92D20),
                           shape: BoxShape.circle,
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const Icon(Icons.add, color: _onPrimaryContainer, size: 18),
-                            if (qtyInCart > 0)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 14,
-                                    minHeight: 14,
-                                  ),
-                                  child: Text(
-                                    '$qtyInCart',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                              ),
-                          ],
+                        child: Text(
+                          '$qtyInCart',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: SizedBox(
-                width: 96,
-                height: 96,
-                child: AppImage(url: item.imageUrl, fit: BoxFit.cover, fallbackSeed: item.name),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDrinkCard(FoodItem item) {
-    final cart = ref.watch(cartProvider);
-    final qtyInCart =
-        cart.where((ci) => ci.foodItem.id == item.id).fold(0, (s, ci) => s + ci.quantity);
-
-    return GestureDetector(
-      onTap: () => _showFoodDetailSheet(item),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _cLow,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            AspectRatio(
-              aspectRatio: 1,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Stack(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Positioned.fill(
-                      child: AppImage(url: item.imageUrl, fit: BoxFit.cover, fallbackSeed: item.name),
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.25,
+                        color: _onSurface,
+                      ),
                     ),
-                    if (qtyInCart > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
                           child: Text(
-                            '$qtyInCart',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                            'GHS ${item.price.toStringAsFixed(2)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () {
+                            ref
+                                .read(cartProvider.notifier)
+                                .addItem(item, restaurantId: widget.restaurantId);
+                            _showFeedback('Added ${item.name} to cart');
+                          },
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryLight,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.add,
+                                color: Colors.white, size: 20),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.name,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: _onSurface,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'GHS ${item.price.toStringAsFixed(2)}',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.primary,
               ),
             ),
           ],
@@ -1873,6 +2247,23 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 }
 
 // ─────────────────────── HELPER WIDGETS ───────────────────────
+
+/// One compact discount card in the promotions carousel.
+class _PromoOffer {
+  final String code;
+  final String badge;
+  final String title;
+  final String subtitle;
+  final bool isFreeDelivery;
+
+  const _PromoOffer({
+    required this.code,
+    required this.badge,
+    required this.title,
+    required this.subtitle,
+    this.isFreeDelivery = false,
+  });
+}
 
 class _HeroButton extends StatelessWidget {
   final IconData icon;

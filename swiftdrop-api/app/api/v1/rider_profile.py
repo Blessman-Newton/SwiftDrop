@@ -126,8 +126,10 @@ async def get_active_delivery(
 
     items = [{"name": i.name, "quantity": i.quantity, "price": float(i.price)} for i in order.items]
 
-    cust_q = select(User.name).where(User.id == order.customer_id)
-    cust_name = (await db.execute(cust_q)).scalar() or "Customer"
+    cust_q = select(User).where(User.id == order.customer_id)
+    customer = (await db.execute(cust_q)).scalar_one_or_none()
+    cust_name = customer.name if customer else "Customer"
+    cust_phone = customer.phone if customer else None
 
     return RiderActiveDeliveryResponse(
         order_id=str(order.id),
@@ -139,8 +141,13 @@ async def get_active_delivery(
         items=items,
         total=float(order.total),
         customer_name=cust_name,
+        customer_phone=cust_phone,
         delivery_notes=order.metadata_.get("delivery_notes") if order.metadata_ else None,
         created_at=order.created_at,
+        pickup_lat=float(order.pickup_lat) if order.pickup_lat is not None else None,
+        pickup_lng=float(order.pickup_lng) if order.pickup_lng is not None else None,
+        delivery_lat=float(order.delivery_lat) if order.delivery_lat is not None else None,
+        delivery_lng=float(order.delivery_lng) if order.delivery_lng is not None else None,
     )
 
 
@@ -197,11 +204,15 @@ async def update_delivery_status(
     rider = rider_result.scalar_one_or_none()
     rider_name = rider.name if rider else "Your rider"
 
+    is_gas_refill = order.restaurant_name == "LPG Gas Depot (Tarkwa)"
+
     if new_status == "PICKED_UP":
+        title = "Out for Delivery" if is_gas_refill else "Your Order is On the Way"
+        body = f"{rider_name} is out for delivery with your refilled cylinder." if is_gas_refill else f"Your order has been handed over to {rider_name} and is now on its way to your delivery location."
         customer_notification = Notification(
             user_id=order.customer_id,
-            title="Your Order is On the Way",
-            body=f"Your order has been handed over to {rider_name} and is now on its way to your delivery location.",
+            title=title,
+            body=body,
             type="order",
             metadata_={
                 "order_id": str(order.id),
@@ -212,10 +223,12 @@ async def update_delivery_status(
         db.add(customer_notification)
 
     elif new_status == "DELIVERED":
+        title = "Refill Delivered" if is_gas_refill else "Order Delivered"
+        body = "Your refilled gas cylinder has been successfully delivered." if is_gas_refill else "Your order has been delivered successfully. Thank you for ordering with us!"
         customer_notification = Notification(
             user_id=order.customer_id,
-            title="Order Delivered",
-            body="Your order has been delivered successfully. Thank you for ordering with us!",
+            title=title,
+            body=body,
             type="order",
             metadata_={
                 "order_id": str(order.id),
