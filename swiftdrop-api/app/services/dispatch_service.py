@@ -1,6 +1,5 @@
 import json
 import math
-from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -10,7 +9,9 @@ from app.core.exceptions import BadRequestException, NotFoundException
 from app.models.order import DispatchLog, Order
 from app.models.user import RiderProfile, User
 from app.models.notification import Notification
-from app.services.order_service import update_order_status
+from app.config import get_settings
+
+settings = get_settings()
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -81,7 +82,7 @@ async def go_offline(db: AsyncSession, user_id: UUID) -> dict:
 
 async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict:
     result = await db.execute(
-        select(Order).where(Order.id == order_id)
+        select(Order).where(Order.id == order_id).with_for_update()
     )
     order = result.scalar_one_or_none()
     if not order:
@@ -89,22 +90,27 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
     allowed_statuses = ["PREPARING", "READY_FOR_PICKUP"] if order.order_type == "food" else ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]
     if order.status not in allowed_statuses:
         raise BadRequestException("Order not available for pickup yet. Merchant must accept it first.")
+    rider_profile_result = await db.execute(
+        select(RiderProfile).where(RiderProfile.user_id == rider_id).with_for_update()
+    )
+    profile = rider_profile_result.scalar_one_or_none()
+    if not profile or profile.is_banned or not profile.is_online:
+        raise BadRequestException("Rider must be online and eligible for dispatch")
+    if profile.current_order_id is not None:
+        raise BadRequestException("Rider already has an active order")
     if order.rider_id is not None:
         raise BadRequestException("Order already assigned")
 
     order.rider_id = rider_id
-    order.status = "READY_FOR_PICKUP"
-    order.status_history = (order.status_history or []) + [
-        {"status": "READY_FOR_PICKUP", "timestamp": datetime.now(timezone.utc).isoformat(), "rider_id": str(rider_id)}
-    ]
-
+    from datetime import datetime, timedelta, timezone
+    order.dispatch_offer_deadline = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.RIDER_ACCEPTANCE_WINDOW_MINUTES
+    )
+    order.dispatch_attempts += 1
     log = DispatchLog(order_id=order_id, rider_id=rider_id, action="ACCEPTED")
     db.add(log)
 
-    profile_result = await db.execute(select(RiderProfile).where(RiderProfile.user_id == rider_id))
-    profile = profile_result.scalar_one_or_none()
-    if profile:
-        profile.current_order_id = order_id
+    profile.current_order_id = order_id
 
     rider_result = await db.execute(select(User).where(User.id == rider_id))
     rider = rider_result.scalar_one_or_none()
@@ -133,14 +139,46 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
 
 
 async def reject_order(db: AsyncSession, order_id: UUID, rider_id: UUID, reason: str | None = None) -> dict:
+    result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundException("Order not found")
+    if order.rider_id not in {None, rider_id}:
+        raise BadRequestException("Order is assigned to another rider")
     log = DispatchLog(order_id=order_id, rider_id=rider_id, action="REJECTED", reason=reason)
     db.add(log)
+    if order.rider_id == rider_id:
+        profile = await db.scalar(
+            select(RiderProfile).where(RiderProfile.user_id == rider_id).with_for_update()
+        )
+        order.rider_id = None
+        order.dispatch_offer_deadline = None
+        if profile and profile.current_order_id == order_id:
+            profile.current_order_id = None
     await db.flush()
     return {"message": "Order rejected"}
 
 
+async def reassign_order(db: AsyncSession, order_id: UUID) -> dict:
+    result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundException("Order not found")
+    if order.rider_id:
+        profile = await db.scalar(
+            select(RiderProfile).where(RiderProfile.user_id == order.rider_id).with_for_update()
+        )
+        if profile and profile.current_order_id == order_id:
+            profile.current_order_id = None
+        db.add(DispatchLog(order_id=order_id, rider_id=order.rider_id, action="REASSIGNED"))
+        order.rider_id = None
+        order.dispatch_offer_deadline = None
+    await db.flush()
+    return await auto_match_rider(db, order_id)
+
+
 async def auto_match_rider(db: AsyncSession, order_id: UUID) -> dict:
-    order_result = await db.execute(select(Order).where(Order.id == order_id))
+    order_result = await db.execute(select(Order).where(Order.id == order_id).with_for_update())
     order = order_result.scalar_one_or_none()
     if not order:
         raise NotFoundException("Order not found")
@@ -157,6 +195,7 @@ async def auto_match_rider(db: AsyncSession, order_id: UUID) -> dict:
 
     riders_query = select(RiderProfile).where(
         RiderProfile.is_online == True,
+        RiderProfile.is_banned == False,
         RiderProfile.current_order_id.is_(None),
         RiderProfile.last_lat.is_not(None),
         RiderProfile.last_lng.is_not(None),
@@ -182,13 +221,20 @@ async def auto_match_rider(db: AsyncSession, order_id: UUID) -> dict:
     if not closest_rider:
         return {"status": "no_riders_available"}
 
+    closest_rider = (await db.execute(
+        select(RiderProfile)
+        .where(RiderProfile.user_id == closest_rider.user_id)
+        .with_for_update()
+    )).scalar_one()
+    if closest_rider.current_order_id is not None:
+        return {"status": "rider_taken"}
     order.rider_id = closest_rider.user_id
-    order.status = "READY_FOR_PICKUP"
-    order.status_history = (order.status_history or []) + [
-        {"status": "READY_FOR_PICKUP", "timestamp": datetime.now(timezone.utc).isoformat(), "rider_id": str(closest_rider.user_id)}
-    ]
-
     closest_rider.current_order_id = order.id
+    from datetime import datetime, timedelta, timezone
+    order.dispatch_offer_deadline = datetime.now(timezone.utc) + timedelta(
+        minutes=settings.RIDER_ACCEPTANCE_WINDOW_MINUTES
+    )
+    order.dispatch_attempts += 1
     
     rider_notification = Notification(
         user_id=closest_rider.user_id,
@@ -228,3 +274,48 @@ async def auto_match_rider(db: AsyncSession, order_id: UUID) -> dict:
         "distance_km": round(min_distance, 2)
     }
 
+
+async def expire_dispatch_offers(db: AsyncSession, limit: int = 50) -> dict:
+    """Expire assigned rider offers and safely requeue each order."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Order)
+        .where(
+            Order.rider_id.is_not(None),
+            Order.dispatch_offer_deadline.is_not(None),
+            Order.dispatch_offer_deadline <= now,
+            Order.status.in_(["CONFIRMED", "PREPARING", "READY_FOR_PICKUP"]),
+        )
+        .order_by(Order.dispatch_offer_deadline.asc())
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+    )
+    expired = result.scalars().all()
+    reassigned = 0
+    for order in expired:
+        rider_id = order.rider_id
+        profile = await db.scalar(
+            select(RiderProfile)
+            .where(RiderProfile.user_id == rider_id)
+            .with_for_update()
+        )
+        if profile and profile.current_order_id == order.id:
+            profile.current_order_id = None
+        db.add(DispatchLog(order_id=order.id, rider_id=rider_id, action="EXPIRED"))
+        db.add(
+            Notification(
+                user_id=rider_id,
+                title="Order offer expired",
+                body="This delivery offer expired and has been returned to dispatch.",
+                type="order",
+                metadata_={"order_id": str(order.id), "status": "dispatch_expired"},
+            )
+        )
+        order.rider_id = None
+        order.dispatch_offer_deadline = None
+        await db.flush()
+        match = await auto_match_rider(db, order.id)
+        if match.get("status") == "assigned":
+            reassigned += 1
+    await db.flush()
+    return {"expired": len(expired), "reassigned": reassigned}

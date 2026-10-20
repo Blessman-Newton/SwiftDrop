@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
+import 'api_endpoints.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -69,9 +70,12 @@ class FCMService {
 
   Future<void> _registerTokenWithBackend() async {
     if (_fcmToken == null) return;
+    await _api.loadToken();
+    if (!_api.isAuthenticated) return;
+
     try {
       await _api.dio.post(
-        '/api/v1/notifications/register-token',
+        ApiEndpoints.registerNotificationToken,
         data: {'fcm_token': _fcmToken},
       );
       final prefs = await SharedPreferences.getInstance();
@@ -80,6 +84,8 @@ class FCMService {
       debugPrint('[FCM] Failed to register token with backend: $e');
     }
   }
+
+  Future<void> registerCurrentToken() => _registerTokenWithBackend();
 
   void _setupMessageHandlers() {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

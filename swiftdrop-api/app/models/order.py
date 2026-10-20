@@ -34,12 +34,12 @@ class Order(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), index=True
     )
     order_type: Mapped[str] = mapped_column(
-        Enum("food", "parcel", name="order_type_enum"), nullable=False
+        Enum("food", "parcel", "cosmetics", name="order_type_enum"), nullable=False
     )
     status: Mapped[str] = mapped_column(
         Enum(
             "CREATED", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP",
-            "PICKED_UP", "EN_ROUTE", "DELIVERED", "CANCELLED",
+            "PICKED_UP", "EN_ROUTE", "DELIVERED", "CANCELLED", "DELIVERY_FAILED",
             name="order_status_enum",
         ),
         nullable=False,
@@ -74,6 +74,14 @@ class Order(Base):
     picked_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    vendor_response_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    vendor_responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispatch_offer_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    dispatch_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status_history: Mapped[list | None] = mapped_column(JSONB, default=list)
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, default=dict)
 
@@ -102,6 +110,9 @@ class OrderItem(Base):
     )
     menu_item_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("menu_items.id"), nullable=True, index=True
+    )
+    cosmetic_product_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cosmetics.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

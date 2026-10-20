@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || 'https://swiftdrop-fvcd.onrender.com/api/v1';
 
 async function apiFetch(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('swiftdrop_merchant_token');
+  const token = localStorage.getItem('doorush_merchant_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -27,7 +27,7 @@ export async function signUp(email: string, password: string, phone: string, nam
     body: JSON.stringify({ email, password, phone, name, role: 'merchant' }),
   });
   if (data.access_token) {
-    localStorage.setItem('swiftdrop_merchant_token', data.access_token);
+    localStorage.setItem('doorush_merchant_token', data.access_token);
   }
   return data;
 }
@@ -38,7 +38,7 @@ export async function loginWithEmail(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
   if (data.access_token) {
-    localStorage.setItem('swiftdrop_merchant_token', data.access_token);
+    localStorage.setItem('doorush_merchant_token', data.access_token);
   }
   return data;
 }
@@ -56,17 +56,17 @@ export async function verifyOtp(phone: string, code: string) {
     body: JSON.stringify({ phone, code }),
   });
   if (data.access_token) {
-    localStorage.setItem('swiftdrop_merchant_token', data.access_token);
+    localStorage.setItem('doorush_merchant_token', data.access_token);
   }
   return data;
 }
 
 export function logout() {
-  localStorage.removeItem('swiftdrop_merchant_token');
+  localStorage.removeItem('doorush_merchant_token');
 }
 
 export function isAuthenticated() {
-  return !!localStorage.getItem('swiftdrop_merchant_token');
+  return !!localStorage.getItem('doorush_merchant_token');
 }
 
 // Categories
@@ -217,5 +217,23 @@ export async function getMerchantInfo() {
 export async function completeOnboarding() {
   return apiFetch('/merchants/complete-onboarding', {
     method: 'POST',
+  });
+}
+
+// Banners
+export async function getMerchantBanners() {
+  return apiFetch('/banners/merchant');
+}
+
+export async function createMerchantBanner(banner: any) {
+  return apiFetch('/banners', {
+    method: 'POST',
+    body: JSON.stringify(banner),
+  });
+}
+
+export async function deleteMerchantBanner(id: string) {
+  return apiFetch(`/banners/${id}`, {
+    method: 'DELETE',
   });
 }

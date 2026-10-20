@@ -27,7 +27,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   bool _isOfflineCached = false;
   bool _isSyncing = false;
   int _activeStep = 0;
-  int _zoomLevel = 14;
   Timer? _orderPollTimer;
   Timer? _mapTimer;
   AnimationController? _pulseController;
@@ -60,7 +59,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   bool _showFeedbackModal = false;
   int _restaurantRating = 0;
   int _deliveryRating = 0;
-  List<String> _selectedTags = [];
+  final List<String> _selectedTags = [];
   bool _isFeedbackSubmitted = false;
 
   Future<void> _saveFeedback() async {
@@ -78,7 +77,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
 
   // Step tooltip state
   bool _showStepTooltip = false;
-  int _tooltipStep = 0;
+  final int _tooltipStep = 0;
 
   // 3D view state
   bool _is3DView = false;
@@ -252,9 +251,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Map<String, dynamic> _getStepDetails(int step) {
-    final activeOrder = ref.watch(activeOrderProvider);
-    final apiStatus = activeOrder?.status;
-
     // Calculate ETA from route if available
     String eta = '...';
     if (_routePoints.isNotEmpty && step >= 2) {
@@ -332,31 +328,17 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     });
   }
 
-  void _startCall() {
-    setState(() {
-      _isCalling = true;
-      _callState = 'ringing';
-      _callDuration = 0;
-    });
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _callState = 'connected');
-      _callTimer?.cancel();
-      _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() => _callDuration++);
-      });
-    });
-  }
-
   void _endCall() {
     _callTimer?.cancel();
     setState(() => _callState = 'ended');
     Future.delayed(const Duration(seconds: 1), () {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isCalling = false;
           _callState = null;
           _callDuration = 0;
         });
+      }
     });
   }
 
@@ -379,7 +361,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.map_outlined,
@@ -440,7 +422,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeOrder = ref.watch(activeOrderProvider);
 
-    // No active delivery — show an honest empty state instead of a fake track.
+    // No active delivery â€” show an honest empty state instead of a fake track.
     if (activeOrder == null) {
       return _buildNoActiveOrder(isDark);
     }
@@ -498,12 +480,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF18233c).withOpacity(0.9)
-              : Colors.white.withOpacity(0.9),
+              ? const Color(0xFF18233c).withValues(alpha: 0.9)
+              : Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -519,8 +501,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withOpacity(0.05)
-                        : Colors.black.withOpacity(0.03),
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
@@ -571,13 +553,13 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: _isOfflineCached
-                        ? Colors.amber.shade100.withOpacity(0.8)
-                        : const Color(0xFF10b981).withOpacity(0.12),
+                        ? Colors.amber.shade100.withValues(alpha: 0.8)
+                        : const Color(0xFF10b981).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(30),
                     border: Border.all(
                       color: _isOfflineCached
-                          ? Colors.amber.shade300.withOpacity(0.4)
-                          : AppColors.primary.withOpacity(0.2),
+                          ? Colors.amber.shade300.withValues(alpha: 0.4)
+                          : AppColors.primary.withValues(alpha: 0.2),
                     ),
                   ),
                   child: Row(
@@ -711,7 +693,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
 
   Widget _buildZoomControls(bool isDark) {
     final bgColor =
-        isDark ? Colors.black.withOpacity(0.9) : Colors.white.withOpacity(0.95);
+        isDark ? Colors.black.withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.95);
     return Column(
       children: [
         _buildControlBtn(Icons.add_rounded, bgColor, isDark, () {
@@ -745,12 +727,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         height: 44,
         decoration: BoxDecoration(
           color: isDark
-              ? Colors.black.withOpacity(0.9)
-              : Colors.white.withOpacity(0.95),
+              ? Colors.black.withValues(alpha: 0.9)
+              : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -791,7 +773,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -810,7 +792,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.12),
+        color: AppColors.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -852,11 +834,11 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: _notificationGranted
-              ? const Color(0xFF10b981).withOpacity(0.15)
+              ? const Color(0xFF10b981).withValues(alpha: 0.15)
               : Colors.grey.shade100,
           shape: BoxShape.circle,
           border: _notificationGranted
-              ? Border.all(color: AppColors.primary.withOpacity(0.2))
+              ? Border.all(color: AppColors.primary.withValues(alpha: 0.2))
               : null,
         ),
         child: Stack(
@@ -896,20 +878,20 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isDark
-              ? const Color(0xFF18233c).withOpacity(0.95)
-              : Colors.white.withOpacity(0.95),
+              ? const Color(0xFF18233c).withValues(alpha: 0.95)
+              : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 24,
               offset: const Offset(0, 4),
             ),
           ],
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
-                : Colors.black.withOpacity(0.03),
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.03),
           ),
         ),
         child: Column(
@@ -986,7 +968,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       color: filled
                           ? AppColors.primary
                           : (isDark
-                              ? Colors.white.withOpacity(0.08)
+                              ? Colors.white.withValues(alpha: 0.08)
                               : Colors.grey.shade200),
                       borderRadius: BorderRadius.circular(2),
                     ),
@@ -1006,13 +988,13 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       : isCompleted
                           ? AppColors.primary
                           : (isDark
-                              ? Colors.white.withOpacity(0.05)
+                              ? Colors.white.withValues(alpha: 0.05)
                               : Colors.grey.shade100),
                   shape: BoxShape.circle,
                   boxShadow: isActive
                       ? [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
+                            color: AppColors.primary.withValues(alpha: 0.3),
                             blurRadius: 8,
                           ),
                         ]
@@ -1039,8 +1021,8 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                           width: 32 + (12 * _pulseController!.value),
                           height: 32 + (12 * _pulseController!.value),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(
-                                0.2 * (1.0 - _pulseController!.value)),
+                            color: AppColors.primary.withValues(
+                                alpha: 0.2 * (1.0 - _pulseController!.value)),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -1091,7 +1073,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   Widget _buildCourierInfo(Map<String, dynamic> stepDetails, bool isDark) {
     final activeOrder = ref.watch(activeOrderProvider);
     final restaurantName = activeOrder?.restaurantName ?? 'Restaurant';
-    final riderName = activeOrder?.riderName ?? 'Assigned Rider';
 
     return Row(
       children: [
@@ -1099,7 +1080,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFF10b981).withOpacity(0.1),
+            color: const Color(0xFF10b981).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
@@ -1255,7 +1236,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         border: Border(
           top: BorderSide(
             color:
-                isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
           ),
         ),
       ),
@@ -1303,7 +1284,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.amber.shade300.withOpacity(0.3),
+                            color: Colors.amber.shade300.withValues(alpha: 0.3),
                             blurRadius: 6,
                           ),
                         ],
@@ -1351,7 +1332,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10b981).withOpacity(0.12),
+                        color: const Color(0xFF10b981).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -1389,7 +1370,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.blue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -1439,7 +1420,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
+                        color: Colors.black.withValues(alpha: 0.15),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -1454,7 +1435,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Icon(Icons.delivery_dining_rounded,
@@ -1496,7 +1477,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                               'ETA', '${details['eta']} min', isDark),
                           _buildTooltipStat('Status',
                               _activeStep == 3 ? 'Done' : 'Active', isDark),
-                          _buildTooltipStat('Rating', '4.9 ★', isDark),
+                          _buildTooltipStat('Rating', '4.9 â˜…', isDark),
                         ],
                       ),
                     ],
@@ -1547,7 +1528,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   border: Border(
                     bottom: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.06)
+                          ? Colors.white.withValues(alpha: 0.06)
                           : Colors.grey.shade100,
                     ),
                   ),
@@ -1558,7 +1539,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10b981).withOpacity(0.1),
+                        color: const Color(0xFF10b981).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Stack(
@@ -1618,7 +1599,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.white.withOpacity(0.05)
+                              ? Colors.white.withValues(alpha: 0.05)
                               : Colors.grey.shade100,
                           shape: BoxShape.circle,
                         ),
@@ -1646,12 +1627,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: isDark
-                      ? Colors.black.withOpacity(0.2)
+                      ? Colors.black.withValues(alpha: 0.2)
                       : Colors.grey.shade50,
                   border: Border(
                     top: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.04)
+                          ? Colors.white.withValues(alpha: 0.04)
                           : Colors.grey.shade100,
                     ),
                   ),
@@ -1679,12 +1660,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
                                       color: isDark
-                                          ? Colors.white.withOpacity(0.05)
+                                          ? Colors.white.withValues(alpha: 0.05)
                                           : Colors.grey.shade100,
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.02),
+                                        color: Colors.black.withValues(alpha: 0.02),
                                         blurRadius: 4,
                                       ),
                                     ],
@@ -1711,7 +1692,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   border: Border(
                     top: BorderSide(
                       color: isDark
-                          ? Colors.white.withOpacity(0.06)
+                          ? Colors.white.withValues(alpha: 0.06)
                           : Colors.grey.shade100,
                     ),
                   ),
@@ -1734,13 +1715,13 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                           ),
                           filled: true,
                           fillColor: isDark
-                              ? Colors.black.withOpacity(0.3)
+                              ? Colors.black.withValues(alpha: 0.3)
                               : Colors.grey.shade50,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
                               color: isDark
-                                  ? Colors.white.withOpacity(0.08)
+                                  ? Colors.white.withValues(alpha: 0.08)
                                   : Colors.grey.shade200,
                             ),
                           ),
@@ -1748,7 +1729,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
                               color: isDark
-                                  ? Colors.white.withOpacity(0.08)
+                                  ? Colors.white.withValues(alpha: 0.08)
                                   : Colors.grey.shade200,
                             ),
                           ),
@@ -1828,7 +1809,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               style: GoogleFonts.inter(
                 fontSize: 8,
                 color:
-                    isMe ? Colors.white.withOpacity(0.6) : Colors.grey.shade400,
+                    isMe ? Colors.white.withValues(alpha: 0.6) : Colors.grey.shade400,
               ),
               textAlign: TextAlign.right,
             ),
@@ -1874,7 +1855,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       child: Material(
         color: Colors.transparent,
         child: Container(
-          color: Colors.grey.shade900.withOpacity(0.97),
+          color: Colors.grey.shade900.withValues(alpha: 0.97),
           child: SafeArea(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1918,7 +1899,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.15),
+                        color: Colors.green.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -1990,7 +1971,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       child: GestureDetector(
         onTap: () => setState(() => _showFeedbackModal = false),
         child: Container(
-          color: Colors.black54.withOpacity(0.6),
+          color: Colors.black54.withValues(alpha: 0.6),
           child: GestureDetector(
             onTap: () {},
             child: Center(
@@ -2004,7 +1985,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   borderRadius: BorderRadius.circular(32),
                   border: Border.all(
                     color: isDark
-                        ? Colors.white.withOpacity(0.05)
+                        ? Colors.white.withValues(alpha: 0.05)
                         : Colors.grey.shade100,
                   ),
                 ),
@@ -2035,7 +2016,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         border: Border(
           bottom: BorderSide(
             color:
-                isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
           ),
         ),
       ),
@@ -2045,7 +2026,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             width: 34,
             height: 34,
             decoration: BoxDecoration(
-              color: Colors.amber.shade100.withOpacity(0.8),
+              color: Colors.amber.shade100.withValues(alpha: 0.8),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.star_rounded,
@@ -2082,7 +2063,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withOpacity(0.05)
+                    ? Colors.white.withValues(alpha: 0.05)
                     : Colors.grey.shade100,
                 shape: BoxShape.circle,
               ),
@@ -2150,11 +2131,11 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.black.withOpacity(0.2)
-            : Colors.grey.shade50.withOpacity(0.6),
+            ? Colors.black.withValues(alpha: 0.2)
+            : Colors.grey.shade50.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
         ),
       ),
       child: Column(
@@ -2394,7 +2375,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         border: Border(
           top: BorderSide(
             color:
-                isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade100,
+                isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey.shade100,
           ),
         ),
       ),
@@ -2435,7 +2416,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                           isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                       side: BorderSide(
                         color: isDark
-                            ? Colors.white.withOpacity(0.1)
+                            ? Colors.white.withValues(alpha: 0.1)
                             : Colors.grey.shade200,
                       ),
                       shape: RoundedRectangleBorder(
@@ -2465,7 +2446,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor:
-                          AppColors.primary.withOpacity(0.4),
+                          AppColors.primary.withValues(alpha: 0.4),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -2495,12 +2476,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF18233c).withOpacity(0.95),
+            color: const Color(0xFF18233c).withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 24,
               ),
             ],
@@ -2511,7 +2492,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10b981).withOpacity(0.15),
+                  color: const Color(0xFF10b981).withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.notifications_active_rounded,

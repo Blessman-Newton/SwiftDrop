@@ -14,6 +14,7 @@ from app.models.user import User, RiderProfile
 from app.models.audit import AuditLog
 from app.models.cosmetic import CosmeticProduct
 from app.models.settings import PlatformSetting
+from app.services import order_service
 from app.schemas.admin import (
     AdminDashboardStatsResponse,
     AdminUserResponse,
@@ -28,6 +29,14 @@ from app.schemas.admin import (
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.post("/operations/expire-vendor-orders")
+async def expire_vendor_orders(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin_dep),
+):
+    return {"expired": await order_service.expire_vendor_orders(db)}
 
 
 @router.get("/dashboard", response_model=AdminDashboardStatsResponse)

@@ -5,8 +5,9 @@ import CosmeticsView from './components/CosmeticsView'
 import GasSettingsView from './components/GasSettingsView'
 import KycVerificationView from './components/KycVerificationView'
 import PayoutApprovalView from './components/PayoutApprovalView'
+import BannersView from './components/BannersView'
 
-type View = 'dashboard' | 'users' | 'riders' | 'orders' | 'restaurants' | 'analytics' | 'cosmetics' | 'gas_pricing' | 'kyc' | 'payouts'
+type View = 'dashboard' | 'users' | 'riders' | 'orders' | 'restaurants' | 'analytics' | 'cosmetics' | 'gas_pricing' | 'kyc' | 'payouts' | 'banners'
 
 const STATUS_COLORS: Record<string, string> = {
   CREATED: 'bg-yellow-100 text-yellow-800',
@@ -118,7 +119,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     <div className="min-h-screen bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">SwiftDrop</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Doorush</h1>
           <p className="text-gray-500 mt-2">Admin Dashboard</p>
         </div>
 
@@ -143,7 +144,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@swiftdrop.com"
+                placeholder="admin@doorush.com"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
               />
             </div>
@@ -255,12 +256,13 @@ function Sidebar({ view, setView }: { view: View; setView: (v: View) => void }) 
     { key: 'analytics', label: 'Analytics', icon: '📈' },
     { key: 'kyc', label: 'KYC Verification', icon: '🛡️' },
     { key: 'payouts', label: 'Payouts', icon: '💸' },
+    { key: 'banners', label: 'Banners', icon: '📢' },
   ]
 
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen p-4">
       <div className="px-4 py-6 border-b border-gray-700 mb-4">
-        <h1 className="text-xl font-bold">SwiftDrop</h1>
+        <h1 className="text-xl font-bold">Doorush</h1>
         <p className="text-xs text-gray-400 mt-1">Admin Panel</p>
       </div>
       <nav className="space-y-1">
@@ -916,6 +918,7 @@ export default function App() {
         {view === 'analytics' && <AnalyticsView token={token} />}
         {view === 'kyc' && <KycVerificationView />}
         {view === 'payouts' && <PayoutApprovalView />}
+        {view === 'banners' && <BannersView />}
       </main>
     </div>
   )

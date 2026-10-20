@@ -33,7 +33,7 @@ class SupportTicket(Base):
         default="medium",
     )
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"))
-    messages: Mapped[dict | None] = mapped_column(JSONB, default=list)
+    messages: Mapped[list[dict] | None] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

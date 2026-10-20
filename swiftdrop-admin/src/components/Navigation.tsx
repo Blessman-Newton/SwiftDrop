@@ -34,7 +34,7 @@ export default function Navigation({ activeScreen, setActiveScreen, isDarkMode }
         {/* Brand Header */}
         <div className="mb-8 px-2">
           <div className="flex items-center gap-2">
-            <span className="font-extrabold text-2xl text-primary tracking-tight">SwiftDrop</span>
+            <span className="font-extrabold text-2xl text-primary tracking-tight">Doorush</span>
             <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
               Lead
             </span>

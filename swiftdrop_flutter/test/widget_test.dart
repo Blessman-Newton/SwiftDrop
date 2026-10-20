@@ -8,11 +8,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:swiftdrop/app_bootstrap.dart';
 import 'package:swiftdrop/main.dart';
 import 'package:swiftdrop/models/models.dart';
+import 'package:swiftdrop/providers/auth_provider.dart';
 import 'package:swiftdrop/screens/auth_screen.dart';
 import 'package:swiftdrop/screens/onboarding_screen.dart';
 import 'package:swiftdrop/screens/orders_screen.dart';
 import 'package:swiftdrop/screens/splash_screen.dart';
 import 'package:swiftdrop/services/api_client.dart';
+import 'package:swiftdrop/services/auth_service.dart';
 import 'package:swiftdrop/services/secure_session_store.dart';
 import 'package:swiftdrop/widgets/main_scaffold.dart';
 
@@ -56,7 +58,14 @@ Future<void> pumpApp(
   WidgetTester tester, {
   Duration span = const Duration(seconds: 1),
 }) async {
-  await tester.pumpWidget(const ProviderScope(child: DoorushApp()));
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        authServiceProvider.overrideWithValue(AuthService.test()),
+      ],
+      child: const DoorushApp(),
+    ),
+  );
   await tester.pump();
   await tester.pump(span);
   await tester.pump(span);

@@ -24,7 +24,15 @@ class Payment(Base):
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="GHS")
     status: Mapped[str] = mapped_column(
-        Enum("pending", "success", "failed", "refunded", name="payment_transaction_status_enum"),
+        Enum(
+            "pending",
+            "success",
+            "failed",
+            "refunded",
+            "superseded",
+            "ambiguous",
+            name="payment_transaction_status_enum",
+        ),
         nullable=False,
         default="pending",
     )

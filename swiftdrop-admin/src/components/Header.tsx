@@ -29,12 +29,12 @@ export default function Header({ activeScreen, isDarkMode, toggleDarkMode, userE
   const getScreenTitle = () => {
     switch (activeScreen) {
       case 'fleet': return 'Fleet Monitoring';
-      case 'dashboard': return 'SwiftDrop Dashboard';
+      case 'dashboard': return 'Doorush Dashboard';
       case 'cosmetics': return 'Cosmetics Inventory';
       case 'wallet': return 'Financial Reports';
       case 'reports': return 'System Analytics';
       case 'security': return 'Audit & Security';
-      default: return 'SwiftDrop';
+      default: return 'Doorush';
     }
   };
 
@@ -171,7 +171,7 @@ export default function Header({ activeScreen, isDarkMode, toggleDarkMode, userE
                 </div>
                 <div className="mt-2.5 flex items-center gap-1 bg-primary/10 rounded-lg p-1.5 text-[10px] font-bold text-primary">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>SwiftDrop Enterprise Admin v1.0.2</span>
+                  <span>Doorush Enterprise Admin v1.0.2</span>
                 </div>
               </div>
 

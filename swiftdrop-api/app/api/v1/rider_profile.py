@@ -184,7 +184,15 @@ async def update_delivery_status(
         if expected_pin and expected_pin != request.delivery_pin:
             raise HTTPException(status_code=400, detail="Invalid delivery PIN code. Verification failed.")
 
-    order.status = new_status
+    from app.services.order_service import transition_order
+    await transition_order(
+        db,
+        order.id,
+        new_status,
+        actor=current_user,
+        reason=f"rider_{request.status}",
+    )
+    await db.refresh(order)
 
     # Store rider GPS location if provided
     if request.latitude is not None and request.longitude is not None:
@@ -195,10 +203,6 @@ async def update_delivery_status(
             profile.last_lng = request.longitude
 
     now = datetime.now(timezone.utc)
-    if new_status == "DELIVERED":
-        order.delivered_at = now
-    elif new_status == "PICKED_UP":
-        order.picked_up_at = now
 
     rider_result = await db.execute(select(User).where(User.id == current_user.id))
     rider = rider_result.scalar_one_or_none()

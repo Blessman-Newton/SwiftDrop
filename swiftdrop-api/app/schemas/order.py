@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 class OrderItemCreate(BaseModel):
     menu_item_id: str | None = None
+    cosmetic_product_id: str | None = None
     name: str = Field(..., max_length=200)
     quantity: int = Field(1, ge=1)
     price: float = Field(..., gt=0)
@@ -21,7 +22,7 @@ class OrderItemResponse(BaseModel):
 
 
 class CreateOrderRequest(BaseModel):
-    order_type: str = Field(..., pattern=r"^(food|parcel)$")
+    order_type: str = Field(..., pattern=r"^(food|parcel|cosmetics)$")
     restaurant_name: str | None = None
     pickup_address: str = Field(..., min_length=1)
     pickup_lat: float | None = None
@@ -35,7 +36,7 @@ class CreateOrderRequest(BaseModel):
     discount: float = Field(0, ge=0)
     total: float = Field(..., gt=0)
     promo_code: str | None = None
-    items: list[OrderItemCreate] = []
+    items: list[OrderItemCreate] = Field(default_factory=list)
     metadata: dict | None = None
     idempotency_key: str = Field(..., min_length=16, max_length=100)
 

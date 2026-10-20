@@ -484,22 +484,31 @@ async def update_order_status(
         "declined": "CANCELLED",
     }
     new_status = status_map.get(request.status, request.status.upper())
-    order.status = new_status
+    from app.services.order_service import update_order_status as transition_order_status
+    await transition_order_status(
+        db,
+        order.id,
+        new_status,
+        actor=current_user,
+        reason=f"merchant_{request.status}",
+    )
+    refreshed = await db.execute(
+        select(Order)
+        .options(
+            selectinload(Order.items),
+            selectinload(Order.customer),
+            selectinload(Order.rider).selectinload(User.rider_profile),
+        )
+        .where(Order.id == order.id)
+    )
+    order = refreshed.scalar_one()
 
-    now = datetime.now(timezone.utc)
-    if new_status == "CONFIRMED":
-        order.confirmed_at = now
-    elif new_status == "PREPARING":
-        order.preparing_at = now
+    if new_status == "PREPARING":
         from app.services.dispatch_service import auto_match_rider
         try:
             await auto_match_rider(db, order.id)
         except Exception:
             pass
-    elif new_status == "DELIVERED":
-        order.delivered_at = now
-    elif new_status == "CANCELLED":
-        order.cancelled_at = now
 
     await db.flush()
 
