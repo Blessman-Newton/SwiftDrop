@@ -139,4 +139,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(prices),
     }),
+
+  // Banners
+  getAdminBanners: () => request<any[]>('/banners/admin'),
+  approveAdminBanner: (id: string) => request<any>(`/banners/${id}/approve`, { method: 'PUT' }),
+  deleteAdminBanner: (id: string) => request<any>(`/banners/${id}`, { method: 'DELETE' }),
+  createAdminBanner: (body: any) => request<any>('/banners', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
 }

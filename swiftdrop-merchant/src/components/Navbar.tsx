@@ -32,7 +32,7 @@ export default function Navbar({ darkMode, onToggleDarkMode, onNavigate, activeV
               onClick={() => onNavigate("dashboard")}
               className="text-left font-display text-lg font-bold tracking-tight text-primary transition-opacity hover:opacity-90 dark:text-primary"
             >
-              SwiftDrop <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-primary-container/20 text-primary-container dark:text-primary/90 ml-1">Merchant</span>
+              Doorush <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-primary-container/20 text-primary-container dark:text-primary/90 ml-1">Merchant</span>
             </button>
             <span className="text-[10px] text-on-surface-variant font-medium">{chefName} • {restaurantName}</span>
           </div>

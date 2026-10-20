@@ -7,6 +7,7 @@ import AnalyticsView from "./components/AnalyticsView";
 import WalletView from "./components/WalletView";
 import OnboardingView from "./components/OnboardingView";
 import SettingsView from "./components/SettingsView";
+import MerchantBannersView from "./components/MerchantBannersView";
 import type { OnboardingData } from "./components/OnboardingView";
 
 import { MenuItem, Order, OrderStatus, Category, Restaurant } from "./types";
@@ -55,7 +56,7 @@ function playNewOrderSound() {
 }
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics" | "wallet" | "settings">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "orders" | "menu" | "analytics" | "wallet" | "settings" | "banners">("dashboard");
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("swift_drop_dark_mode");
     return saved === "true";
@@ -114,7 +115,7 @@ export default function App() {
         }
 
         // Check onboarding status from localStorage
-        const onboardingData = localStorage.getItem('swiftdrop_merchant_onboarding');
+        const onboardingData = localStorage.getItem('doorush_merchant_onboarding');
         let onboardingCompleted = false;
         if (onboardingData) {
           try {
@@ -235,17 +236,17 @@ export default function App() {
   // Flashing page title when there are new orders pending acceptance
   useEffect(() => {
     if (newOrdersCount === 0) {
-      document.title = "SwiftDrop Merchant Panel";
+      document.title = "Doorush Merchant Panel";
       return;
     }
     let isFlash = false;
     const flashInterval = setInterval(() => {
-      document.title = isFlash ? `🔔 (${newOrdersCount}) New Order!` : "SwiftDrop Merchant Panel";
+      document.title = isFlash ? `🔔 (${newOrdersCount}) New Order!` : "Doorush Merchant Panel";
       isFlash = !isFlash;
     }, 1000);
     return () => {
       clearInterval(flashInterval);
-      document.title = "SwiftDrop Merchant Panel";
+      document.title = "Doorush Merchant Panel";
     };
   }, [newOrdersCount]);
 
@@ -407,7 +408,7 @@ export default function App() {
     setAuthError("");
     try {
       const res = await api.loginWithEmail(authEmail, authPassword);
-      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+      localStorage.setItem('doorush_merchant_onboarding', JSON.stringify({
         completed: res.user.onboarding_completed
       }));
       setIsLoggedIn(true);
@@ -431,7 +432,7 @@ export default function App() {
     setAuthError("");
     try {
       const res = await api.signUp(authEmail, authPassword, authPhone, authName || undefined);
-      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+      localStorage.setItem('doorush_merchant_onboarding', JSON.stringify({
         completed: res.user.onboarding_completed
       }));
       setIsLoggedIn(true);
@@ -463,7 +464,7 @@ export default function App() {
     setAuthError("");
     try {
       const res = await api.verifyOtp(authPhone, authCode);
-      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+      localStorage.setItem('doorush_merchant_onboarding', JSON.stringify({
         completed: res.user.onboarding_completed
       }));
       setIsLoggedIn(true);
@@ -486,7 +487,7 @@ export default function App() {
 
   const handleLogout = () => {
     api.logout();
-    localStorage.removeItem('swiftdrop_merchant_onboarding');
+    localStorage.removeItem('doorush_merchant_onboarding');
     setIsLoggedIn(false);
     setAuthEmail("");
     setAuthPassword("");
@@ -536,7 +537,7 @@ export default function App() {
       await api.completeOnboarding();
       
       // Update localStorage
-      localStorage.setItem('swiftdrop_merchant_onboarding', JSON.stringify({
+      localStorage.setItem('doorush_merchant_onboarding', JSON.stringify({
         completed: true
       }));
       
@@ -586,6 +587,8 @@ export default function App() {
         return <AnalyticsView menuItems={menuItems} dashboardStats={dashboardStats} />;
       case "wallet":
         return <WalletView />;
+      case "banners":
+        return <MerchantBannersView />;
       case "settings":
         return restaurant ? (
           <SettingsView
@@ -614,6 +617,7 @@ export default function App() {
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "orders", label: "Orders", icon: ClipboardList },
     { id: "menu", label: "Menu", icon: Utensils },
+    { id: "banners", label: "Banners", icon: Sparkles },
     { id: "analytics", label: "Analytics", icon: TrendingUp },
     { id: "wallet", label: "Wallet", icon: Wallet },
     { id: "settings", label: "Settings", icon: Settings },
@@ -629,7 +633,7 @@ export default function App() {
               <Utensils className="h-6 w-6 text-on-primary" />
             </div>
             <div>
-              <h1 className="font-display font-extrabold text-lg text-primary">SwiftDrop</h1>
+              <h1 className="font-display font-extrabold text-lg text-primary">Doorush</h1>
               <p className="text-xs text-on-surface-variant">Merchant Portal</p>
             </div>
           </div>
@@ -787,7 +791,7 @@ export default function App() {
       <div className="bg-surface-container-high border-b border-outline-variant/30 px-5 py-2.5 flex flex-wrap justify-between items-center gap-3 text-xs font-bold dark:bg-surface-container-highest">
         <div className="flex items-center gap-2 text-primary">
           <Sparkles className="h-4 w-4 shrink-0" />
-          <span>Interactive SwiftDrop Merchant Portal (React 19)</span>
+          <span>Interactive Doorush Merchant Portal (React 19)</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -951,7 +955,7 @@ export default function App() {
                         <span className="text-xs font-bold text-primary">M</span>
                       )}
                     </div>
-                    <span className="font-display font-extrabold text-sm text-primary">SwiftDrop</span>
+                    <span className="font-display font-extrabold text-sm text-primary">Doorush</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button 
