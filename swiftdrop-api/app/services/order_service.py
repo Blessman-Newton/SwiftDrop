@@ -2,11 +2,13 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
+from app.core.exceptions import BadRequestException, ConflictException, ForbiddenException, NotFoundException
 from app.models.order import Order, OrderItem
+from app.models.restaurant import MenuItem, Restaurant
 from app.models.user import User
 from app.schemas.order import CreateOrderRequest, OrderResponse
 from app.config import get_settings
@@ -37,6 +39,59 @@ def _validate_transition(current_status: str, new_status: str) -> None:
 async def create_order(
     db: AsyncSession, customer_id: UUID, request: CreateOrderRequest
 ) -> OrderResponse:
+    existing = await db.execute(
+        select(Order).options(
+            selectinload(Order.items),
+            selectinload(Order.rider).selectinload(User.rider_profile),
+        ).where(
+            Order.customer_id == customer_id,
+            Order.idempotency_key == request.idempotency_key,
+        )
+    )
+    existing_order = existing.scalar_one_or_none()
+    if existing_order:
+        if existing_order.status == "CANCELLED":
+            raise ConflictException("This order request was already cancelled")
+        return _order_to_response(existing_order)
+
+    if request.order_type == "food":
+        if not request.items:
+            raise BadRequestException("Food orders must contain at least one item")
+        restaurant_query = select(Restaurant).where(
+            Restaurant.name == request.restaurant_name,
+            Restaurant.is_active.is_(True),
+        )
+        restaurant = (await db.execute(restaurant_query)).scalar_one_or_none()
+        if not restaurant:
+            raise BadRequestException("Restaurant is unavailable")
+        menu_ids = [item.menu_item_id for item in request.items]
+        if any(not item_id for item_id in menu_ids):
+            raise BadRequestException("Food items must include menu item IDs")
+        menu_result = await db.execute(
+            select(MenuItem).where(
+                MenuItem.restaurant_id == restaurant.id,
+                MenuItem.id.in_(menu_ids),
+                MenuItem.is_available.is_(True),
+            )
+        )
+        menu_by_id = {str(item.id): item for item in menu_result.scalars().all()}
+        if len(menu_by_id) != len(set(menu_ids)):
+            raise BadRequestException("One or more food items are unavailable")
+        subtotal = round(
+            sum(float(menu_by_id[item.menu_item_id].price) * item.quantity for item in request.items),
+            2,
+        )
+        delivery_fee = round(float(restaurant.delivery_fee), 2)
+        tax = round(subtotal * 0.0, 2)
+        discount = 0.0
+        total = round(subtotal + delivery_fee + tax - discount, 2)
+    else:
+        subtotal = request.subtotal
+        delivery_fee = request.delivery_fee
+        tax = request.tax
+        discount = request.discount
+        total = request.total
+
     import random
     delivery_pin = "".join([str(random.randint(0, 9)) for _ in range(4)])
     order = Order(
@@ -49,26 +104,48 @@ async def create_order(
         delivery_address=request.delivery_address,
         delivery_lat=request.delivery_lat,
         delivery_lng=request.delivery_lng,
-        subtotal=request.subtotal,
-        delivery_fee=request.delivery_fee,
-        tax=request.tax,
-        discount=request.discount,
-        total=request.total,
+        subtotal=subtotal,
+        delivery_fee=delivery_fee,
+        tax=tax,
+        discount=discount,
+        total=total,
         promo_code=request.promo_code,
+        idempotency_key=request.idempotency_key,
         status="CREATED",
         delivery_pin=delivery_pin,
-        metadata_={"delivery_pin": delivery_pin},
+        metadata_={"delivery_pin": delivery_pin, **(request.metadata or {})},
     )
     db.add(order)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        duplicate_result = await db.execute(
+            select(Order).options(
+                selectinload(Order.items),
+                selectinload(Order.rider).selectinload(User.rider_profile),
+            ).where(
+                Order.customer_id == customer_id,
+                Order.idempotency_key == request.idempotency_key,
+            )
+        )
+        duplicate_order = duplicate_result.scalar_one_or_none()
+        if duplicate_order:
+            return _order_to_response(duplicate_order)
+        raise
 
     order_items = []
     for item in request.items:
         order_item = OrderItem(
             order_id=order.id,
+            menu_item_id=UUID(item.menu_item_id) if item.menu_item_id else None,
             name=item.name,
             quantity=item.quantity,
-            price=item.price,
+            price=(
+                float(menu_by_id[item.menu_item_id].price)
+                if request.order_type == "food" and item.menu_item_id
+                else item.price
+            ),
             notes=item.notes,
         )
         db.add(order_item)
@@ -106,13 +183,16 @@ async def list_orders(
     return [_order_to_response(o) for o in orders]
 
 
-async def get_order(db: AsyncSession, order_id: UUID) -> OrderResponse:
-    result = await db.execute(
-        select(Order).options(
-            selectinload(Order.items),
-            selectinload(Order.rider).selectinload(User.rider_profile)
-        ).where(Order.id == order_id)
-    )
+async def get_order(
+    db: AsyncSession, order_id: UUID, customer_id: UUID | None = None
+) -> OrderResponse:
+    query = select(Order).options(
+        selectinload(Order.items),
+        selectinload(Order.rider).selectinload(User.rider_profile),
+    ).where(Order.id == order_id)
+    if customer_id:
+        query = query.where(Order.customer_id == customer_id)
+    result = await db.execute(query)
     order = result.scalar_one_or_none()
     if not order:
         raise NotFoundException("Order not found")

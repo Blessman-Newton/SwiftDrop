@@ -46,5 +46,5 @@ def send_sms(phone: str, message: str) -> tuple[bool, str]:
 
 
 def send_otp_sms(phone: str, code: str) -> tuple[bool, str]:
-    message = f"Your SwiftDrop verification code is {code}. Valid for 5 minutes. Do not share this code."
+    message = f"Your Doorush verification code is {code}. Valid for 5 minutes. Do not share this code."
     return send_sms(phone, message)

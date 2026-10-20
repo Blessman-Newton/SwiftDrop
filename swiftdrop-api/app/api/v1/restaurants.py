@@ -65,6 +65,41 @@ async def list_restaurants(
     return response
 
 
+@router.get("/menus/recommended")
+async def get_recommended_menus(
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(MenuItem)
+        .join(Restaurant, Restaurant.id == MenuItem.restaurant_id)
+        .options(selectinload(MenuItem.category))
+        .where(
+            Restaurant.is_active == True,
+            MenuItem.is_available == True,
+        )
+        .order_by(MenuItem.rating.desc())
+    )
+    items = result.scalars().all()
+    return [
+        {
+            "restaurant_id": str(item.restaurant_id),
+            "id": str(item.id),
+            "name": item.name,
+            "description": item.description,
+            "price": float(item.price),
+            "image_url": item.image_url,
+            "category_id": str(item.category_id) if item.category_id else None,
+            "category_name": item.category.name if item.category else None,
+            "is_available": item.is_available,
+            "is_vegetarian": item.is_vegetarian,
+            "is_spicy": item.is_spicy,
+            "rating": float(item.rating),
+            "tags": item.tags or [],
+        }
+        for item in items
+    ]
+
+
 @router.get("/{restaurant_id}", response_model=RestaurantResponse)
 async def get_restaurant(
     restaurant_id: str,

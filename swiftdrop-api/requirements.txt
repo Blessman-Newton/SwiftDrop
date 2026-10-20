@@ -13,3 +13,4 @@ redis==5.2.1
 aiofiles==24.1.0
 python-multipart==0.0.20
 twilio==9.4.5
+firebase-admin==6.6.0

@@ -7,9 +7,11 @@ from app.core.database import get_db
 from app.models.user import User
 from app.schemas.auth import (
     EmailLoginRequest,
+    PhoneLoginRequest,
     SendOTPRequest,
     SendOTPResponse,
     SignUpRequest,
+    SocialLoginRequest,
     TokenResponse,
     UserResponse,
     VerifyOTPRequest,
@@ -28,7 +30,27 @@ async def signup(request: SignUpRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: EmailLoginRequest, db: AsyncSession = Depends(get_db)):
-    return await auth_service.login_with_email(db, request.email, request.password)
+    return await auth_service.login_with_email(
+        db, request.email, request.password, request.firebase_uid, request.id_token
+    )
+
+
+@router.post("/phone-login", response_model=TokenResponse)
+async def phone_login(request: PhoneLoginRequest, db: AsyncSession = Depends(get_db)):
+    return await auth_service.login_with_phone_password(db, request.phone, request.password)
+
+
+@router.post("/social-login", response_model=TokenResponse)
+async def social_login(request: SocialLoginRequest, db: AsyncSession = Depends(get_db)):
+    return await auth_service.social_login(
+        db,
+        request.provider,
+        request.id_token,
+        request.firebase_uid,
+        request.email,
+        request.name,
+        request.photo_url,
+    )
 
 
 @router.post("/send-otp", response_model=SendOTPResponse)

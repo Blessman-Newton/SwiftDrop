@@ -491,6 +491,11 @@ async def update_order_status(
         order.confirmed_at = now
     elif new_status == "PREPARING":
         order.preparing_at = now
+        from app.services.dispatch_service import auto_match_rider
+        try:
+            await auto_match_rider(db, order.id)
+        except Exception:
+            pass
     elif new_status == "DELIVERED":
         order.delivered_at = now
     elif new_status == "CANCELLED":

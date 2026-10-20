@@ -23,6 +23,45 @@ async def run_migrations() -> list[str]:
     migrations_done: list[str] = []
 
     async with engine.begin() as conn:
+        # --- orders idempotency and order_items menu references ---
+        r = await conn.execute(text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'orders' AND column_name = 'idempotency_key'
+        """))
+        if not r.fetchone():
+            await conn.execute(text("""
+                ALTER TABLE orders ADD COLUMN idempotency_key VARCHAR(100)
+            """))
+            migrations_done.append("order_idempotency_key")
+        await conn.execute(text("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_customer_idempotency
+            ON orders (customer_id, idempotency_key)
+            WHERE idempotency_key IS NOT NULL
+        """))
+
+        r = await conn.execute(text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'order_items' AND column_name = 'menu_item_id'
+        """))
+        if not r.fetchone():
+            await conn.execute(text("""
+                ALTER TABLE order_items ADD COLUMN menu_item_id UUID
+            """))
+            migrations_done.append("order_item_menu_item_id")
+        await conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'fk_order_items_menu_item_id'
+                ) THEN
+                    ALTER TABLE order_items
+                    ADD CONSTRAINT fk_order_items_menu_item_id
+                    FOREIGN KEY (menu_item_id) REFERENCES menu_items(id);
+                END IF;
+            END $$;
+        """))
+
         # --- users.password_hash ---
         r = await conn.execute(text("""
             SELECT column_name FROM information_schema.columns
@@ -338,4 +377,4 @@ async def force_promote(
 @router.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "app": "SwiftDrop API"}
+    return {"status": "healthy", "app": "Doorush API"}

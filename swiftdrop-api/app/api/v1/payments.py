@@ -26,7 +26,9 @@ async def initialize_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dep),
 ):
-    return await payment_service.initialize_payment(db, request, settings.APP_BASE_URL)
+    return await payment_service.initialize_payment(
+        db, request, settings.APP_BASE_URL, current_user.id
+    )
 
 
 @router.post("/webhook")
@@ -59,13 +61,14 @@ async def verify_payment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dep),
 ):
-    return await payment_service.verify_payment(db, reference)
+    return await payment_service.verify_payment(db, reference, current_user.id)
 
 
 @router.post("/mock-callback/{order_id}")
 async def mock_pay_for_me_callback(
     order_id: str,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
 ):
     # Guard against mock callback abuse in production
     if settings.APP_ENV == "production":
@@ -78,7 +81,9 @@ async def mock_pay_for_me_callback(
     from datetime import datetime, timezone
     from sqlalchemy import select
 
-    result = await db.execute(select(Order).where(Order.id == order_id))
+    result = await db.execute(
+        select(Order).where(Order.id == order_id, Order.customer_id == current_user.id)
+    )
     order = result.scalar_one_or_none()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")

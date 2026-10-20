@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +16,21 @@ from app.schemas.notification import (
 )
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+
+class TokenRegistrationRequest(BaseModel):
+    fcm_token: str
+
+
+@router.post("/register-token")
+async def register_fcm_token(
+    request: TokenRegistrationRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
+):
+    current_user.fcm_token = request.fcm_token
+    await db.flush()
+    return {"message": "FCM token registered successfully"}
 
 
 @router.get("", response_model=NotificationListResponse)

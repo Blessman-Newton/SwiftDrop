@@ -36,7 +36,7 @@ async def get_order(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_dep),
 ):
-    return await order_service.get_order(db, order_id)
+    return await order_service.get_order(db, order_id, current_user.id)
 
 
 @router.patch("/{order_id}/cancel", response_model=OrderResponse)
@@ -52,14 +52,15 @@ async def cancel_order(
 async def public_tracking_page(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
 ):
-    order = await order_service.get_order(db, order_id)
+    order = await order_service.get_order(db, order_id, current_user.id)
     
     html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>SwiftDrop Live Tracking</title>
+        <title>Doorush Live Tracking</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -102,7 +103,7 @@ async def public_tracking_page(
             let riderMarker = null;
 
             function pollLocation() {{
-                fetch(`/api/v1/orders/{order.id}/public-status`)
+                fetch(`/api/v1/orders/{order.id}/tracking/status`)
                     .then(res => res.json())
                     .then(data => {{
                         document.querySelector('.status').innerText = data.status;
@@ -132,15 +133,15 @@ async def public_tracking_page(
     return HTMLResponse(content=html_content)
 
 
-@router.get("/{order_id}/public-status")
+@router.get("/{order_id}/tracking/status")
 async def get_public_status(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user_dep),
 ):
-    order = await order_service.get_order(db, order_id)
+    order = await order_service.get_order(db, order_id, current_user.id)
     return {
         "status": order.status,
         "rider_lat": order.rider_lat,
         "rider_lng": order.rider_lng,
     }
-

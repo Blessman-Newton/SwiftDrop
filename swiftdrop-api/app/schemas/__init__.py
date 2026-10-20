@@ -38,8 +38,11 @@ from app.schemas.admin import (
 )
 from app.schemas.rider import RiderProfileResponse
 from app.schemas.category import CategoryResponse, CategoryCreateRequest, CategoryUpdateRequest
+from app.schemas.banner import BannerCreate, BannerResponse
 
 __all__ = [
+    "BannerCreate",
+    "BannerResponse",
     "SendOTPRequest",
     "SendOTPResponse",
     "VerifyOTPRequest",

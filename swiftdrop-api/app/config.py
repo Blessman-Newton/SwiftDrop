@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     # App
-    APP_NAME: str = "SwiftDrop"
+    APP_NAME: str = "Doorush"
     APP_ENV: str = "development"
     APP_BASE_URL: str = "http://localhost:8000"
 
@@ -33,7 +33,8 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET: str = "change-me-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_EXPIRY_MINUTES: int = 1440
+    # Sessions last ~30 days so users stay signed in across app restarts.
+    JWT_EXPIRY_MINUTES: int = 43200  # 30 days
 
     @model_validator(mode='after')
     def validate_jwt_secret(self) -> 'Settings':
@@ -50,6 +51,10 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str = ""
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_FROM_NUMBER: str = ""
+
+    # Firebase Admin SDK
+    FIREBASE_CREDENTIALS_PATH: str = ""
+    FIREBASE_CREDENTIALS_JSON: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

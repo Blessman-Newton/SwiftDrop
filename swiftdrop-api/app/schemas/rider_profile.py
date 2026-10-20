@@ -58,6 +58,10 @@ class RiderActiveDeliveryResponse(BaseModel):
     customer_phone: str | None = None
     delivery_notes: str | None = None
     created_at: datetime
+    pickup_lat: float | None = None
+    pickup_lng: float | None = None
+    delivery_lat: float | None = None
+    delivery_lng: float | None = None
 
     model_config = {"from_attributes": True}
 
