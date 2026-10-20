@@ -181,6 +181,17 @@ async def run_migrations() -> list[str]:
             """))
             migrations_done.append("onboarding_completed")
 
+        # --- users.fcm_token ---
+        r = await conn.execute(text("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'users' AND column_name = 'fcm_token'
+        """))
+        if not r.fetchone():
+            await conn.execute(text("""
+                ALTER TABLE users ADD COLUMN fcm_token TEXT
+            """))
+            migrations_done.append("fcm_token")
+
         # --- rider_profiles.last_lat / last_lng ---
         r = await conn.execute(text("""
             SELECT column_name FROM information_schema.columns
