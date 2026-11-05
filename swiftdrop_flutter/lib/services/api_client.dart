@@ -110,7 +110,9 @@ class ApiClient {
       path.contains('/auth/login') ||
       path.contains('/auth/signup') ||
       path.contains('/auth/verify-otp') ||
-      path.contains('/auth/send-otp');
+      path.contains('/auth/send-otp') ||
+      path.contains('/auth/social-login') ||
+      path.contains('/auth/phone-login');
 
   /// Re-checks the token with the server before deciding that a session is
   /// over, so a single bad response never silently logs the user out.

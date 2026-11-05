@@ -215,13 +215,7 @@ class _MoMoPaymentScreenState extends State<MoMoPaymentScreen> {
                   color: isSelected ? AppColors.primary : const Color(0xFFE5E7EB),
                   width: isSelected ? 2 : 1,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color.fromRGBO(0, 0, 0, 0.03),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Row(
                 children: [
@@ -293,13 +287,7 @@ class _MoMoPaymentScreenState extends State<MoMoPaymentScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: TextField(
             controller: _phoneController,
@@ -367,13 +355,7 @@ class _MoMoPaymentScreenState extends State<MoMoPaymentScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.03),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: TextField(
             controller: _nameController,
@@ -452,13 +434,7 @@ class _MoMoPaymentScreenState extends State<MoMoPaymentScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.08),
-            blurRadius: 20,
-            offset: Offset(0, -5),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: SafeArea(
         top: false,
@@ -467,17 +443,9 @@ class _MoMoPaymentScreenState extends State<MoMoPaymentScreen> {
           height: 56,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF006C49), Color(0xFF10B981)],
-              ),
+              color: const Color(0xFF006C49),
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color.fromRGBO(0, 108, 73, 0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow: const [],
             ),
             child: ElevatedButton(
               onPressed: _savePaymentMethod,

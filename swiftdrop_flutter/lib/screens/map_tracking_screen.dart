@@ -483,13 +483,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ? const Color(0xFF18233c).withValues(alpha: 0.9)
               : Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           children: [
@@ -652,12 +646,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 6,
-                            offset: Offset(0, 3)),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: const Icon(Icons.local_shipping,
                         color: Colors.white, size: 20),
@@ -673,12 +662,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       color: Colors.red,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 6,
-                            offset: Offset(0, 3)),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: const Icon(Icons.location_on,
                         color: Colors.white, size: 22),
@@ -730,13 +714,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ? Colors.black.withValues(alpha: 0.9)
               : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -771,13 +749,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(
           icon,
@@ -881,13 +853,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ? const Color(0xFF18233c).withValues(alpha: 0.95)
               : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 24,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
           border: Border.all(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.05)
@@ -991,14 +957,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                               ? Colors.white.withValues(alpha: 0.05)
                               : Colors.grey.shade100),
                   shape: BoxShape.circle,
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                          ),
-                        ]
-                      : null,
+                  boxShadow: const [],
                 ),
                 child: Icon(
                   isCompleted ? Icons.check_rounded : icons[stepIdx],
@@ -1151,17 +1110,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-        ),
+        color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Row(
         children: [
@@ -1204,12 +1155,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                ),
-              ],
+              boxShadow: const [],
             ),
             child: Text(
               pin,
@@ -1282,12 +1228,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       decoration: BoxDecoration(
                         color: Colors.amber.shade500,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.shade300.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                          ),
-                        ],
+                        boxShadow: const [],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1418,13 +1359,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF18233c) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    boxShadow: const [],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1663,12 +1598,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                                           ? Colors.white.withValues(alpha: 0.05)
                                           : Colors.grey.shade100,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.02),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
+                                    boxShadow: const [],
                                   ),
                                   child: Text(
                                     p,
@@ -2479,12 +2409,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             color: const Color(0xFF18233c).withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 24,
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Row(
             children: [

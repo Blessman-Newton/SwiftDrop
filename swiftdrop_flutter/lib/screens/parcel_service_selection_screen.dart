@@ -73,13 +73,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.05),
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: Column(
                       children: [
@@ -175,13 +169,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             decoration: const BoxDecoration(
               color: Color(0xFFF4FBF4),
-              boxShadow: [
-                BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.05),
-                  blurRadius: 30,
-                  offset: Offset(0, -10),
-                ),
-              ],
+              boxShadow: const [],
             ),
             child: SafeArea(
               top: false,
@@ -204,8 +192,8 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 8,
-                    shadowColor: const Color(0xFF006C49).withValues(alpha: 0.3),
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -308,21 +296,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
             color: isActive ? const Color(0xFF10B981) : const Color(0xFFE3EAE3),
             width: 1,
           ),
-          boxShadow: isActive
-              ? [
-                  const BoxShadow(
-                    color: Color.fromRGBO(16, 185, 129, 0.15),
-                    blurRadius: 20,
-                    offset: Offset(0, 4),
-                  ),
-                ]
-              : const [
-                  BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.03),
-                    blurRadius: 5,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+          boxShadow: const [],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,13 +471,7 @@ class _ParcelServiceSelectionScreenState extends ConsumerState<ParcelServiceSele
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color.fromRGBO(0, 0, 0, 0.1),
-                        blurRadius: 5,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: const [],
                   ),
                 ),
               ),

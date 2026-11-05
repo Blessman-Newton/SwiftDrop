@@ -386,9 +386,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 2)),
-                ],
+                boxShadow: const [],
               ),
               child: ListView.separated(
                 shrinkWrap: true,
@@ -456,9 +454,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 3),
-                            boxShadow: const [
-                              BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                            ],
+                            boxShadow: const [],
                           ),
                           child: const Icon(Icons.location_on, color: Colors.white, size: 22),
                         ),
@@ -500,9 +496,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
-                    ],
+                    boxShadow: const [],
                   ),
                   child: Row(
                     children: [
@@ -586,9 +580,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(icon, size: 20, color: const Color(0xFF334155)),
       ),

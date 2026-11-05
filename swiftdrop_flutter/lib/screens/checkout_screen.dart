@@ -14,8 +14,11 @@ import 'address_selection_screen.dart';
 import 'momo_payment_screen.dart';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
+import '../providers/providers.dart';
+import '../widgets/app_image.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -71,6 +74,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   double? _deliveryLng;
   MoMoPaymentResult? _momoPayment;
   bool _isPayForMeSelected = false;
+  String _paymentMethod = 'momo';
+  String _dropOffInstruction = 'Meet me at my door';
+  double _tip = 0;
+  final _promoController = TextEditingController();
+  String? _appliedPromo;
+  double _promoDiscount = 0;
 
   String _deliverySpeed = 'Standard'; // Standard or Express
   String? _activePaymentUrl;
@@ -90,7 +99,17 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   }
 
   double get _effectiveTotal =>
-      widget.total - widget.deliveryFee + _effectiveDeliveryFee;
+      _currentSubtotal -
+      widget.discount -
+      _promoDiscount +
+      _effectiveDeliveryFee +
+      widget.tax +
+      _tip;
+
+  double get _currentSubtotal {
+    if (!_isFood && widget.orderType != 'cosmetics') return widget.subtotal;
+    return ref.read(cartProvider.notifier).subtotal;
+  }
 
   @override
   void initState() {
@@ -117,6 +136,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   void dispose() {
     _verificationTimer?.cancel();
+    _promoController.dispose();
     super.dispose();
   }
 
@@ -148,8 +168,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
       final currentPosition = pos;
       final tomtom = TomTomService();
-      final result =
-          await tomtom.reverseGeocode(LatLng(currentPosition.latitude, currentPosition.longitude));
+      final result = await tomtom.reverseGeocode(
+          LatLng(currentPosition.latitude, currentPosition.longitude));
       if (mounted && result != null) {
         setState(() {
           _deliveryAddress = result.address;
@@ -244,6 +264,10 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (widget.cartItems.isNotEmpty) ...[
+                    _buildCartSection(surfaceColor, textColor, subtextColor),
+                    const SizedBox(height: 12),
+                  ],
                   if (_isFood) ...[
                     _buildDeliveryMethod(surfaceColor, textColor, subtextColor),
                     const SizedBox(height: 12),
@@ -254,6 +278,16 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     const SizedBox(height: 12),
                     _buildDeliverySpeedSection(
                         surfaceColor, textColor, subtextColor),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_isFood && !_isPickup) ...[
+                    _buildDropOffDetails(surfaceColor, textColor, subtextColor),
+                    const SizedBox(height: 12),
+                  ],
+                  _buildPromoSection(surfaceColor, textColor, subtextColor),
+                  const SizedBox(height: 12),
+                  if (_isFood) ...[
+                    _buildTipSection(surfaceColor, textColor, subtextColor),
                     const SizedBox(height: 12),
                   ],
                   _buildOrderSummary(surfaceColor, textColor, subtextColor),
@@ -273,6 +307,272 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 
+  Widget _buildDropOffDetails(Color surface, Color text, Color subtext) {
+    const options = [
+      'Meet me at my door',
+      'Leave at the door',
+      'Meet me outside',
+      'Leave at building reception',
+    ];
+    return _sectionCard(
+      surface,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Drop-off instructions',
+              style: GoogleFonts.inter(
+                  fontSize: 15, fontWeight: FontWeight.w700, color: text)),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: _dropOffInstruction,
+            decoration: const InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              prefixIcon: Icon(Icons.door_front_door_outlined),
+            ),
+            items: options
+                .map((option) =>
+                    DropdownMenuItem(value: option, child: Text(option)))
+                .toList(),
+            onChanged: (value) {
+              if (value != null) setState(() => _dropOffInstruction = value);
+            },
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Add additional notes',
+              prefixIcon: Icon(Icons.notes_outlined),
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 2,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromoSection(Color surface, Color text, Color subtext) {
+    return _sectionCard(
+      surface,
+      Row(
+        children: [
+          const Icon(Icons.local_offer_outlined, color: AppColors.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _promoController,
+              decoration: InputDecoration(
+                hintText: 'Add promo code',
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: subtext),
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              final code = _promoController.text.trim();
+              if (code.isEmpty) return;
+              setState(() {
+                _appliedPromo = code;
+                _promoDiscount = _currentSubtotal * 0.10;
+              });
+            },
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTipSection(Color surface, Color text, Color subtext) {
+    final tips = <double>[0, 0.05, 0.10, 0.15];
+    return _sectionCard(
+      surface,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tip your rider',
+              style: GoogleFonts.inter(
+                  fontSize: 15, fontWeight: FontWeight.w700, color: text)),
+          const SizedBox(height: 4),
+          Text('Your rider receives 100% of the tip.',
+              style: GoogleFonts.inter(fontSize: 12, color: subtext)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              ...tips.map((rate) => ChoiceChip(
+                    label:
+                        Text(rate == 0 ? 'No tip' : '${(rate * 100).round()}%'),
+                    selected: _tip == _currentSubtotal * rate,
+                    onSelected: (_) =>
+                        setState(() => _tip = _currentSubtotal * rate),
+                  )),
+              ChoiceChip(
+                label: const Text('Custom'),
+                selected: _tip != 0 && !tips.contains(_tip / _currentSubtotal),
+                onSelected: (_) => _showCustomTip(),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard(Color surface, Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: child,
+    );
+  }
+
+  Future<void> _showCustomTip() async {
+    final controller = TextEditingController();
+    final value = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Custom tip'),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(prefixText: 'GHS '),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () =>
+                  Navigator.pop(context, double.tryParse(controller.text)),
+              child: const Text('Apply')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null && mounted) setState(() => _tip = value);
+  }
+
+  Widget _buildCartSection(Color surface, Color text, Color subtext) {
+    final cart = ref.watch(cartProvider);
+    final notifier = ref.read(cartProvider.notifier);
+    final items = cart.isNotEmpty ? cart : widget.cartItems;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.restaurantName,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: text,
+                  ),
+                ),
+              ),
+              Text(
+                '${items.fold<int>(0, (sum, item) => sum + item.quantity)} items',
+                style: GoogleFonts.inter(fontSize: 12, color: subtext),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...items.map(
+            (item) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: AppImage(
+                        url: item.foodItem.imageUrl,
+                        fit: BoxFit.cover,
+                        fallbackSeed: item.foodItem.name,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.foodItem.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: text)),
+                        const SizedBox(height: 3),
+                        Text('GHS ${item.totalPrice.toStringAsFixed(2)}',
+                            style: GoogleFonts.inter(
+                                fontSize: 12, color: subtext)),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: cart.isEmpty
+                              ? null
+                              : () => notifier.decreaseQuantity(item),
+                          icon: const Icon(Icons.remove, size: 16),
+                        ),
+                        Text('${item.quantity}',
+                            style: GoogleFonts.inter(
+                                fontSize: 13, fontWeight: FontWeight.w800)),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: cart.isEmpty
+                              ? null
+                              : () => notifier.increaseQuantity(item),
+                          icon: const Icon(Icons.add, size: 16),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add more items'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // â”€â”€â”€ Delivery Method Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _buildDeliveryMethod(Color surface, Color text, Color subtext) {
     return Container(
@@ -280,13 +580,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -382,13 +676,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 10,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,79 +800,114 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     return GestureDetector(
       onTap: _openAddressSelection,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.zero,
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color.fromRGBO(0, 0, 0, 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEEF6EE),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.location_on,
-                  color: AppColors.primary, size: 20),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Deliver To',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: subtext,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEEF6EE),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Tap to change',
-                          style: GoogleFonts.inter(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _deliveryAddress,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: text,
+            SizedBox(
+              height: 150,
+              child: ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: FlutterMap(
+                  options: MapOptions(
+                    initialCenter: LatLng(
+                      _deliveryLat ?? TomTomService.defaultCenter.latitude,
+                      _deliveryLng ?? TomTomService.defaultCenter.longitude,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    initialZoom: 13,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.none,
+                    ),
                   ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.swiftdrop.app',
+                    ),
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: LatLng(
+                            _deliveryLat ??
+                                TomTomService.defaultCenter.latitude,
+                            _deliveryLng ??
+                                TomTomService.defaultCenter.longitude,
+                          ),
+                          width: 42,
+                          height: 42,
+                          child: const Icon(Icons.location_pin,
+                              color: AppColors.primary, size: 40),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on,
+                      color: AppColors.primary, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Deliver To',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: subtext,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEEF6EE),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Tap to change',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _deliveryAddress,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: text,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.open_in_new, color: subtext, size: 18),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: subtext, size: 22),
           ],
         ),
       ),
@@ -598,13 +921,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -979,84 +1296,58 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   Widget _buildPayButton() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         top: false,
         child: SizedBox(
           width: double.infinity,
           height: 56,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: _isProcessing
-                  ? null
-                  : const LinearGradient(
-                      colors: [Color(0xFF006C49), Color(0xFF10B981)],
-                    ),
-              color: _isProcessing ? Colors.grey[300] : null,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: _isProcessing
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: const Color.fromRGBO(0, 108, 73, 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+          child: ElevatedButton(
+            onPressed: _isProcessing ? null : _processPayment,
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  _isProcessing ? Colors.grey[300] : const Color(0xFF006C49),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              side: BorderSide.none,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+            ),
+            child: _isProcessing
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: Color(0xFF006C49)),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        _statusMessage.isNotEmpty
+                            ? _statusMessage
+                            : 'Processing...',
+                        style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF006C49)),
                       ),
                     ],
-            ),
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _processPayment,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
-              ),
-              child: _isProcessing
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2.5, color: Color(0xFF006C49)),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _statusMessage.isNotEmpty
-                              ? _statusMessage
-                              : 'Processing...',
-                          style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF006C49)),
-                        ),
-                      ],
-                    )
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.lock_outline, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pay GHS ${_effectiveTotal.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                              fontSize: 16, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-            ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.lock_outline, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Pay GHS ${_effectiveTotal.toStringAsFixed(2)}',
+                        style: GoogleFonts.inter(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
@@ -1374,9 +1665,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-                    ),
+                    color: const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -1505,7 +1794,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     ? Colors.white.withValues(alpha: 0.05)
                     : const Color(0xFFF1F7F2),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                border:
+                    Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
               ),
               child: Text(
                 _deliveryAddress,

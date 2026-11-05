@@ -182,13 +182,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                         isDark ? const Color(0xFF18233C) : Colors.white,
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(36)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, -4),
-                      ),
-                    ],
+                    boxShadow: const [],
                   ),
                   child: Column(
                     children: [
@@ -225,12 +219,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                           width: double.infinity,
                           height: 56,
                           decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF10B981),
-                                Color(0xFF006C49),
-                              ],
-                            ),
+                            color: const Color(0xFF006C49),
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Center(
@@ -372,13 +361,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               ? Colors.white.withValues(alpha: 0.15)
               : Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

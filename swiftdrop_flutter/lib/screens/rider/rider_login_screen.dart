@@ -216,13 +216,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
       decoration: BoxDecoration(
         color: const Color.fromRGBO(255, 255, 255, 0.9),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+        boxShadow: const [],
         border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Column(
@@ -414,7 +408,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          shadowColor: const Color(0x26059669),
+          shadowColor: Colors.transparent,
         ),
         child: _isLoading
             ? const SizedBox(
@@ -569,7 +563,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          shadowColor: const Color(0x26059669),
+          shadowColor: Colors.transparent,
         ),
         child: _isLoading
             ? const SizedBox(
@@ -621,13 +615,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
         color: const Color.fromRGBO(255, 255, 255, 0.4),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color.fromRGBO(226, 232, 240, 0.4)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

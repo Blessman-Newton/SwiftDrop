@@ -183,13 +183,7 @@ class _RiderActiveDeliveryScreenState
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Material(
                 color: Colors.transparent,
@@ -272,7 +266,7 @@ class _RiderActiveDeliveryScreenState
                             onPressed: () => Navigator.pop(dialogContext),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: Colors.grey[300]!),
+                              side: BorderSide.none,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -633,9 +627,7 @@ class _RiderActiveDeliveryScreenState
                         color: const Color(0xFF059669),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                        ],
+                        boxShadow: const [],
                       ),
                       child: const Icon(Icons.local_shipping, color: Colors.white, size: 18),
                     ),
@@ -649,9 +641,7 @@ class _RiderActiveDeliveryScreenState
                         color: Colors.red,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                        ],
+                        boxShadow: const [],
                       ),
                       child: const Icon(Icons.location_on, color: Colors.white, size: 20),
                     ),
@@ -669,9 +659,7 @@ class _RiderActiveDeliveryScreenState
               decoration: BoxDecoration(
                 color: const Color(0xF2FFFFFF),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
-                ],
+                boxShadow: const [],
                 border: Border.all(color: const Color(0xFFF1F5F9)),
               ),
               child: Row(
@@ -726,9 +714,7 @@ class _RiderActiveDeliveryScreenState
                   color: const Color(0xF2FFFFFF),
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFFF1F5F9)),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: const Center(
                   child: Icon(Icons.navigation, size: 18, color: Color(0xFF059669)),
@@ -749,13 +735,7 @@ class _RiderActiveDeliveryScreenState
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0F000000),
-                blurRadius: 30,
-                offset: Offset(0, -10),
-              ),
-            ],
+            boxShadow: const [],
             border: const Border(
               top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
             ),
@@ -980,13 +960,7 @@ class _RiderActiveDeliveryScreenState
                 color: Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFF1F5F9)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x0D000000),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: const Center(
                 child: Icon(Icons.navigation, size: 16, color: Color(0xFF059669)),
@@ -1146,13 +1120,7 @@ class _RiderActiveDeliveryScreenState
         decoration: BoxDecoration(
           color: const Color(0xFF059669),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0x26059669),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1352,4 +1320,3 @@ class _RiderActiveDeliveryScreenState
     );
   }
 }
-

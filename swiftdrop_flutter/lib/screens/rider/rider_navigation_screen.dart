@@ -212,9 +212,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                                   color: const Color(0xFF006C49),
                                   shape: BoxShape.circle,
                                   border: Border.all(color: Colors.white, width: 3),
-                                  boxShadow: const [
-                                    BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                                  ],
+                                  boxShadow: const [],
                                 ),
                                 child: const Icon(Icons.local_shipping, color: Colors.white, size: 16),
                               ),
@@ -233,9 +231,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                           color: const Color(0xFFE11D48),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                          ],
+                          boxShadow: const [],
                         ),
                         child: Icon(instructionIcon, color: Colors.white, size: 20),
                       ),
@@ -258,13 +254,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF006C49),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: Row(
                   children: [
@@ -350,13 +340,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                   topLeft: Radius.circular(32),
                   topRight: Radius.circular(32),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -543,15 +527,7 @@ class _MapControlButton extends StatelessWidget {
           color: isFilled ? const Color(0xFF006C49) : Colors.white,
           shape: BoxShape.circle,
           border: isFilled ? null : Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
-            BoxShadow(
-              color: isFilled
-                  ? const Color(0x33000000)
-                  : const Color(0x26000000),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(
           icon,

@@ -83,7 +83,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -125,7 +125,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -156,7 +156,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final customToken = data['custom_token'] as String?;
         final token = data['access_token'] as String?;
@@ -210,7 +210,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -263,7 +263,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -312,7 +312,7 @@ class AuthService {
           'code': code,
         },
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -382,6 +382,7 @@ class AuthService {
     return User(
       uid: data['id'] as String,
       email: data['email'] as String? ?? '',
+      role: data['role'] as String? ?? 'customer',
       displayName: data['name'] as String?,
       phoneNumber: data['phone'] as String?,
       avatarUrl: data['avatar_url'] as String?,

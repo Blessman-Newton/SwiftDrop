@@ -409,17 +409,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           // Gradient scrim keeps the overlay controls legible on any photo.
           const DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x59000000),
-                  Color(0x00000000),
-                  Color(0x00000000),
-                  Color(0xB3000000),
-                ],
-                stops: [0.0, 0.35, 0.55, 1.0],
-              ),
+              color: Color(0x66000000),
             ),
           ),
           Positioned(
@@ -474,13 +464,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       decoration: BoxDecoration(
         color: _cLowest,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, _isDark ? 0.25 : 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -702,13 +686,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           border: Border.all(
             color: _isDark ? Colors.white10 : const Color(0xFFE1EFE6),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.18 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1143,13 +1121,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         decoration: BoxDecoration(
           color: _cLowest,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.2 : 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1264,13 +1236,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         decoration: BoxDecoration(
           color: _primaryContainer,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-              color: Color.fromRGBO(16, 185, 129, 0.35),
-              blurRadius: 30,
-              offset: Offset(0, 12),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           children: [
@@ -1733,13 +1699,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           decoration: BoxDecoration(
             color: surface,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.1),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Row(
             children: [
@@ -2126,13 +2086,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         decoration: BoxDecoration(
                           color: _cLowest,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, -4),
-                            ),
-                          ],
+                          boxShadow: const [],
                         ),
                         child: SizedBox(
                           width: double.infinity,
@@ -2282,13 +2236,7 @@ class _HeroButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.9),
           shape: BoxShape.circle,
-          boxShadow: const [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.15),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(icon, color: iconColor ?? const Color(0xFF161D19), size: 20),
       ),
@@ -2534,15 +2482,7 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
                 decoration: BoxDecoration(
                   color: isActive ? AppColors.primary : inactiveColor,
                   borderRadius: BorderRadius.circular(9999),
-                  boxShadow: isActive
-                      ? const [
-                          BoxShadow(
-                            color: Color.fromRGBO(0, 108, 73, 0.2),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ]
-                      : null,
+                  boxShadow: const [],
                 ),
                 child: Text(
                   tab,

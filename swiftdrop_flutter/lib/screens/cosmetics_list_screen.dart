@@ -141,13 +141,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.surface(isDark),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: SafeArea(
                 child: SizedBox(
@@ -210,13 +204,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
               decoration: BoxDecoration(
                 color: AppColors.surface(isDark),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: TextField(
                 onChanged: (val) => setState(() => _searchQuery = val),
@@ -242,19 +230,9 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
               height: 110,
               width: double.infinity,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, Color(0xFF1E5C43)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Stack(
                 children: [
@@ -355,13 +333,7 @@ class _CosmeticsListScreenState extends ConsumerState<CosmeticsListScreen> {
                             decoration: BoxDecoration(
                               color: AppColors.surface(isDark),
                               borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
+                              boxShadow: const [],
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -575,13 +547,7 @@ class _TopToastWidgetState extends State<_TopToastWidget>
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.4),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: Row(
                   children: [

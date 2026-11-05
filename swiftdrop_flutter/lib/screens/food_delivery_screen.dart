@@ -89,15 +89,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                 ? const Color(0xFF123526) 
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
-            boxShadow: isActive 
-                ? [
-                    BoxShadow(
-                      color: const Color(0xFF123526).withOpacity(0.2),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ]
-                : null,
+            boxShadow: const [],
           ),
           alignment: Alignment.center,
           child: Text(
@@ -122,19 +114,9 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
       margin: const EdgeInsets.only(right: 16),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: gradientColors,
-        ),
+        color: gradientColors[0],
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors[0].withOpacity(0.1),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Stack(
         children: [
@@ -483,15 +465,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                                           : Colors.transparent,
                                       width: 2.5,
                                     ),
-                                    boxShadow: isActive
-                                        ? [
-                                            BoxShadow(
-                                              color: AppColors.primary.withOpacity(0.2),
-                                              blurRadius: 6,
-                                              spreadRadius: 1,
-                                            )
-                                          ]
-                                        : null,
+                                    boxShadow: const [],
                                   ),
                                   padding: const EdgeInsets.all(2),
                                   child: ClipOval(
@@ -548,22 +522,9 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20, vertical: 16),
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [
-                                        AppColors.primary,
-                                        AppColors.primaryLight,
-                                      ],
-                                    ),
+                                    color: AppColors.primary,
                                     borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.primary.withOpacity(0.1),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                                    boxShadow: const [],
                                   ),
                                   child: Stack(
                                     children: [
@@ -664,23 +625,9 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 20, vertical: 16),
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      begin: Alignment.centerLeft,
-                                      end: Alignment.centerRight,
-                                      colors: [
-                                        Color(0xFF9D4300),
-                                        Color(0xFFFF7E2D),
-                                      ],
-                                    ),
+                                    color: const Color(0xFF9D4300),
                                     borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(0xFF9D4300)
-                                            .withOpacity(0.1),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
+                                    boxShadow: const [],
                                   ),
                                   child: Stack(
                                     children: [
@@ -949,14 +896,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
                         decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Color(0x00000000),
-                              Color(0x99000000),
-                            ],
-                          ),
+                          color: Color(0x99000000),
                         ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.end,
@@ -1244,13 +1184,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkCard : Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

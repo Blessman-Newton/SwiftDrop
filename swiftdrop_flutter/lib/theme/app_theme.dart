@@ -133,13 +133,20 @@ class AppTheme {
         selectedItemColor: AppColors.primary,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 1,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           splashFactory: InkSparkle.splashFactory,
-          elevation: 2,
-          shadowColor: Colors.black12,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          side: BorderSide.none,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          side: BorderSide.none,
+          elevation: 0,
         ),
       ),
     );
@@ -178,13 +185,20 @@ class AppTheme {
         selectedItemColor: AppColors.primaryLight,
         unselectedItemColor: Colors.grey,
         type: BottomNavigationBarType.fixed,
-        elevation: 8,
+        elevation: 1,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           splashFactory: InkSparkle.splashFactory,
-          elevation: 2,
-          shadowColor: Colors.black12,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          side: BorderSide.none,
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          side: BorderSide.none,
+          elevation: 0,
         ),
       ),
     );

@@ -384,11 +384,7 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF3B82F6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: const Color(0xFF1E3A8A),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Row(
@@ -652,7 +648,7 @@ class _GasBookingScreenState extends ConsumerState<GasBookingScreen> {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
+                        side: BorderSide.none,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),

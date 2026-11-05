@@ -96,13 +96,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Row(
                 children: [
@@ -379,13 +373,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             border: Border.all(
               color: isDark ? Colors.white10 : Colors.grey[200]!,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.015),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Column(
             children: children,
@@ -848,7 +836,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF006C49), Color(0xFF10B981)]),
+                  color: const Color(0xFF006C49),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(

@@ -199,19 +199,9 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF065F46), Color(0xFF0D9488)],
-        ),
+        color: const Color(0xFF065F46),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(6, 95, 70, 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Stack(
         children: [
@@ -272,13 +262,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color.fromRGBO(0, 0, 0, 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: const [],
                     border: Border.all(
                       color: const Color(0xFFF1F5F9),
                     ),
@@ -326,13 +310,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
         border: Border.all(
           color: const Color(0xFFF1F5F9),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         children: [
@@ -404,15 +382,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
                                     topLeft: Radius.circular(8),
                                     topRight: Radius.circular(8),
                                   ),
-                                  boxShadow: isActive
-                                      ? [
-                                          BoxShadow(
-                                            color: const Color.fromRGBO(5, 150, 105, 0.3),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ]
-                                      : [],
+                                  boxShadow: const [],
                                 ),
                               ),
                             ),
@@ -562,13 +532,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
         border: Border.all(
           color: const Color(0xFFF1F5F9),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -678,13 +642,7 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
         border: Border.all(
           color: const Color(0xFFF1F5F9),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color.fromRGBO(0, 0, 0, 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         children: [

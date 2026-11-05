@@ -140,13 +140,7 @@ class _RoleCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF18233c) : Colors.white,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Row(
             children: [
