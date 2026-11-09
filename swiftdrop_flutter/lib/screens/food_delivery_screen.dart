@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +11,7 @@ import '../widgets/app_image.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/food_detail_sheet.dart';
 import '../services/customer_service.dart';
+import '../services/api_endpoints.dart';
 
 class FoodDeliveryScreen extends ConsumerStatefulWidget {
   const FoodDeliveryScreen({super.key});
@@ -279,7 +281,10 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
       height: double.infinity,
       color: AppColors.background(isDark),
       child: RefreshIndicator(
-        onRefresh: () async {},
+        onRefresh: () async {
+          ref.invalidate(restaurantsProvider);
+          await ref.read(restaurantsProvider.future);
+        },
         child: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 24),
         child: Column(
@@ -778,7 +783,17 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                   const SizedBox(height: 16),
 
                   // Restaurant grid
-                  if (filteredRestaurants.isEmpty)
+                  if (restaurantsAsync.hasError)
+                    _buildRestaurantLoadError(
+                      restaurantsAsync.error!,
+                      () => ref.invalidate(restaurantsProvider),
+                    )
+                  else if (restaurantsAsync.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 48),
+                      child: CircularProgressIndicator(),
+                    )
+                  else if (filteredRestaurants.isEmpty)
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(32),
@@ -834,6 +849,48 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
         ),
         ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRestaurantLoadError(Object error, VoidCallback onRetry) {
+    final message = error is DioException
+        ? (error.response?.statusCode != null
+            ? 'The local API returned HTTP ${error.response!.statusCode}.'
+            : 'Could not connect to the local API at ${ApiEndpoints.baseUrl}.')
+        : 'Could not load restaurants: $error';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.cloud_off, size: 44, color: Colors.grey),
+          const SizedBox(height: 12),
+          Text(
+            'Restaurant service unavailable',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }

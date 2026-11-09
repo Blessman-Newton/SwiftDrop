@@ -20,7 +20,7 @@ class RestaurantService {
       final data = response.data as List;
       return data.map((r) => Restaurant.fromApiResponse(r)).toList();
     } on DioException {
-      return [];
+      rethrow;
     }
   }
 

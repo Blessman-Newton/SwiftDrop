@@ -89,8 +89,17 @@ For an Android emulator, `localhost` means the emulator itself. Use:
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-For a physical phone, replace `10.0.2.2` with the PC's LAN IP, run Uvicorn
-with `--host 0.0.0.0`, and allow port 8000 through the Windows firewall.
+For a physical phone, the simplest USB-connected option is to keep the Flutter
+base URL as `http://localhost:8000` and forward the API port:
+
+```powershell
+adb reverse tcp:8000 tcp:8000
+adb reverse --list
+```
+
+Re-run the `adb reverse` command after reconnecting or restarting the device.
+Alternatively, replace `10.0.2.2` with the PC's LAN IP, run Uvicorn with
+`--host 0.0.0.0`, and allow port 8000 through the Windows firewall.
 
 ## Local-only behavior
 
