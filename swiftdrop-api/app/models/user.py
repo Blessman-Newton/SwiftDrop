@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -66,6 +66,7 @@ class RiderProfile(Base):
     dispatch_priority: Mapped[float] = mapped_column(Numeric(3, 2), default=1.0)
     last_lat: Mapped[float | None] = mapped_column()
     last_lng: Mapped[float | None] = mapped_column()
+    service_types: Mapped[list | None] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

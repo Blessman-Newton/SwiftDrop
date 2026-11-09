@@ -17,9 +17,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   
-  if (!ApiEndpoints.localMode) {
-    await FirebaseService.initialize();
+  final firebaseReady = await FirebaseService.initialize();
 
+  if (firebaseReady && !ApiEndpoints.localMode) {
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
     };
@@ -34,8 +34,8 @@ Future<void> main() async {
 
   if (!ApiEndpoints.localMode) {
     await AnalyticsService().initialize();
-    await FCMService().initialize();
   }
+  if (firebaseReady) await FCMService().initialize();
 
   runApp(const ProviderScope(child: DoorushApp()));
 }

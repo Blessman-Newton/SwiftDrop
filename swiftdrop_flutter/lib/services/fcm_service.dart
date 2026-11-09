@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'api_endpoints.dart';
+import 'firebase_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -31,7 +32,7 @@ class FCMService {
   String? get token => _fcmToken;
 
   Future<void> initialize() async {
-    if (kIsWeb) return;
+    if (kIsWeb || !FirebaseService.isInitialized) return;
 
     await _requestPermissions();
     await _setupToken();
@@ -96,7 +97,12 @@ class FCMService {
     }
   }
 
-  Future<void> registerCurrentToken() => _registerTokenWithBackend();
+  Future<void> registerCurrentToken() async {
+    if (_messaging == null && FirebaseService.isInitialized) {
+      _messaging = FirebaseMessaging.instance;
+    }
+    await _registerTokenWithBackend();
+  }
 
   void _setupMessageHandlers() {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);

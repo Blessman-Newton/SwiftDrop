@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../app_bootstrap.dart';
 import '../models/models.dart';
 import '../services/auth_service.dart';
+import '../services/fcm_service.dart';
 
 class RouterRefresh extends ChangeNotifier {
   void bump() => notifyListeners();
@@ -53,6 +54,9 @@ class AuthNotifier extends StateNotifier<User?> {
   void _set(User? user) {
     state = user;
     _routerRefresh.bump();
+    if (user != null) {
+      FCMService().registerCurrentToken();
+    }
   }
 
   void _expireSession() {

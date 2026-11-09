@@ -440,7 +440,7 @@ class _AddressSelectionScreenState extends State<AddressSelectionScreen> {
               children: [
                 TileLayer(
                   urlTemplate: TomTomService.tileUrl,
-                  userAgentPackageName: 'com.swiftdrop.app',
+                  userAgentPackageName: 'com.blessman.swiftdrop',
                 ),
                 if (_selectedPoint != null)
                   MarkerLayer(

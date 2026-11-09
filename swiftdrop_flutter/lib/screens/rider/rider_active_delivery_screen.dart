@@ -614,7 +614,7 @@ class _RiderActiveDeliveryScreenState
             children: [
               TileLayer(
                 urlTemplate: TomTomService.tileUrl,
-                userAgentPackageName: 'com.swiftdrop.app',
+                userAgentPackageName: 'com.blessman.swiftdrop',
               ),
               MarkerLayer(
                 markers: [

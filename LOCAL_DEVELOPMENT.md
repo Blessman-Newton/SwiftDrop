@@ -47,6 +47,17 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 `alembic upgrade head` then applies every versioned change, including the
 session and FCM migrations. The API lifespan also checks the schema on startup,
 but running Alembic explicitly makes migration failures visible before testing.
+The rider settings migration also creates `rider_profiles.service_types`; run
+this command after pulling rider changes before testing service toggles.
+
+Push notifications use Firebase Cloud Messaging. The Flutter app now
+initializes FCM in local mode when `android/app/google-services.json` and the
+generated Firebase options are present, while API calls still target the local
+backend. To deliver pushes from the local backend, set either
+`FIREBASE_CREDENTIALS_PATH` or `FIREBASE_CREDENTIALS_JSON` in the backend
+`.env` using a Firebase Admin service-account credential, then restart Uvicorn.
+Without Admin credentials, notifications are still saved in the local
+database, but no external push is sent.
 
 Check `http://localhost:8000/health` and
 `http://localhost:8000/docs`. Development OTP responses include `dev_code`, so

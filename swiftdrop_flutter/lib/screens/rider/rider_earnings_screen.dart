@@ -51,24 +51,27 @@ class _RiderEarningsScreenState extends ConsumerState<RiderEarningsScreen>
     super.dispose();
   }
 
-  void _handleWithdraw() {
+  Future<void> _handleWithdraw() async {
     final amount = double.tryParse(_withdrawAmount);
     if (amount == null || amount <= 0 || amount > _balance || _momoNumber.length < 10) return;
 
     setState(() => _isWithdrawing = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _isWithdrawing = false;
-          _withdrawSuccess = true;
-          _balance -= amount;
-        });
-        ref.read(riderToastsProvider.notifier).add(
-          'Successfully withdrew GHS ${amount.toStringAsFixed(2)} via $_selectedMomoProvider',
-          ToastType.success,
-        );
-      }
+    final success = await ref.read(riderServiceProvider).requestCashout(
+          amount, _selectedMomoProvider, _momoNumber);
+    if (!mounted) return;
+    setState(() {
+      _isWithdrawing = false;
+      _withdrawSuccess = success;
+      if (success) _balance -= amount;
     });
+    ref.invalidate(riderEarningsProvider);
+    ref.invalidate(riderTransactionsProvider);
+    ref.read(riderToastsProvider.notifier).add(
+      success
+          ? 'Cashout request submitted for GHS ${amount.toStringAsFixed(2)}'
+          : 'Cashout request failed. Please try again.',
+      success ? ToastType.success : ToastType.error,
+    );
   }
 
   void _resetWithdrawModal() {

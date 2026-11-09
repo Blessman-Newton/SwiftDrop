@@ -47,6 +47,10 @@ async def get_available_orders(db: AsyncSession) -> list[dict]:
             "delivery_address": o.delivery_address,
             "total": float(o.total),
             "delivery_fee": float(o.delivery_fee),
+            "pickup_lat": o.pickup_lat,
+            "pickup_lng": o.pickup_lng,
+            "delivery_lat": o.delivery_lat,
+            "delivery_lng": o.delivery_lng,
             "created_at": o.created_at.isoformat(),
         }
         for o in orders

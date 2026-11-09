@@ -14,6 +14,7 @@ class RiderDashboardResponse(BaseModel):
     goal_progress: float
     pending_order_count: int
     completed_today: int
+    service_types: list[str] = []
 
 
 class RiderEarningsResponse(BaseModel):
@@ -76,6 +77,32 @@ class UpdateDeliveryStatusRequest(BaseModel):
 class RiderOnlineRequest(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
+
+
+class RiderSettingsResponse(BaseModel):
+    user_id: str
+    name: str | None = None
+    email: str
+    phone: str
+    is_online: bool
+    rating: float
+    total_deliveries: int
+    earnings_balance: float
+    vehicle_type: str | None = None
+    license_number: str | None = None
+    service_types: list[str] = []
+
+
+class RiderSettingsUpdateRequest(BaseModel):
+    service_types: list[str] = Field(default_factory=list)
+    vehicle_type: str | None = Field(None, max_length=20)
+    license_number: str | None = Field(None, max_length=50)
+
+
+class RiderCashoutRequest(BaseModel):
+    amount: float = Field(..., gt=0)
+    provider: str = Field(..., min_length=2, max_length=50)
+    momo_number: str = Field(..., min_length=6, max_length=20)
 
 
 class AvailableOrderResponse(BaseModel):

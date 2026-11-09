@@ -229,6 +229,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildCategoryGroup(
               'Activities & Partnerships',
               [
+                if (user?.role == 'rider')
+                  _buildSettingsItem(
+                    icon: Icons.two_wheeler_rounded,
+                    label: 'Switch to rider',
+                    iconBg: const Color(0xFFE8F5E9),
+                    iconColor: AppColors.primary,
+                    onTap: () async {
+                      await ref
+                          .read(userRoleProvider.notifier)
+                          .setRole(UserRole.rider);
+                      if (context.mounted) context.go('/rider/dashboard');
+                    },
+                  ),
                 _buildSettingsItem(
                   icon: Icons.share_outlined,
                   label: 'Referral & Earn',

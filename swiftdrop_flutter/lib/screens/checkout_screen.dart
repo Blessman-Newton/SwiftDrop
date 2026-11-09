@@ -826,9 +826,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate:
-                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.swiftdrop.app',
+                      urlTemplate: TomTomService.tileUrl,
+                      userAgentPackageName: 'com.blessman.swiftdrop',
                     ),
                     MarkerLayer(
                       markers: [

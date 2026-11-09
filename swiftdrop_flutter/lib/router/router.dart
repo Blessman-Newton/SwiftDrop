@@ -243,7 +243,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // The server-provided account role is authoritative. The local role is
       // only a pre-login preference and must never grant access by itself.
       final accountIsRider = user.role == 'rider';
-      if (accountIsRider && !location.startsWith('/rider')) {
+      final riderMode = role != UserRole.customer;
+      if (accountIsRider && riderMode && !location.startsWith('/rider')) {
         return require('/rider/dashboard');
       }
       if (!accountIsRider && location.startsWith('/rider')) {

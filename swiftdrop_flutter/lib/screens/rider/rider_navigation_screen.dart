@@ -167,7 +167,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
               children: [
                 TileLayer(
                   urlTemplate: TomTomService.tileUrl,
-                  userAgentPackageName: 'com.swiftdrop.app',
+                  userAgentPackageName: 'com.blessman.swiftdrop',
                 ),
                 // Routing polyline
                 PolylineLayer(
@@ -540,4 +540,3 @@ class _MapControlButton extends StatelessWidget {
     );
   }
 }
-

@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.notification import Notification
 from app.models.user import User
+from app.services.notification_service import send_push_to_user
 from app.schemas.notification import (
     NotificationListResponse,
     NotificationResponse,
@@ -116,12 +117,19 @@ async def send_notification(
     target = (await db.execute(select(User.id).where(User.id == target_id))).scalar_one_or_none()
     if not target:
         raise NotFoundException("Target user not found")
-    notification = Notification(
-        user_id=target_id,
-        title=request.title,
-        body=request.body,
-        type=request.type,
+    notification = await send_push_to_user(
+        db,
+        target_id,
+        request.title,
+        request.body,
+        request.type,
     )
-    db.add(notification)
-    await db.flush()
-    return {"message": "Notification sent", "id": str(notification.id)}
+    return {
+        "message": "Notification sent",
+        "id": str(notification.id),
+        "push_registered": bool(
+            (await db.execute(
+                select(User.fcm_token).where(User.id == target_id)
+            )).scalar_one_or_none()
+        ),
+    }

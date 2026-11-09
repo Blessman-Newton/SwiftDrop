@@ -21,6 +21,9 @@ from app.schemas.rider_profile import (
     RiderTransactionResponse,
     UpdateDeliveryStatusRequest,
     RiderOnlineRequest,
+    RiderSettingsResponse,
+    RiderSettingsUpdateRequest,
+    RiderCashoutRequest,
 )
 
 router = APIRouter(prefix="/rider-profile", tags=["rider-profile"])
@@ -70,7 +73,52 @@ async def get_rider_dashboard(
         goal_progress=min(today_earnings / 200.0 * 100, 100),
         pending_order_count=pending_count,
         completed_today=today_trips,
+        service_types=profile.service_types or [],
     )
+
+
+@router.get("/settings", response_model=RiderSettingsResponse)
+async def get_rider_settings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_rider_dep),
+):
+    profile_q = select(RiderProfile).where(RiderProfile.user_id == current_user.id)
+    profile = (await db.execute(profile_q)).scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Rider profile not found")
+    return RiderSettingsResponse(
+        user_id=str(current_user.id),
+        name=current_user.name,
+        email=current_user.email,
+        phone=current_user.phone,
+        is_online=profile.is_online,
+        rating=float(profile.rating),
+        total_deliveries=profile.total_deliveries,
+        earnings_balance=float(profile.earnings_balance),
+        vehicle_type=profile.vehicle_type,
+        license_number=profile.license_number,
+        service_types=profile.service_types or [],
+    )
+
+
+@router.patch("/settings", response_model=RiderSettingsResponse)
+async def update_rider_settings(
+    request: RiderSettingsUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_rider_dep),
+):
+    profile_q = select(RiderProfile).where(RiderProfile.user_id == current_user.id)
+    profile = (await db.execute(profile_q)).scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Rider profile not found")
+    allowed_services = {"food", "pickup", "gas", "beauty"}
+    profile.service_types = sorted(set(request.service_types).intersection(allowed_services))
+    if request.vehicle_type is not None:
+        profile.vehicle_type = request.vehicle_type
+    if request.license_number is not None:
+        profile.license_number = request.license_number
+    await db.flush()
+    return await get_rider_settings(db, current_user)
 
 
 @router.post("/online")
@@ -413,3 +461,27 @@ async def get_rider_stats(
         total_deliveries=profile.total_deliveries,
         on_time_rate=97.0,
     )
+
+
+@router.post("/cashout")
+async def request_cashout(
+    request: RiderCashoutRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_rider_dep),
+):
+    profile_q = select(RiderProfile).where(RiderProfile.user_id == current_user.id)
+    profile = (await db.execute(profile_q)).scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Rider profile not found")
+    if request.amount > float(profile.earnings_balance):
+        raise HTTPException(status_code=400, detail="Insufficient available balance")
+    profile.earnings_balance = float(profile.earnings_balance) - request.amount
+    payout = Payout(
+        rider_id=current_user.id,
+        amount=request.amount,
+        status="pending",
+        payment_method=f"{request.provider}:{request.momo_number}",
+    )
+    db.add(payout)
+    await db.flush()
+    return {"id": str(payout.id), "status": payout.status, "amount": request.amount}

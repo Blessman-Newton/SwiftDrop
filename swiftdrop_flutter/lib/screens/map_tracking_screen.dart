@@ -622,7 +622,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         children: [
           TileLayer(
             urlTemplate: TomTomService.tileUrl,
-            userAgentPackageName: 'com.swiftdrop.app',
+            userAgentPackageName: 'com.blessman.swiftdrop',
           ),
           if (_routePoints.isNotEmpty)
             PolylineLayer(

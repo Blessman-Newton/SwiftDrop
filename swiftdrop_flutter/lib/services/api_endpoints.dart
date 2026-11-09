@@ -73,4 +73,5 @@ class ApiEndpoints {
   static const String riderEarnings = '/api/v1/rider-profile/earnings';
   static const String riderTransactions = '/api/v1/rider-profile/transactions';
   static const String riderStats = '/api/v1/rider-profile/stats';
+  static const String riderSettings = '/api/v1/rider-profile/settings';
 }
