@@ -64,7 +64,11 @@ export default function App() {
   
   const [isOnline, setIsOnline] = useState(true);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(() => api.isAuthenticated());
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    api.isAuthenticated().then(setIsLoggedIn).catch(() => setIsLoggedIn(false));
+  }, []);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [usePhoneLogin, setUsePhoneLogin] = useState(false);
   const [authEmail, setAuthEmail] = useState("");

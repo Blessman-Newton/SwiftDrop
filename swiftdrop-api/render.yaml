@@ -2,28 +2,53 @@ services:
   - type: web
     name: swiftdrop-api
     runtime: python
+    plan: starter
+    rootDir: swiftdrop-api
     buildCommand: pip install -r requirements.txt
     startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
-        value: R3SYHU85wX9WHVs4DzXl3pPY0L6cSKy7Hgw-jiqvu_OhoPkEwM966h28HF57Bka4f5vBSK4wpevRLnEWSXRuMw
+        generateValue: true
       - key: JWT_ALGORITHM
         value: HS256
       - key: JWT_EXPIRY_MINUTES
-        value: 1440
+        value: "43200"
       - key: APP_ENV
         value: production
+      - key: APP_NAME
+        value: Doorush
       - key: APP_BASE_URL
-        value: https://swiftdrop-fvcd.onrender.com
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: SESSION_COOKIE_NAME
+        value: swiftdrop_session
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_SAMESITE
+        sync: false
+      - key: SESSION_COOKIE_DOMAIN
+        sync: false
+      - key: ALLOW_SETUP_ENDPOINTS
+        value: "false"
+      - key: SETUP_SECRET
+        sync: false
+      - key: ALLOW_PUBLIC_MERCHANT_SIGNUP
+        value: "true"
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_PUBLIC_KEY
         sync: false
       - key: TWILIO_ACCOUNT_SID
-        value: ACe3e8f702343eaad24dd3ee53f3405a4e
+        sync: false
       - key: TWILIO_AUTH_TOKEN
-        value: eeb1e9abccb8f38a9a9a72012334e9fa
+        sync: false
       - key: TWILIO_FROM_NUMBER
-        value: "+14843717429"
+        sync: false
+      - key: FIREBASE_CREDENTIALS_JSON
+        sync: false
+      - key: TOMTOM_API_KEY
+        sync: false

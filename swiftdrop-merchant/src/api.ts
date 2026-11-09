@@ -1,16 +1,19 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'https://swiftdrop-fvcd.onrender.com/api/v1';
+// Local-first: the Vite dev server proxies /api to the local FastAPI service.
+// Set VITE_API_URL explicitly only when intentionally testing another API.
+const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
 async function apiFetch(path: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('doorush_merchant_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
+
+  if (res.status === 401) {
+    window.location.reload();
+    throw new Error('Unauthorized');
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
@@ -24,11 +27,8 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 export async function signUp(email: string, password: string, phone: string, name?: string) {
   const data = await apiFetch('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify({ email, password, phone, name, role: 'merchant' }),
+    body: JSON.stringify({ email, password, phone, name }),
   });
-  if (data.access_token) {
-    localStorage.setItem('doorush_merchant_token', data.access_token);
-  }
   return data;
 }
 
@@ -37,9 +37,6 @@ export async function loginWithEmail(email: string, password: string) {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
-  if (data.access_token) {
-    localStorage.setItem('doorush_merchant_token', data.access_token);
-  }
   return data;
 }
 
@@ -55,18 +52,27 @@ export async function verifyOtp(phone: string, code: string) {
     method: 'POST',
     body: JSON.stringify({ phone, code }),
   });
-  if (data.access_token) {
-    localStorage.setItem('doorush_merchant_token', data.access_token);
-  }
   return data;
 }
 
-export function logout() {
-  localStorage.removeItem('doorush_merchant_token');
+export async function logout() {
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch (_) {}
+  window.location.reload();
 }
 
-export function isAuthenticated() {
-  return !!localStorage.getItem('doorush_merchant_token');
+export async function me() {
+  return apiFetch('/auth/me');
+}
+
+export async function isAuthenticated() {
+  try {
+    await me();
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 // Categories

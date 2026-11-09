@@ -1204,14 +1204,20 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                             _showFeedback('Added ${item.name} to cart');
                           },
                           child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: const BoxDecoration(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
                               color: AppColors.primaryLight,
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryLight.withOpacity(0.22),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                            child: const Icon(Icons.add,
-                                color: Colors.white, size: 20),
+                            child: const Icon(Icons.add, color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -1232,25 +1238,30 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     return GestureDetector(
       onTap: () => setState(() => _showCheckout = true),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: _primaryContainer,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [],
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: _onPrimaryContainer.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.14),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.shopping_bag,
-                  color: _onPrimaryContainer, size: 20),
+              child: const Icon(Icons.shopping_bag, color: Colors.white, size: 18),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1260,15 +1271,15 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                     'View Cart',
                     style: GoogleFonts.inter(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _onPrimaryContainer),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '$count ${count == 1 ? 'Item' : 'Items'} \u2022 $firstName',
                     style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: _onPrimaryContainer.withOpacity(0.7)),
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.8)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1279,9 +1290,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             Text(
               'GHS ${total.toStringAsFixed(2)}',
               style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _onPrimaryContainer),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white),
             ),
           ],
         ),
@@ -2123,9 +2134,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             child: Row(
@@ -2138,8 +2149,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                       ? 'View Cart'
                                       : 'Add to cart - ₵${totalPrice.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],

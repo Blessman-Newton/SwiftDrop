@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.api.deps import get_current_user_dep
+from app.api.deps import get_current_merchant_dep
 from app.core.database import get_db
 from app.models.category import Category
 from app.models.order import Order, OrderItem
@@ -42,7 +42,7 @@ async def _get_merchant_restaurant(db: AsyncSession, user: User) -> Restaurant:
 @router.get("/info", response_model=MerchantInfoResponse)
 async def get_merchant_info(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
 
@@ -68,7 +68,7 @@ async def get_merchant_info(
 async def create_restaurant(
     request: RestaurantCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     """Create a restaurant for the merchant (onboarding)."""
     # Check if merchant already has a restaurant (without raising 404)
@@ -133,7 +133,7 @@ async def create_restaurant(
 @router.post("/complete-onboarding")
 async def complete_onboarding(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     """Mark merchant onboarding as complete."""
     if current_user.role != "merchant":
@@ -148,7 +148,7 @@ async def complete_onboarding(
 @router.get("/restaurant", response_model=RestaurantResponse)
 async def get_restaurant(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     """Get the merchant's restaurant profile."""
     restaurant = await _get_merchant_restaurant(db, current_user)
@@ -183,7 +183,7 @@ async def get_restaurant(
 async def update_restaurant(
     request: RestaurantUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     """Update the merchant's restaurant profile."""
     restaurant = await _get_merchant_restaurant(db, current_user)
@@ -223,7 +223,7 @@ async def update_restaurant(
 @router.get("/menu", response_model=list[MenuItemResponse])
 async def list_menu_items(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
@@ -260,7 +260,7 @@ async def list_menu_items(
 async def create_menu_item(
     request: MenuItemCreateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
 
@@ -306,7 +306,7 @@ async def update_menu_item(
     item_id: UUID,
     request: MenuItemUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = select(MenuItem).where(
@@ -352,7 +352,7 @@ async def update_menu_item(
 async def delete_menu_item(
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = select(MenuItem).where(
@@ -372,7 +372,7 @@ async def delete_menu_item(
 async def toggle_stock(
     item_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = select(MenuItem).where(
@@ -394,7 +394,7 @@ async def toggle_stock(
 async def list_merchant_orders(
     status: str | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
@@ -456,7 +456,7 @@ async def update_order_status(
     order_id: UUID,
     request: UpdateOrderStatusRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
     query = (
@@ -549,7 +549,7 @@ async def update_order_status(
 @router.get("/dashboard", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    current_user: User = Depends(get_current_merchant_dep),
 ):
     restaurant = await _get_merchant_restaurant(db, current_user)
 

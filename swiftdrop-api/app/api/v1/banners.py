@@ -2,7 +2,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.api.deps import get_current_user_dep, get_current_admin_dep
+from app.api.deps import get_current_user_dep, get_current_admin_dep, get_current_merchant_dep
 from app.core.database import get_db
 from app.models.banner import Banner
 from app.models.user import User
@@ -36,7 +36,7 @@ async def get_all_banners_for_admin(
 
 @router.get("/merchant", response_model=list[BannerResponse])
 async def get_merchant_banners(
-    merchant: User = Depends(get_current_user_dep),
+    merchant: User = Depends(get_current_merchant_dep),
     db: AsyncSession = Depends(get_db)
 ):
     """

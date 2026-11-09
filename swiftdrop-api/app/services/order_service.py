@@ -300,6 +300,19 @@ async def get_order(
     return _order_to_response(order)
 
 
+async def get_order_public(db: AsyncSession, order_id: UUID) -> OrderResponse:
+    query = (
+        select(Order)
+        .options(selectinload(Order.items), selectinload(Order.rider).selectinload(User.rider_profile))
+        .where(Order.id == order_id)
+    )
+    result = await db.execute(query)
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundException("Order not found")
+    return _order_to_response(order)
+
+
 async def cancel_order(
     db: AsyncSession, order_id: UUID, customer_id: UUID
 ) -> OrderResponse:

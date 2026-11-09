@@ -52,9 +52,8 @@ async def cancel_order(
 async def public_tracking_page(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
 ):
-    order = await order_service.get_order(db, order_id, current_user.id)
+    order = await order_service.get_order_public(db, order_id)
     
     html_content = f"""
     <!DOCTYPE html>
@@ -137,9 +136,8 @@ async def public_tracking_page(
 async def get_public_status(
     order_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
 ):
-    order = await order_service.get_order(db, order_id, current_user.id)
+    order = await order_service.get_order_public(db, order_id)
     return {
         "status": order.status,
         "rider_lat": order.rider_lat,

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import BadRequestException, ForbiddenException, NotFoundException
+from app.config import get_settings
 from app.models.order import Order
 from app.models.payment import Payment
 from app.payments.paystack import paystack_provider
@@ -19,6 +20,7 @@ from app.schemas.payment import (
 from app.services.order_service import update_order_status
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 
 async def initialize_payment(
@@ -38,6 +40,10 @@ async def initialize_payment(
         raise BadRequestException("Payment amount does not match the order total")
     if request.currency != "GHS":
         raise BadRequestException("Only GHS payments are supported")
+    if not settings.PAYSTACK_SECRET_KEY or not settings.PAYSTACK_BASE_URL:
+        raise BadRequestException(
+            "Payments are disabled in local development; configure Paystack explicitly to enable them"
+        )
 
     reference = f"SWD-{uuid.uuid4().hex[:12].upper()}"
 
@@ -157,6 +163,10 @@ async def handle_webhook(
 async def verify_payment(
     db: AsyncSession, reference: str, customer_id: UUID
 ) -> PaymentVerifyResponse:
+    if not settings.PAYSTACK_SECRET_KEY or not settings.PAYSTACK_BASE_URL:
+        raise BadRequestException(
+            "Payments are disabled in local development; configure Paystack explicitly to enable them"
+        )
     payment_q = select(Payment).where(Payment.reference == reference)
     payment_res = await db.execute(payment_q)
     payment = payment_res.scalar_one_or_none()

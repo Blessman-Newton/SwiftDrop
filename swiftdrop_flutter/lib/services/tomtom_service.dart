@@ -1,6 +1,7 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:latlong2/latlong.dart';
+
+import 'api_endpoints.dart';
 
 class TomTomSearchResult {
   final String name;
@@ -63,10 +64,8 @@ class TomTomManeuver {
 }
 
 class TomTomService {
-  static const String _apiKey = 'ewNoi22dTJTv9gbvIzlOdUXQZULLTKgy';
-  static const String _baseUrl = 'https://api.tomtom.com';
-  static const String _tileUrl =
-      'https://api.tomtom.com/map/1/tile/basic/main/{z}/{x}/{y}.png?key=$_apiKey';
+  static String get _tileUrl =>
+      '${ApiEndpoints.baseUrl}/api/v1/maps/tile/{z}/{x}/{y}.png';
 
   // Default center: Sunyani, Ghana
   static const LatLng defaultCenter = LatLng(7.3349, -2.3266);
@@ -81,24 +80,19 @@ class TomTomService {
     if (query.trim().isEmpty) return [];
 
     final params = <String, dynamic>{
-      'key': _apiKey,
-      'query': query,
+      'q': query,
       'limit': 8,
-      'countrySet': 'GH',
-      'language': 'en-GB',
     };
     if (bias != null) {
       params['lat'] = bias.latitude;
       params['lon'] = bias.longitude;
-      params['radius'] = 50000;
     }
 
     try {
       final response = await _dio.get(
-        '$_baseUrl/search/2/search/${Uri.encodeComponent(query)}.json',
+        '${ApiEndpoints.baseUrl}/api/v1/maps/search',
         queryParameters: params,
       );
-
       final results = <TomTomSearchResult>[];
       final features = response.data['results'] as List? ?? [];
       for (final f in features) {
@@ -122,23 +116,22 @@ class TomTomService {
   Future<TomTomSearchResult?> reverseGeocode(LatLng point) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/search/2/reverseGeocode/${point.latitude},${point.longitude}.json',
-        queryParameters: {
-          'key': _apiKey,
-          'language': 'en-GB',
-          'radius': 100,
-        },
+        '${ApiEndpoints.baseUrl}/api/v1/maps/reverse',
+        queryParameters: {'lat': point.latitude, 'lon': point.longitude},
       );
 
       final results = response.data['addresses'] as List? ?? [];
       if (results.isNotEmpty) {
         final addr = results[0]['address'] as Map<String, dynamic>?;
         String formattedShort = '';
-        
+
         if (addr != null) {
-          final street = addr['streetName'] as String? ?? addr['street'] as String? ?? '';
+          final street =
+              addr['streetName'] as String? ?? addr['street'] as String? ?? '';
           final subdivision = addr['municipalitySubdivision'] as String? ?? '';
-          final municipality = addr['municipality'] as String? ?? addr['localName'] as String? ?? '';
+          final municipality = addr['municipality'] as String? ??
+              addr['localName'] as String? ??
+              '';
 
           final parts = <String>[];
           if (subdivision.isNotEmpty) {
@@ -151,7 +144,9 @@ class TomTomService {
             parts.add(municipality);
           }
 
-          formattedShort = parts.isNotEmpty ? parts.join(', ') : (addr['freeformAddress'] as String? ?? '');
+          formattedShort = parts.isNotEmpty
+              ? parts.join(', ')
+              : (addr['freeformAddress'] as String? ?? '');
         }
 
         if (formattedShort.isEmpty) {
@@ -165,8 +160,10 @@ class TomTomService {
           longitude: point.longitude,
         );
       }
-    } catch (e) {}
-    return null;
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Future<TomTomRouteResult?> calculateRoute(
@@ -176,13 +173,12 @@ class TomTomService {
   }) async {
     try {
       final response = await _dio.get(
-        '$_baseUrl/routing/1/calculateRoute/${origin.latitude},${origin.longitude}:${destination.latitude},${destination.longitude}/json',
+        '${ApiEndpoints.baseUrl}/api/v1/maps/route',
         queryParameters: {
-          'key': _apiKey,
-          'language': 'en-GB',
-          'instructionsType': 'text',
-          'routeType': 'fastest',
-          'traffic': 'true',
+          'fromLat': origin.latitude,
+          'fromLon': origin.longitude,
+          'toLat': destination.latitude,
+          'toLon': destination.longitude,
           'travelMode': travelMode ?? 'car',
         },
       );
@@ -230,10 +226,18 @@ class TomTomService {
     }
   }
 
+  Future<TomTomRouteResult?> getRoute(LatLng start, LatLng end,
+      {String? travelMode}) async {
+    return calculateRoute(start, end, travelMode: travelMode);
+  }
+
   static LatLng parseLatLng(dynamic lat, dynamic lng) {
     if (lat == null || lng == null) return defaultCenter;
-    final latD = lat is num ? lat.toDouble() : double.tryParse(lat.toString()) ?? 7.3349;
-    final lngD = lng is num ? lng.toDouble() : double.tryParse(lng.toString()) ?? -2.3266;
+    final latD =
+        lat is num ? lat.toDouble() : double.tryParse(lat.toString()) ?? 7.3349;
+    final lngD = lng is num
+        ? lng.toDouble()
+        : double.tryParse(lng.toString()) ?? -2.3266;
     return LatLng(latD, lngD);
   }
 }

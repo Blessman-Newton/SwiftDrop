@@ -1,5 +1,14 @@
 class ApiEndpoints {
-  static const String baseUrl = 'https://swiftdrop-fvcd.onrender.com';
+  static const bool localMode =
+      String.fromEnvironment('LOCAL_MODE', defaultValue: 'true') != 'false';
+
+  // Local-first. Override for an Android emulator with:
+  // --dart-define=API_BASE_URL=http://10.0.2.2:8000
+  // For a physical device, use the PC's LAN IP and run the API on 0.0.0.0.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000',
+  );
 
   // Auth
   static const String signUp = '/api/v1/auth/signup';
@@ -37,7 +46,8 @@ class ApiEndpoints {
   // Customer
   static const String customerProfile = '/api/v1/customer/profile';
   static const String customerAddresses = '/api/v1/customer/addresses';
-  static String customerAddressById(String id) => '/api/v1/customer/addresses/$id';
+  static String customerAddressById(String id) =>
+      '/api/v1/customer/addresses/$id';
   static const String customerOrderHistory = '/api/v1/customer/orders/history';
 
   // Notifications
@@ -49,14 +59,17 @@ class ApiEndpoints {
 
   // Reviews
   static const String reviews = '/api/v1/reviews';
-  static String riderReviews(String riderId) => '/api/v1/reviews/rider/$riderId';
+  static String riderReviews(String riderId) =>
+      '/api/v1/reviews/rider/$riderId';
 
   // Rider Profile
   static const String riderDashboard = '/api/v1/rider-profile/dashboard';
   static const String riderOnlineStatus = '/api/v1/rider-profile/online';
   static const String riderOfflineStatus = '/api/v1/rider-profile/offline';
-  static const String riderActiveDelivery = '/api/v1/rider-profile/active-delivery';
-  static const String riderDeliveryStatus = '/api/v1/rider-profile/active-delivery/status';
+  static const String riderActiveDelivery =
+      '/api/v1/rider-profile/active-delivery';
+  static const String riderDeliveryStatus =
+      '/api/v1/rider-profile/active-delivery/status';
   static const String riderEarnings = '/api/v1/rider-profile/earnings';
   static const String riderTransactions = '/api/v1/rider-profile/transactions';
   static const String riderStats = '/api/v1/rider-profile/stats';

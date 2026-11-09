@@ -1,21 +1,14 @@
-const BASE = import.meta.env.VITE_API_URL || '/api/v1'
-
-function getToken(): string | null {
-  return localStorage.getItem('admin_token')
-}
+const BASE = import.meta.env.VITE_API_URL || 'https://swiftdrop-fvcd.onrender.com/api/v1'
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   }
-  if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  const res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' })
 
   if (res.status === 401) {
-    localStorage.removeItem('admin_token')
     window.location.reload()
     throw new Error('Unauthorized')
   }
@@ -32,13 +25,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   // Auth
   signUp: (email: string, password: string, phone: string, name?: string) =>
-    request<{ access_token: string; user: any }>('/auth/signup', {
+    request<{ user: any }>('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email, password, phone, name, role: 'admin' }),
+      body: JSON.stringify({ email, password, phone, name }),
     }),
 
   loginWithEmail: (email: string, password: string) =>
-    request<{ access_token: string; user: any }>('/auth/login', {
+    request<{ user: any }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
@@ -50,12 +43,14 @@ export const api = {
     }),
 
   verifyOtp: (phone: string, code: string) =>
-    request<{ access_token: string; user: any }>('/auth/verify-otp', {
+    request<{ user: any }>('/auth/verify-otp', {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     }),
 
-  // Dashboard
+  logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
+
+  me: () => request<any>('/auth/me'),
   getDashboard: () => request<any>('/admin/dashboard'),
 
   // Users
