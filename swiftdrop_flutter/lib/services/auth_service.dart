@@ -11,6 +11,7 @@ import 'api_client.dart';
 import 'api_endpoints.dart';
 import 'analytics_service.dart';
 import 'fcm_service.dart';
+import '../utils/user_friendly_error.dart';
 
 class AuthService {
   static const _sessionKey = AppBootstrap.sessionKey;
@@ -82,8 +83,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'create your account'));
     }
     return null;
   }
@@ -113,8 +113,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in'));
     }
     return null;
   }
@@ -150,8 +149,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in'));
     }
     return null;
   }
@@ -201,8 +199,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in with Google'));
     }
     return null;
   }
@@ -257,8 +254,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in with Apple'));
     }
     return null;
   }
@@ -283,8 +279,7 @@ class AuthService {
       );
       return response.statusCode == 200;
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'send the verification code'));
     }
   }
 
@@ -306,8 +301,7 @@ class AuthService {
         }
       }
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'verify the code'));
     }
     return null;
   }
@@ -412,11 +406,4 @@ class AuthService {
     }
   }
 
-  String _extractError(DioException e) {
-    if (e.response?.data is Map<String, dynamic>) {
-      final data = e.response!.data as Map<String, dynamic>;
-      return data['detail'] as String? ?? 'Something went wrong';
-    }
-    return 'Network error. Please try again.';
-  }
 }

@@ -335,7 +335,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     // Clears the token, the cached session and the remembered
                     // location before leaving the protected area.
                     await ref.read(currentUserProvider.notifier).signOut();
-                    if (context.mounted) context.go('/role-selection');
+                    if (context.mounted) context.go('/auth');
                   },
                   icon: const Icon(Icons.logout_rounded, color: Color(0xFFBA1A1A)),
                   label: Text(
@@ -983,7 +983,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go('/role-selection');
+                  context.go('/auth');
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Open Rider Portal', style: TextStyle(color: Colors.white)),
@@ -1019,7 +1019,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go('/role-selection');
+                  context.go('/auth');
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Open Merchant Portal', style: TextStyle(color: Colors.white)),

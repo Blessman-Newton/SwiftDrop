@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../providers/providers.dart';
 import '../widgets/app_image.dart';
+import '../utils/delivery_fee.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -94,8 +95,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
   double get _effectiveDeliveryFee {
     if (_isFood && _isPickup) return 0.0;
-    final base = widget.deliveryFee;
-    return _deliverySpeed == 'Express' ? base + 13.0 : base;
+    return calculateDeliveryFee(
+      pickupLat: widget.pickupLat,
+      pickupLng: widget.pickupLng,
+      deliveryLat: _deliveryLat,
+      deliveryLng: _deliveryLng,
+    );
   }
 
   double get _effectiveTotal =>
@@ -593,9 +598,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             value: 'doorstep',
             icon: Icons.delivery_dining,
             title: 'Deliver to my doorstep',
-            subtitle: widget.deliveryFee == 0
+            subtitle: _effectiveDeliveryFee == 0
                 ? 'Free delivery'
-                : 'GHS ${widget.deliveryFee.toStringAsFixed(2)} delivery fee',
+                : 'GHS ${_effectiveDeliveryFee.toStringAsFixed(2)} delivery fee',
             text: text,
             subtext: subtext,
           ),
@@ -696,7 +701,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: _speedCard(
                   label: 'Standard',
                   duration: '25 - 35 mins',
-                  price: 'GHS ${widget.deliveryFee.toStringAsFixed(2)}',
+                  price: 'GHS ${_effectiveDeliveryFee.toStringAsFixed(2)}',
                   isSelected: _deliverySpeed == 'Standard',
                   text: text,
                   subtext: subtext,
@@ -708,8 +713,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 child: _speedCard(
                   label: 'Express',
                   duration: '15 - 20 mins',
-                  price:
-                      'GHS ${(widget.deliveryFee + 13.0).toStringAsFixed(2)}',
+                  price: 'GHS ${_effectiveDeliveryFee.toStringAsFixed(2)}',
                   isSelected: _deliverySpeed == 'Express',
                   text: text,
                   subtext: subtext,

@@ -58,6 +58,9 @@ backend. To deliver pushes from the local backend, set either
 `.env` using a Firebase Admin service-account credential, then restart Uvicorn.
 Without Admin credentials, notifications are still saved in the local
 database, but no external push is sent.
+Push triggers cover order creation for merchants, payment success/failure,
+order status transitions, rider assignment, new rider delivery offers,
+dispatch offer expiry, and rider-assigned order cancellation.
 
 Check `http://localhost:8000/health` and
 `http://localhost:8000/docs`. Development OTP responses include `dev_code`, so

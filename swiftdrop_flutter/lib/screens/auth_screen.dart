@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/validators.dart';
+import '../utils/user_friendly_error.dart';
 
 enum AuthMode { login, signup }
 
@@ -89,7 +90,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         context.go(expectedRole == 'rider' ? '/rider/dashboard' : '/home');
       }
     } catch (e) {
-      if (mounted) _showError(e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) _showError(userFriendlyError(e, action: 'complete authentication'));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -129,7 +130,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         );
       }
     } catch (e) {
-      if (mounted) _showError(e.toString().replaceFirst('Exception: ', ''));
+      if (mounted) _showError(userFriendlyError(e, action: 'send the password reset email'));
     }
   }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
@@ -11,14 +10,13 @@ import '../widgets/app_image.dart';
 import '../widgets/notifications_sheet.dart';
 import '../widgets/food_detail_sheet.dart';
 import '../services/customer_service.dart';
-import '../services/api_endpoints.dart';
+import '../utils/user_friendly_error.dart';
 
 class FoodDeliveryScreen extends ConsumerStatefulWidget {
   const FoodDeliveryScreen({super.key});
 
   @override
-  ConsumerState<FoodDeliveryScreen> createState() =>
-      _FoodDeliveryScreenState();
+  ConsumerState<FoodDeliveryScreen> createState() => _FoodDeliveryScreenState();
 }
 
 class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
@@ -41,12 +39,17 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
         if (mounted) {
           setState(() {
             _dynamicBanners = list.map((b) {
-              List<Color> bannerColors = [const Color(0xE6064E3B), const Color(0xCC065F46)];
+              List<Color> bannerColors = [
+                const Color(0xE6064E3B),
+                const Color(0xCC065F46)
+              ];
               final rawColors = b['colors'] as List<dynamic>?;
               if (rawColors != null && rawColors.length >= 2) {
                 try {
-                  final c1 = int.parse(rawColors[0].toString().replaceAll('#', '0xFF'));
-                  final c2 = int.parse(rawColors[1].toString().replaceAll('#', '0xFF'));
+                  final c1 = int.parse(
+                      rawColors[0].toString().replaceAll('#', '0xFF'));
+                  final c2 = int.parse(
+                      rawColors[1].toString().replaceAll('#', '0xFF'));
                   bannerColors = [Color(c1), Color(c2)];
                 } catch (_) {}
               }
@@ -87,9 +90,7 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isActive 
-                ? const Color(0xFF123526) 
-                : Colors.transparent,
+            color: isActive ? const Color(0xFF123526) : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
             boxShadow: const [],
           ),
@@ -99,8 +100,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
             style: GoogleFonts.inter(
               fontSize: 12,
               fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-              color: isActive 
-                  ? Colors.white 
+              color: isActive
+                  ? Colors.white
                   : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
             ),
           ),
@@ -130,7 +131,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(4),
@@ -175,7 +177,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                   context.push(route);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -243,9 +246,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
     final filteredRestaurants = restaurants.where((r) {
       final matchesSearch = r.name.toLowerCase().contains(searchQuery) ||
-          r.tags
-              .any((t) => t.toLowerCase().contains(searchQuery));
-              
+          r.tags.any((t) => t.toLowerCase().contains(searchQuery));
+
       bool matchesGroup = true;
       if (_selectedGroup == 'Restaurants') {
         matchesGroup = !_isLocalKitchen(r);
@@ -254,15 +256,23 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
       }
 
       final matchesCategory = _selectedCategory == 'All' ||
-          r.tags
-              .any((t) {
-                final tag = t.toLowerCase();
-                final cat = _selectedCategory.toLowerCase();
-                if (cat == 'grills' && tag.contains('grill')) return true;
-                if (cat == 'local' && (tag.contains('local') || tag.contains('banku') || tag.contains('waakye') || tag.contains('fufu') || tag.contains('kenkey') || tag.contains('traditional'))) return true;
-                if (cat == 'fast food' && (tag.contains('fast') || tag.contains('burger') || tag.contains('pizza'))) return true;
-                return tag.contains(cat) || cat.contains(tag);
-              });
+          r.tags.any((t) {
+            final tag = t.toLowerCase();
+            final cat = _selectedCategory.toLowerCase();
+            if (cat == 'grills' && tag.contains('grill')) return true;
+            if (cat == 'local' &&
+                (tag.contains('local') ||
+                    tag.contains('banku') ||
+                    tag.contains('waakye') ||
+                    tag.contains('fufu') ||
+                    tag.contains('kenkey') ||
+                    tag.contains('traditional'))) return true;
+            if (cat == 'fast food' &&
+                (tag.contains('fast') ||
+                    tag.contains('burger') ||
+                    tag.contains('pizza'))) return true;
+            return tag.contains(cat) || cat.contains(tag);
+          });
       return matchesSearch && matchesGroup && matchesCategory;
     }).toList();
 
@@ -278,587 +288,617 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
 
     return SafeArea(
       child: Container(
-      height: double.infinity,
-      color: AppColors.background(isDark),
-      child: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(restaurantsProvider);
-          await ref.read(restaurantsProvider.future);
-        },
-        child: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 24),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              color: isDark
-                  ? AppColors.darkBackground.withOpacity(0.8)
-                  : Colors.white.withOpacity(0.8),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Semantics(
-                        label: 'Go back',
-                        child: GestureDetector(
-                          onTap: () => context.pop(),
-                          child: const Icon(Icons.arrow_back,
-                              color: AppColors.primary, size: 20),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Food Delivery',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      const Icon(Icons.tune,
-                          color: Colors.grey, size: 18),
-                      Consumer(
-                        builder: (context, ref, _) {
-                          final notifsAsync = ref.watch(notificationsProvider);
-                          final unreadCount = notifsAsync.value?['unread_count'] ?? 0;
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.notifications_none_rounded,
-                                  color: AppColors.primary,
-                                  size: 24,
-                                ),
-                                onPressed: () {
-                                  NotificationsSheet.show(context, ref);
-                                },
-                              ),
-                              if (unreadCount > 0)
-                                Positioned(
-                                  top: 8,
-                                  right: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    constraints: const BoxConstraints(
-                                      minWidth: 16,
-                                      minHeight: 16,
-                                    ),
-                                    child: Text(
-                                      unreadCount > 9 ? '9+' : '$unreadCount',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
-
-                  // Search bar
-                  Semantics(
-                    label: 'Search for restaurants or dishes',
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F1),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                        const Padding(
-                          padding: EdgeInsets.only(left: 16),
-                          child:
-                              Icon(Icons.search, color: Colors.grey, size: 18),
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (_) => setState(() {}),
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Search for restaurants or dishes',
-                              hintStyle: GoogleFonts.inter(
-                                  color: Colors.grey[400], fontSize: 14),
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 14),
-                            ),
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Grouping Filter Toggle (Restaurants vs Kitchen/Local)
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E2E25) : const Color(0xFFF0F4F2),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Row(
-                      children: [
-                        _buildGroupTab('All', isDark),
-                        _buildGroupTab('Restaurants', isDark),
-                        _buildGroupTab('Kitchen / Local', isDark),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Category options with images (replacing text Category chips)
-                  SizedBox(
-                    height: 96,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: opts.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 16),
-                      itemBuilder: (context, index) {
-                        final o = opts[index];
-                        final catLabel = o['label']!;
-                        final isActive = _selectedCategory.toLowerCase() == catLabel.toLowerCase();
-                        return Semantics(
-                          label: '$catLabel category${isActive ? ', selected' : ''}',
-                          child: GestureDetector(
-                            onTap: () => setState(() => _selectedCategory = catLabel),
-                            child: Column(
-                              children: [
-                                Container(
-                                  width: 56,
-                                  height: 56,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isActive
-                                          ? AppColors.primary
-                                          : Colors.transparent,
-                                      width: 2.5,
-                                    ),
-                                    boxShadow: const [],
-                                  ),
-                                  padding: const EdgeInsets.all(2),
-                                  child: ClipOval(
-                                    child: AppImage(
-                                      url: '',
-                                      fit: BoxFit.cover,
-                                      fallbackSeed: o['seed'],
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  catLabel,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    fontWeight: isActive
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                    color: isActive
-                                        ? AppColors.primary
-                                        : AppColors.textPrimary(isDark).withOpacity(0.8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Promo sliders
-                  SizedBox(
-                    height: (MediaQuery.of(context).size.height * 0.2).clamp(100.0, 144.0),
-                    child: _dynamicBanners != null && _dynamicBanners!.isNotEmpty
-                        ? ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: _dynamicBanners!.length,
-                            itemBuilder: (context, index) => _buildFoodPromoCard(_dynamicBanners![index]),
-                          )
-                        : ListView(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            children: [
-                              // Promo 1
-                              Semantics(
-                                label: 'Promotion: Free delivery at The Pizza Place, order above GHS 25',
-                                child: Container(
-                                  width: 280,
-                                  margin: const EdgeInsets.only(right: 16),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 16),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: const [],
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      Colors.white.withOpacity(0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  'PROMOTION',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                    letterSpacing: 0.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                'Free delivery at The Pizza Place',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                  height: 1.3,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                'Order above GHS 25',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10,
-                                                  color: Colors.white
-                                                      .withOpacity(0.8),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              'Claim Offer',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Positioned(
-                                        right: -24,
-                                        bottom: -24,
-                                        child: Container(
-                                          width: 96,
-                                          height: 96,
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              // Promo 2
-                              Semantics(
-                                label: 'Promotion: 50% Off Sushi Zen, valid for new users only',
-                                child: Container(
-                                  width: 280,
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 20, vertical: 16),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF9D4300),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: const [],
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      Colors.white.withOpacity(0.2),
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  'LIMITED TIME',
-                                                  style: GoogleFonts.inter(
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                    letterSpacing: 0.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                '50% Off Sushi Zen',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                  height: 1.3,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                'Valid for New Users only',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 10,
-                                                  color: Colors.white
-                                                      .withOpacity(0.8),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 6),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              'Redeem Now',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.bold,
-                                                color: const Color(0xFF9D4300),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Positioned(
-                                        right: -24,
-                                        bottom: -24,
-                                        child: Container(
-                                          width: 96,
-                                          height: 96,
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.white.withOpacity(0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Restaurant rails
-                  _buildRail(
-                      'Featured Restaurants', _popular(restaurants), isDark),
-                  ref.watch(recommendedFoodProvider).when(
-                        data: (foods) => _buildRecommendedFoodSection(foods.take(6).toList(), isDark),
-                        loading: () => const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        error: (err, stack) => const SizedBox.shrink(),
-                      ),
-
-                  // All Restaurants heading
-                  Row(
+        height: double.infinity,
+        color: AppColors.background(isDark),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(restaurantsProvider);
+            await ref.read(restaurantsProvider.future);
+          },
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  color: isDark
+                      ? AppColors.darkBackground.withOpacity(0.8)
+                      : Colors.white.withOpacity(0.8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'All Restaurants',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary(isDark),
-                        ),
-                      ),
-                      Semantics(
-                        label: 'See map',
-                        child: GestureDetector(
-                          onTap: () => context.push('/map'),
-                          child: Row(
-                            children: [
-                              Text(
-                                'See map',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.map,
-                                size: 14, color: AppColors.primary),
-                          ],
-                        ),
-                      ),
-                    ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Restaurant grid
-                  if (restaurantsAsync.hasError)
-                    _buildRestaurantLoadError(
-                      restaurantsAsync.error!,
-                      () => ref.invalidate(restaurantsProvider),
-                    )
-                  else if (restaurantsAsync.isLoading)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 48),
-                      child: CircularProgressIndicator(),
-                    )
-                  else if (filteredRestaurants.isEmpty)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(32),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Column(
+                      Row(
                         children: [
-                          Icon(
-                            Icons.search_off,
-                            size: 48,
-                            color: Colors.grey[300],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No restaurants found',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.grey[500],
+                          Semantics(
+                            label: 'Go back',
+                            child: GestureDetector(
+                              onTap: () => context.pop(),
+                              child: const Icon(Icons.arrow_back,
+                                  color: AppColors.primary, size: 20),
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(width: 12),
                           Text(
-                            'Try adjusting your search or filters',
+                            'Food Delivery',
                             style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: Colors.grey[400],
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
                             ),
                           ),
                         ],
                       ),
-                    )
-                  else
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: filteredRestaurants
-                          .map((restaurant) => _buildRestaurantGridCard(
-                                restaurant,
-                                favorites.contains(restaurant.id),
-                                isDark,
-                              ))
-                          .toList(),
-                    ),
+                      Row(
+                        children: [
+                          const Icon(Icons.tune, color: Colors.grey, size: 18),
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final notifsAsync =
+                                  ref.watch(notificationsProvider);
+                              final unreadCount =
+                                  notifsAsync.value?['unread_count'] ?? 0;
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.notifications_none_rounded,
+                                      color: AppColors.primary,
+                                      size: 24,
+                                    ),
+                                    onPressed: () {
+                                      NotificationsSheet.show(context, ref);
+                                    },
+                                  ),
+                                  if (unreadCount > 0)
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 16,
+                                          minHeight: 16,
+                                        ),
+                                        child: Text(
+                                          unreadCount > 9
+                                              ? '9+'
+                                              : '$unreadCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
 
-                  const SizedBox(height: 32),
-                ],
-              ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+
+                      // Search bar
+                      Semantics(
+                        label: 'Search for restaurants or dishes',
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F1),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.only(left: 16),
+                                child: Icon(Icons.search,
+                                    color: Colors.grey, size: 18),
+                              ),
+                              Expanded(
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: (_) => setState(() {}),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'Search for restaurants or dishes',
+                                    hintStyle: GoogleFonts.inter(
+                                        color: Colors.grey[400], fontSize: 14),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 14),
+                                  ),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Grouping Filter Toggle (Restaurants vs Kitchen/Local)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF1E2E25)
+                              : const Color(0xFFF0F4F2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildGroupTab('All', isDark),
+                            _buildGroupTab('Restaurants', isDark),
+                            _buildGroupTab('Kitchen / Local', isDark),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Category options with images (replacing text Category chips)
+                      SizedBox(
+                        height: 96,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: opts.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final o = opts[index];
+                            final catLabel = o['label']!;
+                            final isActive = _selectedCategory.toLowerCase() ==
+                                catLabel.toLowerCase();
+                            return Semantics(
+                              label:
+                                  '$catLabel category${isActive ? ', selected' : ''}',
+                              child: GestureDetector(
+                                onTap: () => setState(
+                                    () => _selectedCategory = catLabel),
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      width: 56,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isActive
+                                              ? AppColors.primary
+                                              : Colors.transparent,
+                                          width: 2.5,
+                                        ),
+                                        boxShadow: const [],
+                                      ),
+                                      padding: const EdgeInsets.all(2),
+                                      child: ClipOval(
+                                        child: AppImage(
+                                          url: '',
+                                          fit: BoxFit.cover,
+                                          fallbackSeed: o['seed'],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      catLabel,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: isActive
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                        color: isActive
+                                            ? AppColors.primary
+                                            : AppColors.textPrimary(isDark)
+                                                .withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Promo sliders
+                      SizedBox(
+                        height: (MediaQuery.of(context).size.height * 0.2)
+                            .clamp(100.0, 144.0),
+                        child: _dynamicBanners != null &&
+                                _dynamicBanners!.isNotEmpty
+                            ? ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                itemCount: _dynamicBanners!.length,
+                                itemBuilder: (context, index) =>
+                                    _buildFoodPromoCard(
+                                        _dynamicBanners![index]),
+                              )
+                            : ListView(
+                                scrollDirection: Axis.horizontal,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                children: [
+                                  // Promo 1
+                                  Semantics(
+                                    label:
+                                        'Promotion: Free delivery at The Pizza Place, order above GHS 25',
+                                    child: Container(
+                                      width: 280,
+                                      margin: const EdgeInsets.only(right: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 16),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: const [],
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white
+                                                          .withOpacity(0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              4),
+                                                    ),
+                                                    child: Text(
+                                                      'PROMOTION',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 9,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.white,
+                                                        letterSpacing: 0.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'Free delivery at The Pizza Place',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.white,
+                                                      height: 1.3,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    'Order above GHS 25',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 10,
+                                                      color: Colors.white
+                                                          .withOpacity(0.8),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  'Claim Offer',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.primary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Positioned(
+                                            right: -24,
+                                            bottom: -24,
+                                            child: Container(
+                                              width: 96,
+                                              height: 96,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+
+                                  // Promo 2
+                                  Semantics(
+                                    label:
+                                        'Promotion: 50% Off Sushi Zen, valid for new users only',
+                                    child: Container(
+                                      width: 280,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 16),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF9D4300),
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: const [],
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white
+                                                          .withOpacity(0.2),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              4),
+                                                    ),
+                                                    child: Text(
+                                                      'LIMITED TIME',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 9,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.white,
+                                                        letterSpacing: 0.5,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    '50% Off Sushi Zen',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.white,
+                                                      height: 1.3,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    'Valid for New Users only',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 10,
+                                                      color: Colors.white
+                                                          .withOpacity(0.8),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 16,
+                                                        vertical: 6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  'Redeem Now',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        const Color(0xFF9D4300),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Positioned(
+                                            right: -24,
+                                            bottom: -24,
+                                            child: Container(
+                                              width: 96,
+                                              height: 96,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white
+                                                    .withOpacity(0.1),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Restaurant rails
+                      _buildRail('Featured Restaurants', _popular(restaurants),
+                          isDark),
+                      ref.watch(recommendedFoodProvider).when(
+                            data: (foods) => _buildRecommendedFoodSection(
+                                foods.take(6).toList(), isDark),
+                            loading: () => const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 24),
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            error: (err, stack) => const SizedBox.shrink(),
+                          ),
+
+                      // All Restaurants heading
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'All Restaurants',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary(isDark),
+                            ),
+                          ),
+                          Semantics(
+                            label: 'See map',
+                            child: GestureDetector(
+                              onTap: () => context.push('/map'),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    'See map',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.map,
+                                      size: 14, color: AppColors.primary),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Restaurant grid
+                      if (restaurantsAsync.hasError)
+                        _buildRestaurantLoadError(
+                          restaurantsAsync.error!,
+                          () => ref.invalidate(restaurantsProvider),
+                        )
+                      else if (restaurantsAsync.isLoading)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 48),
+                          child: CircularProgressIndicator(),
+                        )
+                      else if (filteredRestaurants.isEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(32),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 48,
+                                color: Colors.grey[300],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                searchQuery.isNotEmpty
+                                    ? 'No restaurants or food items match your search'
+                                    : 'No restaurants are available right now',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                searchQuery.isNotEmpty
+                                    ? 'Try another food name or remove a filter'
+                                    : 'Please check back again shortly',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 16,
+                          children: filteredRestaurants
+                              .map((restaurant) => _buildRestaurantGridCard(
+                                    restaurant,
+                                    favorites.contains(restaurant.id),
+                                    isDark,
+                                  ))
+                              .toList(),
+                        ),
+
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildRestaurantLoadError(Object error, VoidCallback onRetry) {
-    final message = error is DioException
-        ? (error.response?.statusCode != null
-            ? 'The local API returned HTTP ${error.response!.statusCode}.'
-            : 'Could not connect to the local API at ${ApiEndpoints.baseUrl}.')
-        : 'Could not load restaurants: $error';
+    final message = userFriendlyError(error, action: 'load restaurants');
 
     return Container(
       width: double.infinity,
@@ -901,10 +941,10 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
   Widget _buildRestaurantGridCard(
       Restaurant restaurant, bool isFav, bool isDark) {
     final cardWidth = (MediaQuery.of(context).size.width - 56) / 2;
-    final fee = restaurant.deliveryFee.isEmpty ? 'Free' : restaurant.deliveryFee;
-    final time = restaurant.deliveryTime.isEmpty
-        ? '20-30 min'
-        : restaurant.deliveryTime;
+    final fee =
+        restaurant.deliveryFee.isEmpty ? 'Free' : restaurant.deliveryFee;
+    final time =
+        restaurant.deliveryTime.isEmpty ? '20-30 min' : restaurant.deliveryTime;
 
     return GestureDetector(
       onTap: () => context.push('/restaurant/${restaurant.id}'),
@@ -963,11 +1003,11 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _overlayInfo(Icons.schedule, time,
-                                      FontWeight.w600),
+                                  _overlayInfo(
+                                      Icons.schedule, time, FontWeight.w600),
                                   const SizedBox(height: 2),
-                                  _overlayInfo(Icons.pedal_bike, fee,
-                                      FontWeight.w500),
+                                  _overlayInfo(
+                                      Icons.pedal_bike, fee, FontWeight.w500),
                                 ],
                               ),
                             ),
@@ -1096,7 +1136,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
   }
 
   Widget _buildRailCard(Restaurant restaurant, bool isDark) {
-    final fee = restaurant.deliveryFee.isEmpty ? 'Free' : restaurant.deliveryFee;
+    final fee =
+        restaurant.deliveryFee.isEmpty ? 'Free' : restaurant.deliveryFee;
     final time =
         restaurant.deliveryTime.isEmpty ? '20-30 min' : restaurant.deliveryTime;
     return GestureDetector(
@@ -1175,9 +1216,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
     );
   }
 
-
-
-  Widget _buildRecommendedFoodSection(List<Map<String, dynamic>> items, bool isDark) {
+  Widget _buildRecommendedFoodSection(
+      List<Map<String, dynamic>> items, bool isDark) {
     if (items.isEmpty) return const SizedBox.shrink();
     final cardWidth = (MediaQuery.of(context).size.width - 52) / 2;
 
@@ -1249,7 +1289,8 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                     AspectRatio(
                       aspectRatio: 16 / 11,
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16)),
                         child: AppImage(
                           url: item.imageUrl,
                           fit: BoxFit.cover,
@@ -1267,7 +1308,9 @@ class _FoodDeliveryScreenState extends ConsumerState<FoodDeliveryScreen> {
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: isDark ? Colors.white : const Color(0xFF161D19),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF161D19),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

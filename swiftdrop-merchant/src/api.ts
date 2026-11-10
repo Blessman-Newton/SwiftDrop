@@ -2,22 +2,48 @@
 // Set VITE_API_URL explicitly only when intentionally testing another API.
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
+function friendlyApiError(error: unknown, status?: number, detail?: unknown): Error {
+  const text = typeof detail === 'string' ? detail.toLowerCase() : '';
+  if (error instanceof TypeError || text.includes('network') || text.includes('fetch')) {
+    return new Error('We could not connect to the server. Please check your internet connection and try again.');
+  }
+  if (status === 401) return new Error('Your session has expired. Please sign in again.');
+  if (status === 403) return new Error('You do not have permission to perform this action.');
+  if (status === 404) return new Error('The requested information could not be found.');
+  if (status === 409 || text.includes('already exists') || text.includes('already registered')) {
+    return new Error('That information is already in use. Please check it and try again.');
+  }
+  if (status === 422) return new Error('Please check the information entered and try again.');
+  if (status !== undefined && status >= 500) {
+    return new Error('Something went wrong on our side. Please try again in a moment.');
+  }
+  if (text.includes('invalid') && text.includes('password')) {
+    return new Error('The email or password is incorrect.');
+  }
+  return new Error('We could not complete that request. Please try again.');
+}
+
 async function apiFetch(path: string, options: RequestInit = {}) {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: 'include' });
+  } catch (error) {
+    throw friendlyApiError(error);
+  }
 
   if (res.status === 401) {
     window.location.reload();
-    throw new Error('Unauthorized');
+    throw friendlyApiError(undefined, 401);
   }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(error.detail || 'API Error');
+    throw friendlyApiError(undefined, res.status, error.detail || error.error);
   }
 
   return res.json();
@@ -191,7 +217,7 @@ function mapOrderStatus(apiStatus: string): string {
     'delivered': 'completed',
     'cancelled': 'declined',
   };
-  return statusMap[apiStatus] || apiStatus;
+  return statusMap[apiStatus.toLowerCase()] || apiStatus.toLowerCase();
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {

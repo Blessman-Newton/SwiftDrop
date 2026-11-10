@@ -91,40 +91,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   LatLng? _driverPosition;
   LatLng? _destinationPosition;
 
-  int _riderProgressIndex = 0;
-  Timer? _simulationTimer;
-
-  void _startRiderSimulation() {
-    _simulationTimer?.cancel();
-    _riderProgressIndex = 0;
-    if (_routePoints.isEmpty) return;
-
-    _simulationTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      final activeOrder = ref.read(activeOrderProvider);
-      if (activeOrder == null) {
-        timer.cancel();
-        return;
-      }
-
-      final isMoving = activeOrder.status == OrderStatus.pickedUp ||
-          activeOrder.status == OrderStatus.enRoute;
-      if (!isMoving) return;
-
-      if (_riderProgressIndex < _routePoints.length - 1) {
-        setState(() {
-          _riderProgressIndex++;
-          _driverPosition = _routePoints[_riderProgressIndex];
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
   @override
   void initState() {
     super.initState();
@@ -149,7 +115,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       setState(() {
         _destinationPosition = delivery;
         _mapCenter = pickup;
-        _driverPosition = pickup;
       });
       _calculateRoute(pickup, delivery);
     }
@@ -161,7 +126,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       setState(() {
         _routePoints = route.points;
       });
-      _startRiderSimulation();
       if (_mapReady && route.points.isNotEmpty) {
         _mapController.fitCamera(
           CameraFit.bounds(
@@ -212,10 +176,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             final riderLng = active['rider_lng'] as num?;
             if (riderLat != null && riderLng != null) {
               setState(() {
-                _driverPosition =
-                    LatLng(riderLat.toDouble(), riderLng.toDouble());
+                  _driverPosition =
+                      LatLng(riderLat.toDouble(), riderLng.toDouble());
               });
-              _startRiderSimulation();
+                if (_destinationPosition != null) {
+                  _calculateRoute(_driverPosition!, _destinationPosition!);
+                }
             }
           } else {
             _orderPollTimer?.cancel();
@@ -228,7 +194,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   @override
   void dispose() {
     _orderPollTimer?.cancel();
-    _simulationTimer?.cancel();
     _mapTimer?.cancel();
     _callTimer?.cancel();
     _pulseController?.dispose();
@@ -251,7 +216,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Map<String, dynamic> _getStepDetails(int step) {
-    // Calculate ETA from route if available
+    // Calculate ETA from the live rider position to the destination.
     String eta = '...';
     if (_routePoints.isNotEmpty && step >= 2) {
       double totalDist = 0;

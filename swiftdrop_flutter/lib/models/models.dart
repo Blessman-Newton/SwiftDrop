@@ -225,7 +225,7 @@ extension OrderStatusX on OrderStatus {
   }
 }
 
-enum UserRole { customer, rider, guest }
+enum UserRole { customer, rider }
 
 enum RiderScreen { login, dashboard, activeDelivery, navigation, earnings }
 
@@ -740,6 +740,9 @@ class DeliveryInfo {
   final String pickupAddress;
   final String dropoffAddress;
   final String dropoffDetails;
+  final String customerName;
+  final String? customerPhone;
+  final String? customerEmail;
   final double total;
   final String estimatedTime;
   DeliveryInfo({
@@ -749,6 +752,9 @@ class DeliveryInfo {
     required this.pickupAddress,
     required this.dropoffAddress,
     required this.dropoffDetails,
+    this.customerName = 'Customer',
+    this.customerPhone,
+    this.customerEmail,
     required this.total,
     required this.estimatedTime,
   });

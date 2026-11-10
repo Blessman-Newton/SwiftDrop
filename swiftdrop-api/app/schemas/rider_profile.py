@@ -57,6 +57,7 @@ class RiderActiveDeliveryResponse(BaseModel):
     total: float
     customer_name: str | None = None
     customer_phone: str | None = None
+    customer_email: str | None = None
     delivery_notes: str | None = None
     created_at: datetime
     pickup_lat: float | None = None

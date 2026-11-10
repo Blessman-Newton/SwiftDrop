@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../app_bootstrap.dart';
-import '../providers/providers.dart';
 import '../providers/auth_provider.dart';
 import '../screens/splash_screen.dart';
-import '../screens/onboarding_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/food_delivery_screen.dart';
@@ -14,7 +12,6 @@ import '../screens/map_tracking_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/orders_screen.dart';
 import '../screens/cart_screen.dart';
-import '../screens/role_selection_screen.dart';
 import '../screens/parcel_booking_screen.dart';
 import '../screens/parcel_package_details_screen.dart';
 import '../screens/parcel_service_selection_screen.dart';
@@ -65,21 +62,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             _fadeTransitionPage(context, state, const SplashScreen()),
       ),
       GoRoute(
-        path: '/onboarding',
-        pageBuilder: (context, state) =>
-            _fadeTransitionPage(context, state, const OnboardingScreen()),
-      ),
-      GoRoute(
         path: '/auth',
         pageBuilder: (context, state) =>
             _fadeTransitionPage(context, state, const AuthScreen()),
       ),
-      GoRoute(
-        path: '/role-selection',
-        pageBuilder: (context, state) =>
-            _fadeTransitionPage(context, state, const RoleSelectionScreen()),
-      ),
-
       // Customer routes
       ShellRoute(
         builder: (_, state, child) => MainScaffold(child: child),
@@ -220,7 +206,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Guards against a redirect firing while the router is being torn down.
       if (disposed) return null;
 
-      final onboardingDone = ref.read(onboardingDoneProvider);
       final user = ref.read(currentUserProvider);
       final role = ref.read(userRoleProvider);
 
@@ -228,15 +213,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // keeps GoRouter from looping on a self-redirect.
       String? require(String target) => target == location ? null : target;
 
-      // Step 1: First time user - no onboarding done
-      if (!onboardingDone) return require('/onboarding');
-
-      // Step 2: Onboarding done, no role selected yet
-      if (role == null) return require('/role-selection');
-
-      // Step 3: Role selected but not logged in (guest goes directly to home)
+      // Unauthenticated users always choose Rider or User from the login
+      // screen. There is no guest mode.
       if (user == null) {
-        if (role == UserRole.guest) return require('/home');
         return require('/auth');
       }
 

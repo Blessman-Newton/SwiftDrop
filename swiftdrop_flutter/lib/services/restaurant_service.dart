@@ -117,7 +117,7 @@ class RestaurantService {
       final data = response.data as List;
       return data.map((item) => FoodItem.fromApiResponse(item)).toList();
     } on DioException {
-      return [];
+      rethrow;
     }
   }
 
@@ -137,7 +137,7 @@ class RestaurantService {
       }
       return grouped;
     } on DioException {
-      return {};
+      rethrow;
     }
   }
 
@@ -148,7 +148,7 @@ class RestaurantService {
       );
       return List<Map<String, dynamic>>.from(response.data);
     } on DioException {
-      return [];
+      rethrow;
     }
   }
 
@@ -160,8 +160,8 @@ class RestaurantService {
         data: {'code': code, 'order_total': orderTotal},
       );
       return response.data;
-    } on DioException catch (e) {
-      return {'valid': false, 'message': e.message ?? 'Network error'};
+    } on DioException {
+      rethrow;
     }
   }
 }

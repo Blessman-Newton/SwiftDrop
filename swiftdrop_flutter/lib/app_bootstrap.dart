@@ -11,22 +11,19 @@ const Duration kSessionLifetime = Duration(days: 30);
 /// always allowed through the router redirect untouched.
 const Set<String> kTransientLocations = {
   '/splash',
-  '/onboarding',
-  '/role-selection',
   '/auth',
 };
 
 /// Everything the application must know *before* the first frame is drawn.
 ///
 /// `main()` awaits [AppBootstrap.load] ahead of `runApp`, so the very first
-/// router redirect already sees the persisted session, role, onboarding flag
+/// router redirect already sees the persisted session and role
 /// and last location. Without this the providers started out empty and async
 /// while the router had already made its decision - which is what used to
 /// bounce returning users onto the splash / login screens after the OS
 /// recycled the process.
 class AppBootstrap {
   AppBootstrap._({
-    required this.onboardingDone,
     required this.role,
     required this.user,
     required this.apiToken,
@@ -34,14 +31,12 @@ class AppBootstrap {
     required this.sessionExpiresAt,
   });
 
-  final bool onboardingDone;
   final UserRole? role;
   final User? user;
   final String? apiToken;
   final String? lastLocation;
   final DateTime? sessionExpiresAt;
 
-  static const String onboardingKey = 'swiftdrop_onboarding_done';
   static const String roleKey = 'swiftdrop_user_role';
   static const String sessionKey = 'swiftdrop_active_session';
   static const String sessionExpiryKey = 'swiftdrop_session_expires_at';
@@ -70,7 +65,6 @@ class AppBootstrap {
   }
 
   static AppBootstrap _empty() => AppBootstrap._(
-        onboardingDone: false,
         role: null,
         user: null,
         apiToken: null,
@@ -147,7 +141,6 @@ class AppBootstrap {
     _lastRemembered = lastLocation;
 
     final bootstrap = AppBootstrap._(
-      onboardingDone: prefs.getBool(onboardingKey) ?? false,
       role: role,
       user: user,
       apiToken: token,
@@ -161,7 +154,6 @@ class AppBootstrap {
   /// Where the router should start so a warm/cold restart lands the user
   /// back where they were instead of on the splash screen.
   String get initialLocation {
-    if (!onboardingDone) return '/splash';
     final location = lastLocation;
     if (location == null || location.isEmpty || location == '/splash') {
       return '/splash';
@@ -193,8 +185,7 @@ class AppBootstrap {
     await prefs.setBool(sessionExpectsTokenKey, token != null);
   }
 
-  /// Removes the session, its expiry and the remembered location. Leaves the
-  /// onboarding/role choices alone - those are preferences, not credentials.
+  /// Removes the session, its expiry and the remembered location.
   static Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(sessionKey);

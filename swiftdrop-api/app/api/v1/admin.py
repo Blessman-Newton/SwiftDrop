@@ -52,7 +52,7 @@ async def get_admin_dashboard(
     total_riders_q = select(func.count(User.id)).where(User.role == "rider")
     total_riders = (await db.execute(total_riders_q)).scalar() or 0
 
-    total_merchants_q = select(func.count(User.id)).where(User.role == "customer")
+    total_merchants_q = select(func.count(User.id)).where(User.role == "merchant")
     total_merchants = (await db.execute(total_merchants_q)).scalar() or 0
 
     total_orders_q = select(func.count(Order.id))

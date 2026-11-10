@@ -178,6 +178,7 @@ async def get_active_delivery(
     customer = (await db.execute(cust_q)).scalar_one_or_none()
     cust_name = customer.name if customer else "Customer"
     cust_phone = customer.phone if customer else None
+    cust_email = customer.email if customer else None
 
     return RiderActiveDeliveryResponse(
         order_id=str(order.id),
@@ -190,6 +191,7 @@ async def get_active_delivery(
         total=float(order.total),
         customer_name=cust_name,
         customer_phone=cust_phone,
+        customer_email=cust_email,
         delivery_notes=order.metadata_.get("delivery_notes") if order.metadata_ else None,
         created_at=order.created_at,
         pickup_lat=float(order.pickup_lat) if order.pickup_lat is not None else None,

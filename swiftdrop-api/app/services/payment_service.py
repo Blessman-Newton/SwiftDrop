@@ -18,6 +18,7 @@ from app.schemas.payment import (
     PaymentVerifyResponse,
 )
 from app.services.order_service import update_order_status
+from app.services.notification_service import notify_payment_status, send_push_to_user
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -154,6 +155,7 @@ async def handle_webhook(
         order.payment_ref = reference
 
         await finalize_order_payment(db, order)
+        await notify_payment_status(db, order.customer_id, str(order.id), "paid")
 
         return {"status": "success", "order_id": str(order.id)}
 
@@ -221,6 +223,7 @@ async def verify_payment(
         order.payment_ref = reference
 
         await finalize_order_payment(db, order)
+        await notify_payment_status(db, order.customer_id, str(order.id), "paid")
 
     return PaymentVerifyResponse(
         reference=reference,
@@ -232,8 +235,6 @@ async def verify_payment(
 
 
 async def finalize_order_payment(db: AsyncSession, order: Order) -> None:
-    from app.models.notification import Notification
-
     # Check if this is a Gas Refill order
     is_gas_refill = order.restaurant_name == "LPG Gas Depot (Tarkwa)"
     delivery_mode = order.metadata_.get("delivery_mode") if order.metadata_ else None
@@ -242,32 +243,26 @@ async def finalize_order_payment(db: AsyncSession, order: Order) -> None:
         # Keep status as CREATED, just notify customer
         scheduled_date = order.metadata_.get("scheduled_date", "") if order.metadata_ else ""
         scheduled_time = order.metadata_.get("scheduled_time", "") if order.metadata_ else ""
-        notification = Notification(
-            user_id=order.customer_id,
-            title="Gas Refill Scheduled",
-            body=f"Gas refill scheduled successfully! Your refill is scheduled for {scheduled_date} at {scheduled_time} and will be delivered to {order.delivery_address}.",
+        await send_push_to_user(
+            db,
+            order.customer_id,
+            "Gas Refill Scheduled",
+            f"Gas refill scheduled successfully! Your refill is scheduled for {scheduled_date} at {scheduled_time} and will be delivered to {order.delivery_address}.",
             type="order",
-            metadata_={
-                "order_id": str(order.id),
-                "status": "scheduled",
-            },
+            metadata={"order_id": str(order.id), "status": "scheduled"},
         )
-        db.add(notification)
     else:
         # Standard or Instant Gas Refill
         await update_order_status(db, order.id, "CONFIRMED")
         if is_gas_refill:
-            notification = Notification(
-                user_id=order.customer_id,
-                title="Booking Confirmed",
-                body=f"Gas refill booking confirmed! Your refill request has been placed for instant delivery to {order.delivery_address}. We are now finding a rider for you.",
+            await send_push_to_user(
+                db,
+                order.customer_id,
+                "Booking Confirmed",
+                f"Gas refill booking confirmed! Your refill request has been placed for instant delivery to {order.delivery_address}. We are now finding a rider for you.",
                 type="order",
-                metadata_={
-                    "order_id": str(order.id),
-                    "status": "booking_confirmed",
-                },
+                metadata={"order_id": str(order.id), "status": "booking_confirmed"},
             )
-            db.add(notification)
 
         if order.order_type != "food":
             from app.services.dispatch_service import auto_match_rider
