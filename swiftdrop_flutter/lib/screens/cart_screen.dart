@@ -8,6 +8,7 @@ import '../models/models.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 import 'checkout_screen.dart';
+import '../data/restaurants.dart';
 
 class CartScreen extends ConsumerWidget {
   const CartScreen({super.key});
@@ -226,7 +227,34 @@ class CartScreen extends ConsumerWidget {
                           if (isCosmetics) {
                             _navigateToCosmeticsCheckout(context, ref);
                           } else {
-                            context.push('/restaurant/$restaurantId?checkout=true');
+                            final user = ref.read(currentUserProvider);
+                            if (user == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please log in to proceed')),
+                              );
+                              return;
+                            }
+                            final restaurant = restaurants.firstWhere(
+                              (item) => item.id == restaurantId,
+                              orElse: () => restaurants.first,
+                            );
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => CheckoutScreen(
+                                  restaurantId: restaurantId!,
+                                  restaurantName: restaurant.name,
+                                  cartItems: ref.read(cartProvider),
+                                  subtotal: subtotal,
+                                  deliveryFee: 5.0,
+                                  tax: subtotal * 0.05,
+                                  discount: 0,
+                                  total: subtotal + 5.0 + subtotal * 0.05,
+                                  deliveryAddress: 'Select delivery address',
+                                  orderType: 'food',
+                                  userEmail: user.email,
+                                ),
+                              ),
+                            );
                           }
                         },
                   style: FilledButton.styleFrom(

@@ -3,9 +3,12 @@ from fastapi import APIRouter
 from app.api.v1 import (
     admin,
     auth,
+    banners,
     categories,
     customer,
+    delivery,
     dispatch,
+    maps,
     merchants,
     notifications,
     orders,
@@ -16,8 +19,6 @@ from app.api.v1 import (
     restaurants,
     setup,
     support,
-    banners,
-    delivery,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -39,3 +40,4 @@ api_router.include_router(rider_profile.router)
 api_router.include_router(setup.router)
 api_router.include_router(support.router)
 api_router.include_router(delivery.router)
+api_router.include_router(maps.router, prefix="/maps", tags=["Maps"])

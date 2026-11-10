@@ -1,14 +1,16 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user_dep
+from app.api.deps import get_current_admin_dep, get_current_user_dep
 from app.core.database import get_db
+from app.core.exceptions import ForbiddenException, NotFoundException
 from app.models.notification import Notification
 from app.models.user import User
+from app.services.notification_service import send_push_to_user
 from app.schemas.notification import (
     NotificationListResponse,
     NotificationResponse,
@@ -19,7 +21,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 class TokenRegistrationRequest(BaseModel):
-    fcm_token: str
+    fcm_token: str = Field(..., min_length=20, max_length=4096)
 
 
 @router.post("/register-token")
@@ -49,7 +51,7 @@ async def list_notifications(
 
     unread_q = select(func.count(Notification.id)).where(
         Notification.user_id == current_user.id,
-        Notification.is_read == False,
+        Notification.is_read == False,  # noqa: E712
     )
     unread_count = (await db.execute(unread_q)).scalar() or 0
 
@@ -83,7 +85,7 @@ async def mark_notification_read(
     result = await db.execute(query)
     notification = result.scalar_one_or_none()
     if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
+        raise NotFoundException("Notification not found")
 
     notification.is_read = True
     await db.flush()
@@ -97,7 +99,7 @@ async def mark_all_read(
 ):
     stmt = (
         update(Notification)
-        .where(Notification.user_id == current_user.id, Notification.is_read == False)
+        .where(Notification.user_id == current_user.id, Notification.is_read == False)  # noqa: E712
         .values(is_read=True)
     )
     await db.execute(stmt)
@@ -109,14 +111,25 @@ async def mark_all_read(
 async def send_notification(
     request: SendNotificationRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user_dep),
+    admin: User = Depends(get_current_admin_dep),
 ):
-    notification = Notification(
-        user_id=UUID(request.user_id),
-        title=request.title,
-        body=request.body,
-        type=request.type,
+    target_id = UUID(request.user_id)
+    target = (await db.execute(select(User.id).where(User.id == target_id))).scalar_one_or_none()
+    if not target:
+        raise NotFoundException("Target user not found")
+    notification = await send_push_to_user(
+        db,
+        target_id,
+        request.title,
+        request.body,
+        request.type,
     )
-    db.add(notification)
-    await db.flush()
-    return {"message": "Notification sent", "id": str(notification.id)}
+    return {
+        "message": "Notification sent",
+        "id": str(notification.id),
+        "push_registered": bool(
+            (await db.execute(
+                select(User.fcm_token).where(User.id == target_id)
+            )).scalar_one_or_none()
+        ),
+    }

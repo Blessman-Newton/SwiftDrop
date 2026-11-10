@@ -409,17 +409,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           // Gradient scrim keeps the overlay controls legible on any photo.
           const DecoratedBox(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x59000000),
-                  Color(0x00000000),
-                  Color(0x00000000),
-                  Color(0xB3000000),
-                ],
-                stops: [0.0, 0.35, 0.55, 1.0],
-              ),
+              color: Color(0x66000000),
             ),
           ),
           Positioned(
@@ -474,13 +464,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       decoration: BoxDecoration(
         color: _cLowest,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, _isDark ? 0.25 : 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -702,13 +686,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           border: Border.all(
             color: _isDark ? Colors.white10 : const Color(0xFFE1EFE6),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.18 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1143,13 +1121,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         decoration: BoxDecoration(
           color: _cLowest,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, _isDark ? 0.2 : 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1232,14 +1204,20 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                             _showFeedback('Added ${item.name} to cart');
                           },
                           child: Container(
-                            width: 34,
-                            height: 34,
-                            decoration: const BoxDecoration(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
                               color: AppColors.primaryLight,
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryLight.withOpacity(0.22),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
-                            child: const Icon(Icons.add,
-                                color: Colors.white, size: 20),
+                            child: const Icon(Icons.add, color: Colors.white, size: 20),
                           ),
                         ),
                       ],
@@ -1260,31 +1238,30 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     return GestureDetector(
       onTap: () => setState(() => _showCheckout = true),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: _primaryContainer,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
             BoxShadow(
-              color: Color.fromRGBO(16, 185, 129, 0.35),
-              blurRadius: 30,
-              offset: Offset(0, 12),
+              color: AppColors.primary.withOpacity(0.2),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: _onPrimaryContainer.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.14),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.shopping_bag,
-                  color: _onPrimaryContainer, size: 20),
+              child: const Icon(Icons.shopping_bag, color: Colors.white, size: 18),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1294,15 +1271,15 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                     'View Cart',
                     style: GoogleFonts.inter(
                         fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: _onPrimaryContainer),
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '$count ${count == 1 ? 'Item' : 'Items'} \u2022 $firstName',
                     style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: _onPrimaryContainer.withOpacity(0.7)),
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.8)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1313,9 +1290,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             Text(
               'GHS ${total.toStringAsFixed(2)}',
               style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _onPrimaryContainer),
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white),
             ),
           ],
         ),
@@ -1733,13 +1710,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           decoration: BoxDecoration(
             color: surface,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color.fromRGBO(0, 0, 0, 0.1),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Row(
             children: [
@@ -2126,13 +2097,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                         decoration: BoxDecoration(
                           color: _cLowest,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, -4),
-                            ),
-                          ],
+                          boxShadow: const [],
                         ),
                         child: SizedBox(
                           width: double.infinity,
@@ -2169,9 +2134,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                                borderRadius: BorderRadius.circular(14),
                               ),
                             ),
                             child: Row(
@@ -2184,8 +2149,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                       ? 'View Cart'
                                       : 'Add to cart - ₵${totalPrice.toStringAsFixed(2)}',
                                   style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                               ],
@@ -2282,13 +2247,7 @@ class _HeroButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.9),
           shape: BoxShape.circle,
-          boxShadow: const [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.15),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(icon, color: iconColor ?? const Color(0xFF161D19), size: 20),
       ),
@@ -2534,15 +2493,7 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
                 decoration: BoxDecoration(
                   color: isActive ? AppColors.primary : inactiveColor,
                   borderRadius: BorderRadius.circular(9999),
-                  boxShadow: isActive
-                      ? const [
-                          BoxShadow(
-                            color: Color.fromRGBO(0, 108, 73, 0.2),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ]
-                      : null,
+                  boxShadow: const [],
                 ),
                 child: Text(
                   tab,

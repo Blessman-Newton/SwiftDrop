@@ -98,7 +98,8 @@ extension OrderStatusX on OrderStatus {
     OrderTimelineStage('Confirmed', 'Booking confirmed'),
     OrderTimelineStage('Finding Rider', 'Finding a rider for you'),
     OrderTimelineStage('Rider Assigned', 'Rider has accepted your request'),
-    OrderTimelineStage('Refill in Progress', 'Cylinder being refilled at depot'),
+    OrderTimelineStage(
+        'Refill in Progress', 'Cylinder being refilled at depot'),
     OrderTimelineStage('Out for Delivery', 'Rider is heading to drop-off'),
     OrderTimelineStage('Delivered', 'Gas cylinder delivered'),
   ];
@@ -224,7 +225,7 @@ extension OrderStatusX on OrderStatus {
   }
 }
 
-enum UserRole { customer, rider, guest }
+enum UserRole { customer, rider }
 
 enum RiderScreen { login, dashboard, activeDelivery, navigation, earnings }
 
@@ -235,6 +236,7 @@ enum ToastType { success, error, info }
 class User {
   final String uid;
   final String email;
+  final String role;
   final String? displayName;
   final String? phoneNumber;
   final String? avatarUrl;
@@ -245,6 +247,7 @@ class User {
   const User({
     required this.uid,
     required this.email,
+    this.role = 'customer',
     this.displayName,
     this.phoneNumber,
     this.avatarUrl,
@@ -256,6 +259,7 @@ class User {
   User copyWith({
     String? uid,
     String? email,
+    String? role,
     String? displayName,
     String? phoneNumber,
     String? avatarUrl,
@@ -266,6 +270,7 @@ class User {
     return User(
       uid: uid ?? this.uid,
       email: email ?? this.email,
+      role: role ?? this.role,
       displayName: displayName ?? this.displayName,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
@@ -278,6 +283,7 @@ class User {
   Map<String, dynamic> toMap() => {
         'uid': uid,
         'email': email,
+        'role': role,
         'displayName': displayName,
         'phoneNumber': phoneNumber,
         'avatarUrl': avatarUrl,
@@ -289,6 +295,7 @@ class User {
   factory User.fromMap(Map<String, dynamic> map) => User(
         uid: map['uid'] as String,
         email: map['email'] as String,
+        role: map['role'] as String? ?? 'customer',
         displayName: map['displayName'] as String?,
         phoneNumber: map['phoneNumber'] as String?,
         avatarUrl: map['avatarUrl'] as String?,
@@ -344,12 +351,18 @@ class FoodItem {
 
   static FoodCategory _parseFoodCategory(String? cat) {
     switch (cat) {
-      case 'popular': return FoodCategory.popular;
-      case 'combos': return FoodCategory.combos;
-      case 'burgers': return FoodCategory.burgers;
-      case 'sides': return FoodCategory.sides;
-      case 'drinks': return FoodCategory.drinks;
-      default: return FoodCategory.popular;
+      case 'popular':
+        return FoodCategory.popular;
+      case 'combos':
+        return FoodCategory.combos;
+      case 'burgers':
+        return FoodCategory.burgers;
+      case 'sides':
+        return FoodCategory.sides;
+      case 'drinks':
+        return FoodCategory.drinks;
+      default:
+        return FoodCategory.popular;
     }
   }
 }
@@ -407,7 +420,8 @@ class Restaurant {
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
       tags: List<String>.from(json['tags'] ?? []),
       deliveryTime: (json['delivery_time'] as String?) ?? '',
-      deliveryFee: deliveryFee == 0 ? 'Free' : 'GHS ${deliveryFee.toStringAsFixed(2)}',
+      deliveryFee:
+          deliveryFee == 0 ? 'Free' : 'GHS ${deliveryFee.toStringAsFixed(2)}',
       distance: '',
       minimumOrder: (json['minimum_order'] as num?)?.toDouble() ?? 0,
       imageUrl: (json['image_url'] as String?) ?? '',
@@ -433,7 +447,8 @@ class Restaurant {
       rating: (json['rating'] as num?)?.toDouble() ?? 0,
       tags: List<String>.from(json['tags'] ?? []),
       deliveryTime: (json['delivery_time'] as String?) ?? '',
-      deliveryFee: deliveryFee == 0 ? 'Free' : 'GHS ${deliveryFee.toStringAsFixed(2)}',
+      deliveryFee:
+          deliveryFee == 0 ? 'Free' : 'GHS ${deliveryFee.toStringAsFixed(2)}',
       distance: '',
       minimumOrder: (json['minimum_order'] as num?)?.toDouble() ?? 0,
       imageUrl: (json['image_url'] as String?) ?? '',
@@ -452,7 +467,8 @@ class CartExtra {
   final double price;
   final int quantity;
 
-  const CartExtra({required this.name, required this.price, required this.quantity});
+  const CartExtra(
+      {required this.name, required this.price, required this.quantity});
 
   double get totalPrice => price * quantity;
 
@@ -480,7 +496,8 @@ class CartItem {
     this.extras = const [],
   });
 
-  CartItem copyWith({FoodItem? foodItem, int? quantity, List<CartExtra>? extras}) {
+  CartItem copyWith(
+      {FoodItem? foodItem, int? quantity, List<CartExtra>? extras}) {
     return CartItem(
       foodItem: foodItem ?? this.foodItem,
       quantity: quantity ?? this.quantity,
@@ -489,7 +506,8 @@ class CartItem {
   }
 
   double get totalPrice =>
-      (foodItem.price + extras.fold(0.0, (sum, e) => sum + e.totalPrice)) * quantity;
+      (foodItem.price + extras.fold(0.0, (sum, e) => sum + e.totalPrice)) *
+      quantity;
 
   Map<String, dynamic> toMap() => {
         'foodItem': foodItem.toMap(),
@@ -612,7 +630,8 @@ class Order {
       deliveryLat: deliveryLat ?? this.deliveryLat,
       deliveryLng: deliveryLng ?? this.deliveryLng,
       parcelPickupLocation: parcelPickupLocation ?? this.parcelPickupLocation,
-      parcelDeliveryLocation: parcelDeliveryLocation ?? this.parcelDeliveryLocation,
+      parcelDeliveryLocation:
+          parcelDeliveryLocation ?? this.parcelDeliveryLocation,
       deliveryPin: deliveryPin ?? this.deliveryPin,
       trackingUrl: trackingUrl ?? this.trackingUrl,
     );
@@ -651,11 +670,14 @@ class Order {
         restaurantId: map['restaurantId'] as String? ?? '',
         restaurantName: map['restaurantName'] as String? ?? '',
         items: (map['items'] as List?)
-            ?.map((e) => CartItem.fromMap(e as Map<String, dynamic>))
-            .toList() ?? [],
+                ?.map((e) => CartItem.fromMap(e as Map<String, dynamic>))
+                .toList() ??
+            [],
         totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0,
         status: OrderStatusX.fromStored(map['status']),
-        createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt'] as String) : DateTime.now(),
+        createdAt: map['createdAt'] != null
+            ? DateTime.parse(map['createdAt'] as String)
+            : DateTime.now(),
         trackingStep: map['trackingStep'] as int?,
         courierId: map['courierId'] as String?,
         riderId: map['riderId'] as String?,
@@ -718,6 +740,9 @@ class DeliveryInfo {
   final String pickupAddress;
   final String dropoffAddress;
   final String dropoffDetails;
+  final String customerName;
+  final String? customerPhone;
+  final String? customerEmail;
   final double total;
   final String estimatedTime;
   DeliveryInfo({
@@ -727,6 +752,9 @@ class DeliveryInfo {
     required this.pickupAddress,
     required this.dropoffAddress,
     required this.dropoffDetails,
+    this.customerName = 'Customer',
+    this.customerPhone,
+    this.customerEmail,
     required this.total,
     required this.estimatedTime,
   });

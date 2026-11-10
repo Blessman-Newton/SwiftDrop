@@ -44,6 +44,35 @@ class RiderService {
     }
   }
 
+  Future<Map<String, dynamic>?> getSettings() async {
+      try {
+        final response = await _api.dio.get(ApiEndpoints.riderSettings);
+        return response.data as Map<String, dynamic>;
+      } on DioException {
+        return null;
+      }
+    }
+
+  Future<Map<String, dynamic>?> updateSettings({
+      required List<String> serviceTypes,
+      String? vehicleType,
+      String? licenseNumber,
+    }) async {
+      try {
+        final response = await _api.dio.patch(
+          ApiEndpoints.riderSettings,
+          data: {
+            'service_types': serviceTypes,
+            if (vehicleType != null) 'vehicle_type': vehicleType,
+            if (licenseNumber != null) 'license_number': licenseNumber,
+          },
+        );
+        return response.data as Map<String, dynamic>;
+      } on DioException {
+        return null;
+    }
+  }
+
   /// Get rider earnings data
   Future<Map<String, dynamic>?> getEarnings() async {
     try {

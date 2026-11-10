@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../app_bootstrap.dart';
-import '../providers/providers.dart';
 import '../providers/auth_provider.dart';
 import '../screens/splash_screen.dart';
-import '../screens/onboarding_screen.dart';
 import '../screens/auth_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/food_delivery_screen.dart';
@@ -14,7 +12,6 @@ import '../screens/map_tracking_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/orders_screen.dart';
 import '../screens/cart_screen.dart';
-import '../screens/role_selection_screen.dart';
 import '../screens/parcel_booking_screen.dart';
 import '../screens/parcel_package_details_screen.dart';
 import '../screens/parcel_service_selection_screen.dart';
@@ -33,7 +30,8 @@ import '../widgets/main_scaffold.dart';
 import '../widgets/rider_scaffold.dart';
 import '../models/models.dart';
 
-CustomTransitionPage<void> _fadeTransitionPage(BuildContext context, GoRouterState state, Widget child) {
+CustomTransitionPage<void> _fadeTransitionPage(
+    BuildContext context, GoRouterState state, Widget child) {
   return CustomTransitionPage<void>(
     key: state.pageKey,
     child: child,
@@ -55,25 +53,19 @@ final routerProvider = Provider<GoRouter>((ref) {
     // the splash screen after the OS recycles the process.
     initialLocation: AppBootstrap.current.initialLocation,
     refreshListenable: refresh,
-    errorBuilder: (context, state) => _RouteErrorScreen(uri: state.uri.toString()),
+    errorBuilder: (context, state) =>
+        _RouteErrorScreen(uri: state.uri.toString()),
     routes: [
       GoRoute(
         path: '/splash',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const SplashScreen()),
-      ),
-      GoRoute(
-        path: '/onboarding',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const OnboardingScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const SplashScreen()),
       ),
       GoRoute(
         path: '/auth',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const AuthScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const AuthScreen()),
       ),
-      GoRoute(
-        path: '/role-selection',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const RoleSelectionScreen()),
-      ),
-
       // Customer routes
       ShellRoute(
         builder: (_, state, child) => MainScaffold(child: child),
@@ -82,8 +74,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
               path: '/food-delivery',
               builder: (_, __) => const FoodDeliveryScreen()),
-          GoRoute(
-              path: '/profile', builder: (_, __) => const ProfileScreen()),
+          GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
           GoRoute(
               path: '/orders',
               builder: (_, state) {
@@ -112,15 +103,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/map',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const MapTrackingScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const MapTrackingScreen()),
       ),
       GoRoute(
         path: '/gas-booking',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const GasBookingScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const GasBookingScreen()),
       ),
       GoRoute(
         path: '/cosmetics-list',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const CosmeticsListScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const CosmeticsListScreen()),
       ),
       GoRoute(
         path: '/address-selection',
@@ -143,33 +137,38 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/parcel/booking',
         pageBuilder: (context, state) {
           final type = state.uri.queryParameters['type'] ?? 'package';
-          return _fadeTransitionPage(context, state, ParcelBookingScreen(pickupType: type));
+          return _fadeTransitionPage(
+              context, state, ParcelBookingScreen(pickupType: type));
         },
       ),
       GoRoute(
         path: '/parcel/details',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const ParcelPackageDetailsScreen()),
+        pageBuilder: (context, state) => _fadeTransitionPage(
+            context, state, const ParcelPackageDetailsScreen()),
       ),
       GoRoute(
         path: '/parcel/service',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const ParcelServiceSelectionScreen()),
+        pageBuilder: (context, state) => _fadeTransitionPage(
+            context, state, const ParcelServiceSelectionScreen()),
       ),
       GoRoute(
         path: '/parcel/summary',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const ParcelSummaryScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const ParcelSummaryScreen()),
       ),
 
       // Booking History → redirect to orders (same data source)
       GoRoute(
         path: '/booking-history',
-        pageBuilder: (context, state) => _fadeTransitionPage(context, state, const OrdersScreen()),
+        pageBuilder: (context, state) =>
+            _fadeTransitionPage(context, state, const OrdersScreen()),
       ),
 
       // Rider routes
       GoRoute(
         path: '/rider/request',
-        pageBuilder: (context, state) =>
-            _fadeTransitionPage(context, state, const RiderIncomingRequestScreen()),
+        pageBuilder: (context, state) => _fadeTransitionPage(
+            context, state, const RiderIncomingRequestScreen()),
       ),
       ShellRoute(
         builder: (_, state, child) => RiderScaffold(child: child),
@@ -185,7 +184,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               builder: (_, __) => const RiderActiveDeliveryScreen()),
           GoRoute(
               path: '/rider/navigation',
-              pageBuilder: (context, state) => _fadeTransitionPage(context, state, const RiderNavigationScreen())),
+              pageBuilder: (context, state) => _fadeTransitionPage(
+                  context, state, const RiderNavigationScreen())),
           GoRoute(
               path: '/rider/earnings',
               builder: (_, __) => const RiderEarningsScreen()),
@@ -206,7 +206,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Guards against a redirect firing while the router is being torn down.
       if (disposed) return null;
 
-      final onboardingDone = ref.read(onboardingDoneProvider);
       final user = ref.read(currentUserProvider);
       final role = ref.read(userRoleProvider);
 
@@ -214,23 +213,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       // keeps GoRouter from looping on a self-redirect.
       String? require(String target) => target == location ? null : target;
 
-      // Step 1: First time user - no onboarding done
-      if (!onboardingDone) return require('/onboarding');
-
-      // Step 2: Onboarding done, no role selected yet
-      if (role == null) return require('/role-selection');
-
-      // Step 3: Role selected but not logged in (guest goes directly to home)
+      // Unauthenticated users always choose Rider or User from the login
+      // screen. There is no guest mode.
       if (user == null) {
-        if (role == UserRole.guest) return require('/home');
         return require('/auth');
       }
 
-      // Step 4: Logged in - check role access
-      if (role == UserRole.rider && !location.startsWith('/rider')) {
+      // The server-provided account role is authoritative. The local role is
+      // only a pre-login preference and must never grant access by itself.
+      final accountIsRider = user.role == 'rider';
+      final riderMode = role != UserRole.customer;
+      if (accountIsRider && riderMode && !location.startsWith('/rider')) {
         return require('/rider/dashboard');
       }
-      if (role != UserRole.rider && location.startsWith('/rider')) {
+      if (!accountIsRider && location.startsWith('/rider')) {
         return require('/home');
       }
 

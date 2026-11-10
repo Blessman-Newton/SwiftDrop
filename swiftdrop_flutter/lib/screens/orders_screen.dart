@@ -447,7 +447,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                       style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: const Color(0xFF006C49), fontSize: 13),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF006C49)),
+                      side: BorderSide.none,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     ),
@@ -503,7 +503,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen> {
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary)),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.primary),
+                      side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),

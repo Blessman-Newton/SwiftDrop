@@ -96,13 +96,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Row(
                 children: [
@@ -235,6 +229,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _buildCategoryGroup(
               'Activities & Partnerships',
               [
+                if (user?.role == 'rider')
+                  _buildSettingsItem(
+                    icon: Icons.two_wheeler_rounded,
+                    label: 'Switch to rider',
+                    iconBg: const Color(0xFFE8F5E9),
+                    iconColor: AppColors.primary,
+                    onTap: () async {
+                      await ref
+                          .read(userRoleProvider.notifier)
+                          .setRole(UserRole.rider);
+                      if (context.mounted) context.go('/rider/dashboard');
+                    },
+                  ),
                 _buildSettingsItem(
                   icon: Icons.share_outlined,
                   label: 'Referral & Earn',
@@ -328,7 +335,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     // Clears the token, the cached session and the remembered
                     // location before leaving the protected area.
                     await ref.read(currentUserProvider.notifier).signOut();
-                    if (context.mounted) context.go('/role-selection');
+                    if (context.mounted) context.go('/auth');
                   },
                   icon: const Icon(Icons.logout_rounded, color: Color(0xFFBA1A1A)),
                   label: Text(
@@ -379,13 +386,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             border: Border.all(
               color: isDark ? Colors.white10 : Colors.grey[200]!,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.015),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Column(
             children: children,
@@ -848,7 +849,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF006C49), Color(0xFF10B981)]),
+                  color: const Color(0xFF006C49),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -982,7 +983,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go('/role-selection');
+                  context.go('/auth');
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Open Rider Portal', style: TextStyle(color: Colors.white)),
@@ -1018,7 +1019,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  context.go('/role-selection');
+                  context.go('/auth');
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                 child: const Text('Open Merchant Portal', style: TextStyle(color: Colors.white)),

@@ -12,7 +12,17 @@ from app.models.restaurant import MenuItem, Restaurant
 from app.models.user import User
 from app.schemas.order import CreateOrderRequest, OrderResponse
 from app.config import get_settings
-from app.services.pricing_service import price_cosmetics, price_gas, price_parcel
+from app.services.pricing_service import (
+    calculate_delivery_fee,
+    price_cosmetics,
+    price_gas,
+    price_parcel,
+)
+from app.services.notification_service import (
+    notify_new_order_merchant,
+    notify_order_status_update,
+    notify_order_cancelled_rider,
+)
 
 settings = get_settings()
 
@@ -107,6 +117,14 @@ async def transition_order(
     }
     order.status_history = (order.status_history or []) + [transition]
     await db.flush()
+    await notify_order_status_update(
+        db,
+        order.customer_id,
+        str(order.id),
+        new_status,
+    )
+    if new_status == "CANCELLED" and order.rider_id:
+        await notify_order_cancelled_rider(db, order.rider_id, str(order.id))
     return _order_to_response(order)
 
 
@@ -129,6 +147,7 @@ async def create_order(
         return _order_to_response(existing_order)
 
     priced_items = []
+    restaurant_owner_id = None
     if request.order_type == "food":
         if not request.items:
             raise BadRequestException("Food orders must contain at least one item")
@@ -139,6 +158,7 @@ async def create_order(
         restaurant = (await db.execute(restaurant_query)).scalar_one_or_none()
         if not restaurant:
             raise BadRequestException("Restaurant is unavailable")
+        restaurant_owner_id = restaurant.owner_id
         menu_ids = [item.menu_item_id for item in request.items]
         if any(not item_id for item_id in menu_ids):
             raise BadRequestException("Food items must include menu item IDs")
@@ -156,7 +176,12 @@ async def create_order(
             sum(float(menu_by_id[item.menu_item_id].price) * item.quantity for item in request.items),
             2,
         )
-        delivery_fee = round(float(restaurant.delivery_fee), 2)
+        delivery_fee = calculate_delivery_fee(
+            request.pickup_lat,
+            request.pickup_lng,
+            request.delivery_lat,
+            request.delivery_lng,
+        )
         tax = round(subtotal * 0.0, 2)
         discount = 0.0
         total = round(subtotal + delivery_fee + tax - discount, 2)
@@ -167,13 +192,24 @@ async def create_order(
         ]
     elif request.order_type == "cosmetics":
         subtotal, priced_items = await price_cosmetics(db, request.items)
-        delivery_fee = 5.0
+        delivery_fee = calculate_delivery_fee(
+            request.pickup_lat,
+            request.pickup_lng,
+            request.delivery_lat,
+            request.delivery_lng,
+        )
         tax = 0.0
         discount = 0.0
         total = round(subtotal + delivery_fee, 2)
     elif request.restaurant_name == "LPG Gas Depot (Tarkwa)":
         metadata = request.metadata or {}
-        subtotal, delivery_fee = await price_gas(db, metadata)
+        subtotal = await price_gas(db, metadata)
+        delivery_fee = calculate_delivery_fee(
+            request.pickup_lat,
+            request.pickup_lng,
+            request.delivery_lat,
+            request.delivery_lng,
+        )
         tax = 0.0
         discount = 0.0
         total = round(subtotal + delivery_fee, 2)
@@ -263,6 +299,11 @@ async def create_order(
     ]
     await db.flush()
 
+    if restaurant_owner_id:
+        await notify_new_order_merchant(
+            db, restaurant_owner_id, str(order.id), float(order.total)
+        )
+
     return _order_to_response(order, order_items)
 
 
@@ -293,6 +334,19 @@ async def get_order(
     ).where(Order.id == order_id)
     if customer_id:
         query = query.where(Order.customer_id == customer_id)
+    result = await db.execute(query)
+    order = result.scalar_one_or_none()
+    if not order:
+        raise NotFoundException("Order not found")
+    return _order_to_response(order)
+
+
+async def get_order_public(db: AsyncSession, order_id: UUID) -> OrderResponse:
+    query = (
+        select(Order)
+        .options(selectinload(Order.items), selectinload(Order.rider).selectinload(User.rider_profile))
+        .where(Order.id == order_id)
+    )
     result = await db.execute(query)
     order = result.scalar_one_or_none()
     if not order:

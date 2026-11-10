@@ -73,13 +73,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.04),
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,13 +163,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(0, 0, 0, 0.04),
-                                blurRadius: 10,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                            boxShadow: const [],
                           ),
                           child: Row(
                             children: [
@@ -223,13 +211,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color.fromRGBO(0, 0, 0, 0.04),
-                                blurRadius: 10,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
+                            boxShadow: const [],
                           ),
                           child: Row(
                             children: [
@@ -280,13 +262,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.04),
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: Row(
                       children: [
@@ -336,13 +312,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.04),
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: Row(
                       children: [
@@ -407,13 +377,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color.fromRGBO(0, 0, 0, 0.04),
-                          blurRadius: 10,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -479,13 +443,7 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             decoration: const BoxDecoration(
               color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Color.fromRGBO(0, 0, 0, 0.08),
-                  blurRadius: 30,
-                  offset: Offset(0, -10),
-                ),
-              ],
+              boxShadow: const [],
             ),
             child: SafeArea(
               top: false,
@@ -557,17 +515,9 @@ class _ParcelSummaryScreenState extends ConsumerState<ParcelSummaryScreen> {
                     height: 64,
                     child: DecoratedBox(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF006C49), Color(0xFF10B981)],
-                        ),
+                        color: const Color(0xFF006C49),
                         borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color.fromRGBO(0, 108, 73, 0.3),
-                            blurRadius: 16,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
+                        boxShadow: const [],
                       ),
                       child: ElevatedButton(
                         onPressed: () async {

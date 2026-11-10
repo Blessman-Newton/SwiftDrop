@@ -31,6 +31,11 @@ final riderStatsProvider =
   return service.getStats();
 });
 
+final riderSettingsProvider =
+    FutureProvider<Map<String, dynamic>?>((ref) async {
+  return ref.read(riderServiceProvider).getSettings();
+});
+
 // Active delivery from API
 final riderActiveDeliveryProvider =
     FutureProvider<Map<String, dynamic>?>((ref) async {

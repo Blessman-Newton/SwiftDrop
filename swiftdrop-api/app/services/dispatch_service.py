@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import BadRequestException, NotFoundException
 from app.models.order import DispatchLog, Order
 from app.models.user import RiderProfile, User
-from app.models.notification import Notification
+from app.services.notification_service import (
+    notify_new_delivery_request,
+    notify_rider_assigned,
+    send_push_to_user,
+)
 from app.config import get_settings
 
 settings = get_settings()
@@ -47,6 +51,10 @@ async def get_available_orders(db: AsyncSession) -> list[dict]:
             "delivery_address": o.delivery_address,
             "total": float(o.total),
             "delivery_fee": float(o.delivery_fee),
+            "pickup_lat": o.pickup_lat,
+            "pickup_lng": o.pickup_lng,
+            "delivery_lat": o.delivery_lat,
+            "delivery_lng": o.delivery_lng,
             "created_at": o.created_at.isoformat(),
         }
         for o in orders
@@ -116,25 +124,8 @@ async def accept_order(db: AsyncSession, order_id: UUID, rider_id: UUID) -> dict
     rider = rider_result.scalar_one_or_none()
     rider_name = rider.name if rider else "Your rider"
 
-    is_gas_refill = order.restaurant_name == "LPG Gas Depot (Tarkwa)"
-    title = "Rider Assigned 🎉" if is_gas_refill else "Rider Assigned"
-    body = f"{rider_name} has accepted your gas refill request." if is_gas_refill else f"Good news! {rider_name} has been assigned to deliver your order. They will arrive at the merchant shortly to pick it up."
-
-    customer_notification = Notification(
-        user_id=order.customer_id,
-        title=title,
-        body=body,
-        type="order",
-        metadata_={
-            "order_id": str(order_id),
-            "rider_name": rider_name,
-            "rider_id": str(rider_id),
-            "status": "rider_assigned",
-        },
-    )
-    db.add(customer_notification)
-
     await db.flush()
+    await notify_rider_assigned(db, order.customer_id, str(order_id), rider_name)
     return {"message": "Order accepted", "order_id": str(order_id)}
 
 
@@ -236,36 +227,18 @@ async def auto_match_rider(db: AsyncSession, order_id: UUID) -> dict:
     )
     order.dispatch_attempts += 1
     
-    rider_notification = Notification(
-        user_id=closest_rider.user_id,
-        title="New Order Assigned",
-        body=f"You have been assigned a new delivery to pickup at {order.restaurant_name or 'merchant'}.",
-        type="order",
-        metadata_={
-            "order_id": str(order_id),
-            "status": "assigned",
-        },
-    )
-    db.add(rider_notification)
-
     rider_user = (await db.execute(select(User).where(User.id == closest_rider.user_id))).scalar_one_or_none()
     rider_name = rider_user.name if rider_user else "Your rider"
 
-    customer_notification = Notification(
-        user_id=order.customer_id,
-        title="Rider Assigned",
-        body=f"{rider_name} is on their way to pick up your order.",
-        type="order",
-        metadata_={
-            "order_id": str(order_id),
-            "rider_name": rider_name,
-            "status": "rider_assigned",
-        },
-    )
-    db.add(customer_notification)
-
     db.add(DispatchLog(order_id=order_id, rider_id=closest_rider.user_id, action="AUTO_MATCHED"))
     await db.flush()
+    await notify_new_delivery_request(
+        db,
+        closest_rider.user_id,
+        str(order_id),
+        order.pickup_address,
+    )
+    await notify_rider_assigned(db, order.customer_id, str(order_id), rider_name)
 
     return {
         "status": "assigned",
@@ -302,14 +275,13 @@ async def expire_dispatch_offers(db: AsyncSession, limit: int = 50) -> dict:
         if profile and profile.current_order_id == order.id:
             profile.current_order_id = None
         db.add(DispatchLog(order_id=order.id, rider_id=rider_id, action="EXPIRED"))
-        db.add(
-            Notification(
-                user_id=rider_id,
-                title="Order offer expired",
-                body="This delivery offer expired and has been returned to dispatch.",
-                type="order",
-                metadata_={"order_id": str(order.id), "status": "dispatch_expired"},
-            )
+        await send_push_to_user(
+            db,
+            rider_id,
+            "Order offer expired",
+            "This delivery offer expired and has been returned to dispatch.",
+            type="rider",
+            metadata={"order_id": str(order.id), "status": "dispatch_expired"},
         )
         order.rider_id = None
         order.dispatch_offer_deadline = None

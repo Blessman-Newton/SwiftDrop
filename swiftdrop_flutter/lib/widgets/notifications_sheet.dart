@@ -40,12 +40,6 @@ class _NotificationsSheetState extends ConsumerState<NotificationsSheet> {
           decoration: BoxDecoration(
             color: AppColors.background(isDark),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-              ),
-            ],
           ),
           padding: const EdgeInsets.all(24),
           child: Column(

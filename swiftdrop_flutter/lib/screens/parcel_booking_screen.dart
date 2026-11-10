@@ -155,7 +155,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                 children: [
                   TileLayer(
                     urlTemplate: TomTomService.tileUrl,
-                    userAgentPackageName: 'com.swiftdrop.app',
+                    userAgentPackageName: 'com.blessman.swiftdrop',
                   ),
                   if (_routePoints.isNotEmpty)
                     PolylineLayer(
@@ -179,9 +179,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                               color: const Color(0xFF006C49),
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                              ],
+                              boxShadow: const [],
                             ),
                             child: const Icon(Icons.location_on, color: Colors.white, size: 18),
                           ),
@@ -196,9 +194,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                               color: const Color(0xFFFF7E2D),
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                              ],
+                              boxShadow: const [],
                             ),
                             child: const Icon(Icons.location_on, color: Colors.white, size: 18),
                           ),
@@ -213,17 +209,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFF4FBF4),
-                    Colors.transparent,
-                    Colors.transparent,
-                    Color(0xFFF4FBF4),
-                  ],
-                  stops: [0.0, 0.15, 0.85, 1.0],
-                ),
+                color: const Color(0xFFF4FBF4),
               ),
             ),
           ),
@@ -236,13 +222,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               decoration: const BoxDecoration(
                 color: Color(0xFFF4FBF4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color.fromRGBO(0, 0, 0, 0.05),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: SafeArea(
                 bottom: false,
@@ -297,13 +277,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color.fromRGBO(0, 0, 0, 0.1),
-                      blurRadius: 25,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  boxShadow: const [],
                   border: Border.all(
                     color: const Color.fromRGBO(187, 202, 191, 0.2),
                   ),
@@ -317,11 +291,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF006C49), Color(0xFF10B981)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: const Color(0xFF006C49),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -572,13 +542,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFE3EAE3).withValues(alpha: 0.9),
                               shape: BoxShape.circle,
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color.fromRGBO(0, 0, 0, 0.05),
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+                              boxShadow: const [],
                             ),
                             child: const Icon(
                               Icons.add,
@@ -630,8 +594,8 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF10B981),
                       foregroundColor: const Color(0xFF00422B),
-                      elevation: 8,
-                      shadowColor: const Color(0xFF10B981).withValues(alpha: 0.3),
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -792,13 +756,7 @@ class _ParcelBookingScreenState extends ConsumerState<ParcelBookingScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFFE3EAE3).withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(9999),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.05),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -1,4 +1,5 @@
 from app.models.user import User, RiderProfile, OTPCode
+from app.models.session import UserSession
 from app.models.restaurant import Restaurant, MenuItem, PromoCode
 from app.models.category import Category
 from app.models.order import Order, OrderItem, DispatchLog
@@ -17,6 +18,7 @@ __all__ = [
     "User",
     "RiderProfile",
     "OTPCode",
+    "UserSession",
     "Restaurant",
     "MenuItem",
     "PromoCode",

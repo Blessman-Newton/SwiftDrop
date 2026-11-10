@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../app_bootstrap.dart';
 import '../models/models.dart';
 import '../services/order_service.dart';
 import '../services/customer_service.dart';
@@ -424,27 +423,6 @@ final maxPriceLevelProvider = StateProvider<int>((ref) => 3);
 // ==================== MISC ====================
 
 final promoCodeProvider = StateProvider<String?>((ref) => null);
-
-final onboardingDoneProvider =
-    StateNotifierProvider<OnboardingDoneNotifier, bool>((ref) {
-  return OnboardingDoneNotifier(ref.watch(routerRefreshProvider));
-});
-
-class OnboardingDoneNotifier extends StateNotifier<bool> {
-  final RouterRefresh _routerRefresh;
-
-  /// Seeded from the launch-time bootstrap so the first redirect does not
-  /// misread an existing user as a brand new one.
-  OnboardingDoneNotifier(this._routerRefresh)
-      : super(AppBootstrap.current.onboardingDone);
-
-  Future<void> complete() async {
-    state = true;
-    _routerRefresh.bump();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(AppBootstrap.onboardingKey, true);
-  }
-}
 
 // ==================== PARCEL BOOKING ====================
 

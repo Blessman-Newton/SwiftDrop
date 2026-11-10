@@ -64,7 +64,11 @@ export default function App() {
   
   const [isOnline, setIsOnline] = useState(true);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(() => api.isAuthenticated());
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    api.isAuthenticated().then(setIsLoggedIn).catch(() => setIsLoggedIn(false));
+  }, []);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [usePhoneLogin, setUsePhoneLogin] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
@@ -131,6 +135,7 @@ export default function App() {
         try {
           restaurantData = await api.getRestaurant();
           setRestaurant(restaurantData);
+          setIsOnline(restaurantData.is_active !== false);
           // Only show onboarding if not completed AND restaurant has default values
           if (!onboardingCompleted) {
             const isDefaultName = /^Restaurant \d{4}$/.test(restaurantData.name);
@@ -283,8 +288,14 @@ export default function App() {
     return () => clearInterval(pollInterval);
   }, [isLoggedIn, newOrdersCount]);
 
-  const handleToggleOnline = () => {
-    setIsOnline(!isOnline);
+  const handleToggleOnline = async () => {
+    try {
+      const updated = await api.updateRestaurant({ is_active: !isOnline });
+      setIsOnline(updated.is_active !== false);
+      setRestaurant((current) => current ? { ...current, is_active: updated.is_active } : current);
+    } catch (err) {
+      console.error("Failed to update store status:", err);
+    }
   };
 
   const handleToggleStock = async (itemId: string) => {

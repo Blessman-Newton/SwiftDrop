@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_client.dart';
 import 'api_endpoints.dart';
+import 'firebase_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -14,19 +15,24 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 class FCMService {
   static final FCMService _instance = FCMService._();
   factory FCMService() => _instance;
-  FCMService._();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _messaging;
   final ApiClient _api = ApiClient();
 
   String? _fcmToken;
   Function(RemoteMessage)? onMessageOpenedApp;
   Function(RemoteMessage)? onForegroundMessage;
 
+  FCMService._() {
+    if (!ApiEndpoints.localMode) {
+      _messaging = FirebaseMessaging.instance;
+    }
+  }
+
   String? get token => _fcmToken;
 
   Future<void> initialize() async {
-    if (kIsWeb) return;
+    if (kIsWeb || !FirebaseService.isInitialized) return;
 
     await _requestPermissions();
     await _setupToken();
@@ -34,8 +40,11 @@ class FCMService {
   }
 
   Future<void> _requestPermissions() async {
+    final messaging = _messaging;
+    if (messaging == null) return;
+
     if (Platform.isAndroid) {
-      final androidImplementation = _messaging;
+      final androidImplementation = messaging;
       await androidImplementation.requestPermission(
         alert: true,
         badge: true,
@@ -43,7 +52,7 @@ class FCMService {
         provisional: false,
       );
     } else if (Platform.isIOS) {
-      await _messaging.requestPermission(
+      await messaging.requestPermission(
         alert: true,
         badge: true,
         sound: true,
@@ -53,12 +62,15 @@ class FCMService {
   }
 
   Future<void> _setupToken() async {
+    final messaging = _messaging;
+    if (messaging == null) return;
+
     try {
-      _fcmToken = await _messaging.getToken();
+      _fcmToken = await messaging.getToken();
       debugPrint('[FCM] Token obtained: ${_fcmToken?.substring(0, 20)}...');
       await _registerTokenWithBackend();
 
-      _messaging.onTokenRefresh.listen((newToken) {
+      messaging.onTokenRefresh.listen((newToken) {
         debugPrint('[FCM] Token refreshed');
         _fcmToken = newToken;
         _registerTokenWithBackend();
@@ -85,7 +97,12 @@ class FCMService {
     }
   }
 
-  Future<void> registerCurrentToken() => _registerTokenWithBackend();
+  Future<void> registerCurrentToken() async {
+    if (_messaging == null && FirebaseService.isInitialized) {
+      _messaging = FirebaseMessaging.instance;
+    }
+    await _registerTokenWithBackend();
+  }
 
   void _setupMessageHandlers() {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -105,8 +122,11 @@ class FCMService {
   }
 
   Future<void> subscribeToTopic(String topic) async {
+    final messaging = _messaging;
+    if (messaging == null) return;
+
     try {
-      await _messaging.subscribeToTopic(topic);
+      await messaging.subscribeToTopic(topic);
       debugPrint('[FCM] Subscribed to topic: $topic');
     } catch (e) {
       debugPrint('[FCM] Failed to subscribe to topic $topic: $e');
@@ -114,8 +134,11 @@ class FCMService {
   }
 
   Future<void> unsubscribeFromTopic(String topic) async {
+    final messaging = _messaging;
+    if (messaging == null) return;
+
     try {
-      await _messaging.unsubscribeFromTopic(topic);
+      await messaging.unsubscribeFromTopic(topic);
       debugPrint('[FCM] Unsubscribed from topic: $topic');
     } catch (e) {
       debugPrint('[FCM] Failed to unsubscribe from topic $topic: $e');
@@ -138,8 +161,14 @@ class FCMService {
   }
 
   Future<void> deleteToken() async {
+    final messaging = _messaging;
+    if (messaging == null) {
+      _fcmToken = null;
+      return;
+    }
+
     try {
-      await _messaging.deleteToken();
+      await messaging.deleteToken();
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('swiftdrop_fcm_token');
       _fcmToken = null;

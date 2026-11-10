@@ -53,9 +53,8 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     setLoading(true)
     setError('')
     try {
-      const res = await api.loginWithEmail(email, password)
-      localStorage.setItem('admin_token', res.access_token)
-      onLogin(res.access_token)
+      await api.loginWithEmail(email, password)
+      onLogin('session')
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -81,9 +80,8 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     setLoading(true)
     setError('')
     try {
-      const res = await api.verifyOtp(phone, code)
-      localStorage.setItem('admin_token', res.access_token)
-      onLogin(res.access_token)
+      await api.verifyOtp(phone, code)
+      onLogin('session')
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -95,9 +93,8 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
     setLoading(true)
     setError('')
     try {
-      const res = await api.signUp(email, password, phone, name || undefined)
-      localStorage.setItem('admin_token', res.access_token)
-      onLogin(res.access_token)
+      await api.signUp(email, password, phone, name || undefined)
+      onLogin('session')
     } catch (e: any) {
       setError(e.message)
     } finally {
@@ -880,9 +877,13 @@ function AnalyticsView({ token }: { token: string }) {
 }
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('admin_token'))
+  const [token, setToken] = useState<string | null>(null)
   const [view, setView] = useState<View>('dashboard')
   const [stats, setStats] = useState<DashboardStats | null>(null)
+
+  useEffect(() => {
+    api.me().then(() => setToken('session')).catch(() => setToken(null))
+  }, [])
 
   useEffect(() => {
     if (token) {
@@ -890,8 +891,8 @@ export default function App() {
     }
   }, [token])
 
-  const handleLogout = () => {
-    localStorage.removeItem('admin_token')
+  const handleLogout = async () => {
+    try { await api.logout() } catch (_) {}
     setToken(null)
     setStats(null)
   }

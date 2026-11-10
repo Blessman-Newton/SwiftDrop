@@ -113,13 +113,7 @@ class _ParcelPackageDetailsScreenState
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color.fromRGBO(0, 0, 0, 0.05),
-                      blurRadius: 10,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: Column(
                   children: [
@@ -375,13 +369,7 @@ class _ParcelPackageDetailsScreenState
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         decoration: const BoxDecoration(
           color: Color(0xFFF4FBF4),
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.05),
-              blurRadius: 30,
-              offset: Offset(0, -10),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: SafeArea(
           child: Semantics(
@@ -412,8 +400,8 @@ class _ParcelPackageDetailsScreenState
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 8,
-                  shadowColor: const Color(0xFF006C49).withValues(alpha: 0.3),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
                 ),
                 child: Text(
                   'Continue',
@@ -446,21 +434,7 @@ class _ParcelPackageDetailsScreenState
               color: isActive ? const Color(0xFF10B981) : Colors.transparent,
               width: 2,
             ),
-            boxShadow: isActive
-                ? [
-                    const BoxShadow(
-                      color: Color.fromRGBO(16, 185, 129, 0.2),
-                      blurRadius: 25,
-                      offset: Offset(0, 4),
-                    ),
-                  ]
-                : const [
-                    BoxShadow(
-                      color: Color.fromRGBO(0, 0, 0, 0.04),
-                      blurRadius: 10,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+            boxShadow: const [],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

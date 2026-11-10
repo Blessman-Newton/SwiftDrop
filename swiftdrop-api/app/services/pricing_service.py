@@ -1,6 +1,6 @@
 """Server-authoritative pricing for non-restaurant orders."""
 
-from math import asin, cos, radians, sin, sqrt
+from math import asin, ceil, cos, radians, sin, sqrt
 from typing import Any
 
 from sqlalchemy import select
@@ -18,6 +18,9 @@ DEFAULT_GAS_PRICES = {
     "50 kg": 600.0,
 }
 
+BASE_DELIVERY_FEE = 10.0
+PER_KILOMETER_DELIVERY_FEE = 5.0
+
 
 def _distance_km(metadata: dict[str, Any], pickup_lat: float | None, pickup_lng: float | None,
                  delivery_lat: float | None, delivery_lng: float | None) -> float:
@@ -30,6 +33,31 @@ def _distance_km(metadata: dict[str, Any], pickup_lat: float | None, pickup_lng:
     dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
     a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
     return 6371.0 * 2 * asin(sqrt(a))
+
+
+def calculate_delivery_fee(
+    pickup_lat: float | None,
+    pickup_lng: float | None,
+    delivery_lat: float | None,
+    delivery_lng: float | None,
+) -> float:
+    """Calculate the platform delivery fee for every order type.
+
+    A partial kilometer is charged as a full kilometer. Orders without
+    coordinates receive the base fee until a location is supplied.
+    """
+    distance_km = _distance_km(
+        {},
+        pickup_lat,
+        pickup_lng,
+        delivery_lat,
+        delivery_lng,
+    )
+    billable_kilometers = ceil(distance_km) if distance_km > 0 else 0
+    return round(
+        BASE_DELIVERY_FEE + billable_kilometers * PER_KILOMETER_DELIVERY_FEE,
+        2,
+    )
 
 
 async def price_cosmetics(db: AsyncSession, items: list[Any]) -> tuple[float, list[dict[str, Any]]]:
@@ -55,7 +83,7 @@ async def price_cosmetics(db: AsyncSession, items: list[Any]) -> tuple[float, li
     return round(subtotal, 2), priced
 
 
-async def price_gas(db: AsyncSession, metadata: dict[str, Any]) -> tuple[float, float]:
+async def price_gas(db: AsyncSession, metadata: dict[str, Any]) -> float:
     size = metadata.get("cylinder_size")
     if not isinstance(size, str):
         raise BadRequestException("Gas orders must include a cylinder size")
@@ -68,10 +96,7 @@ async def price_gas(db: AsyncSession, metadata: dict[str, Any]) -> tuple[float, 
     quantity = metadata.get("quantity", 1)
     if quantity != 1:
         raise BadRequestException("Only one gas cylinder may be booked per order")
-    speed = metadata.get("delivery_speed", "Standard")
-    if speed not in ("Standard", "Express"):
-        raise BadRequestException("Unsupported gas delivery speed")
-    return round(float(catalog[size]), 2), 25.0 if speed == "Express" else 15.0
+    return round(float(catalog[size]), 2)
 
 
 async def price_parcel(metadata: dict[str, Any], pickup_lat: float | None, pickup_lng: float | None,
@@ -81,7 +106,6 @@ async def price_parcel(metadata: dict[str, Any], pickup_lat: float | None, picku
     weight = float(metadata.get("weight_kg", 1))
     if weight <= 0 or weight > 50:
         raise BadRequestException("Parcel weight must be between 0 and 50 kg")
-    distance = _distance_km(metadata, pickup_lat, pickup_lng, delivery_lat, delivery_lng)
     subtotal = 10.0 + max(0.0, weight - 1.0) * 2.0
-    fee = 8.0 + distance * 1.5 + (13.0 if metadata.get("delivery_speed") == "Express" else 0.0)
+    fee = calculate_delivery_fee(pickup_lat, pickup_lng, delivery_lat, delivery_lng)
     return round(subtotal, 2), round(fee, 2)

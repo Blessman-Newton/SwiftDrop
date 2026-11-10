@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../providers/merchant_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/models.dart';
+import '../../utils/user_friendly_error.dart';
 
 class RiderLoginScreen extends ConsumerStatefulWidget {
   const RiderLoginScreen({super.key});
@@ -74,11 +75,15 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
 
   Future<void> _handleSendOtp() async {
     if (_phoneController.text.isEmpty) {
-      ref.read(riderToastsProvider.notifier).add('Please enter your phone number', ToastType.error);
+      ref
+          .read(riderToastsProvider.notifier)
+          .add('Please enter your phone number', ToastType.error);
       return;
     }
     setState(() => _isLoading = true);
-    ref.read(riderToastsProvider.notifier).add('Sending OTP...', ToastType.info);
+    ref
+        .read(riderToastsProvider.notifier)
+        .add('Sending OTP...', ToastType.info);
 
     try {
       final sent = await ref.read(currentUserProvider.notifier).sendOtp(
@@ -91,40 +96,65 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
         });
         if (sent) {
           _startCountdown();
-          ref.read(riderToastsProvider.notifier).add('OTP sent successfully', ToastType.success);
+          ref
+              .read(riderToastsProvider.notifier)
+              .add('OTP sent successfully', ToastType.success);
         } else {
-          ref.read(riderToastsProvider.notifier).add('Failed to send OTP. Please try again.', ToastType.error);
+          ref
+              .read(riderToastsProvider.notifier)
+              .add('Failed to send OTP. Please try again.', ToastType.error);
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ref.read(riderToastsProvider.notifier).add(
-            e.toString().replaceFirst('Exception: ', ''), ToastType.error);
+            userFriendlyError(e, action: 'send the verification code'),
+            ToastType.error);
       }
     }
   }
 
   Future<void> _handleVerifyOtp() async {
     if (_otpCode.length < 6) {
-      ref.read(riderToastsProvider.notifier).add('Please enter the full 6-digit code', ToastType.error);
+      ref
+          .read(riderToastsProvider.notifier)
+          .add('Please enter the full 6-digit code', ToastType.error);
       return;
     }
     setState(() => _isLoading = true);
     ref.read(riderToastsProvider.notifier).add('Verifying...', ToastType.info);
 
-    final valid = await ref.read(currentUserProvider.notifier).verifyOtp(
-          _phoneController.text.trim(),
-          _otpCode,
-        );
+    bool valid;
+    try {
+      valid = await ref.read(currentUserProvider.notifier).verifyOtp(
+            _phoneController.text.trim(),
+            _otpCode,
+          );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ref.read(riderToastsProvider.notifier).add(
+              userFriendlyError(e, action: 'verify the code'),
+              ToastType.error,
+            );
+      }
+      return;
+    }
     if (mounted) {
       setState(() => _isLoading = false);
       if (valid) {
-        final name = _nameController.text.trim().isEmpty ? 'Rider' : _nameController.text.trim();
-        ref.read(riderToastsProvider.notifier).add('Welcome back, $name!', ToastType.success);
+        final name = _nameController.text.trim().isEmpty
+            ? 'Rider'
+            : _nameController.text.trim();
+        ref
+            .read(riderToastsProvider.notifier)
+            .add('Welcome back, $name!', ToastType.success);
         context.go('/rider/dashboard');
       } else {
-        ref.read(riderToastsProvider.notifier).add('Invalid OTP code', ToastType.error);
+        ref
+            .read(riderToastsProvider.notifier)
+            .add('Invalid OTP code', ToastType.error);
       }
     }
   }
@@ -216,13 +246,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
       decoration: BoxDecoration(
         color: const Color.fromRGBO(255, 255, 255, 0.9),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          ),
-        ],
+        boxShadow: const [],
         border: Border.all(color: const Color(0xFFF1F5F9)),
       ),
       child: Column(
@@ -245,7 +269,9 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _otpSent ? 'Enter the 6-digit code sent to your phone' : 'Secure access to your delivery dashboard',
+                  _otpSent
+                      ? 'Enter the 6-digit code sent to your phone'
+                      : 'Secure access to your delivery dashboard',
                   style: GoogleFonts.inter(
                     fontSize: 14,
                     color: const Color(0xFF64748B),
@@ -324,7 +350,8 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               ),
               style: GoogleFonts.inter(
                 fontSize: 15,
@@ -387,7 +414,8 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
               ),
               style: GoogleFonts.inter(
                 fontSize: 15,
@@ -414,7 +442,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          shadowColor: const Color(0x26059669),
+          shadowColor: Colors.transparent,
         ),
         child: _isLoading
             ? const SizedBox(
@@ -465,10 +493,14 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
               width: 48,
               height: 56,
               decoration: BoxDecoration(
-                color: hasValue ? const Color(0xFFECFDF5) : const Color(0xFFF8FAFC),
+                color: hasValue
+                    ? const Color(0xFFECFDF5)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: hasValue ? const Color(0xFF059669) : const Color(0xFFE2E8F0),
+                  color: hasValue
+                      ? const Color(0xFF059669)
+                      : const Color(0xFFE2E8F0),
                   width: hasValue ? 2 : 1,
                 ),
               ),
@@ -505,7 +537,8 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: row.map((key) {
-                if (key.isEmpty) return const Expanded(child: SizedBox(height: 48));
+                if (key.isEmpty)
+                  return const Expanded(child: SizedBox(height: 48));
                 if (key == 'del') {
                   return Expanded(
                     child: GestureDetector(
@@ -560,7 +593,8 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
     return Semantics(
       label: 'Verify OTP',
       child: ElevatedButton(
-        onPressed: (_isLoading || _otpCode.length < 6) ? null : _handleVerifyOtp,
+        onPressed:
+            (_isLoading || _otpCode.length < 6) ? null : _handleVerifyOtp,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF059669),
           foregroundColor: Colors.white,
@@ -569,7 +603,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          shadowColor: const Color(0x26059669),
+          shadowColor: Colors.transparent,
         ),
         child: _isLoading
             ? const SizedBox(
@@ -607,7 +641,9 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
           style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: _countdown > 0 ? const Color(0xFF94A3B8) : const Color(0xFF059669),
+            color: _countdown > 0
+                ? const Color(0xFF94A3B8)
+                : const Color(0xFF059669),
           ),
         ),
       ),
@@ -621,13 +657,7 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
         color: const Color.fromRGBO(255, 255, 255, 0.4),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color.fromRGBO(226, 232, 240, 0.4)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0D000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -652,7 +682,8 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.open_in_new_rounded, size: 12, color: Color(0xFF059669)),
+          const Icon(Icons.open_in_new_rounded,
+              size: 12, color: Color(0xFF059669)),
         ],
       ),
     );
@@ -673,7 +704,8 @@ class _RiderLoginScreenState extends ConsumerState<RiderLoginScreen> {
           ),
         ),
         const SizedBox(width: 24),
-        const Icon(Icons.check_circle_rounded, color: Color(0xFF94A3B8), size: 14),
+        const Icon(Icons.check_circle_rounded,
+            color: Color(0xFF94A3B8), size: 14),
         const SizedBox(width: 6),
         Text(
           'Secure Identity',

@@ -11,21 +11,24 @@ import 'api_client.dart';
 import 'api_endpoints.dart';
 import 'analytics_service.dart';
 import 'fcm_service.dart';
+import '../utils/user_friendly_error.dart';
 
 class AuthService {
   static const _sessionKey = AppBootstrap.sessionKey;
 
   final ApiClient _api = ApiClient();
-  late final FirebaseAuth _firebaseAuth;
-  late final GoogleSignIn _googleSignIn;
+  FirebaseAuth? _firebaseAuth;
+  GoogleSignIn? _googleSignIn;
   final AnalyticsService _analytics = AnalyticsService();
   final StreamController<void> _sessionExpired =
       StreamController<void>.broadcast();
   bool _closed = false;
 
   AuthService() {
-    _firebaseAuth = FirebaseAuth.instance;
-    _googleSignIn = GoogleSignIn();
+    if (!ApiEndpoints.localMode) {
+      _firebaseAuth = FirebaseAuth.instance;
+      _googleSignIn = GoogleSignIn();
+    }
     _api.onSessionInvalid = _handleInvalidSession;
   }
 
@@ -57,19 +60,6 @@ class AuthService {
     String role = 'customer',
   }) async {
     try {
-      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-
-      if (name != null && name.isNotEmpty) {
-        await credential.user?.updateDisplayName(name.trim());
-      }
-
-      final idToken = await credential.user?.getIdToken();
-      if (idToken == null)
-        throw Exception('Failed to get authentication token');
-
       final response = await _api.dio.post(
         ApiEndpoints.signUp,
         data: {
@@ -78,12 +68,10 @@ class AuthService {
           'phone': phone,
           'name': name,
           'role': role,
-          'firebase_uid': credential.user?.uid,
-          'id_token': idToken,
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -95,8 +83,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'create your account'));
     }
     return null;
   }
@@ -106,26 +93,15 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final credential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-
-      final idToken = await credential.user?.getIdToken();
-      if (idToken == null)
-        throw Exception('Failed to get authentication token');
-
       final response = await _api.dio.post(
         ApiEndpoints.login,
         data: {
           'email': email.trim(),
           'password': password,
-          'firebase_uid': credential.user?.uid,
-          'id_token': idToken,
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -137,8 +113,7 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in'));
     }
     return null;
   }
@@ -156,14 +131,14 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final customToken = data['custom_token'] as String?;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
 
-        if (customToken != null) {
-          await _firebaseAuth.signInWithCustomToken(customToken);
+        if (customToken != null && !ApiEndpoints.localMode) {
+          await _firebaseAuth!.signInWithCustomToken(customToken);
         }
 
         if (token != null && userData != null) {
@@ -174,15 +149,17 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in'));
     }
     return null;
   }
 
   Future<User?> loginWithGoogle() async {
+    if (ApiEndpoints.localMode) {
+      throw Exception('Google login is disabled in local mode');
+    }
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn!.signIn();
       if (googleUser == null) return null;
 
       final GoogleSignInAuthentication googleAuth =
@@ -193,7 +170,7 @@ class AuthService {
       );
 
       final userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+          await _firebaseAuth!.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
       if (idToken == null)
         throw Exception('Failed to get authentication token');
@@ -210,7 +187,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -222,13 +199,15 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in with Google'));
     }
     return null;
   }
 
   Future<User?> loginWithApple() async {
+    if (ApiEndpoints.localMode) {
+      throw Exception('Apple login is disabled in local mode');
+    }
     try {
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
@@ -244,7 +223,7 @@ class AuthService {
       );
 
       final userCredential =
-          await _firebaseAuth.signInWithCredential(credential);
+          await _firebaseAuth!.signInWithCredential(credential);
       final idToken = await userCredential.user?.getIdToken();
       if (idToken == null)
         throw Exception('Failed to get authentication token');
@@ -263,7 +242,7 @@ class AuthService {
         },
       );
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -275,15 +254,17 @@ class AuthService {
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'sign you in with Apple'));
     }
     return null;
   }
 
   Future<bool> sendPasswordResetEmail(String email) async {
+    if (ApiEndpoints.localMode) {
+      throw Exception('Password reset email is disabled in local mode');
+    }
     try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
+      await _firebaseAuth!.sendPasswordResetEmail(email: email.trim());
       return true;
     } on FirebaseAuthException catch (e) {
       throw Exception(_mapFirebaseAuthError(e));
@@ -298,8 +279,7 @@ class AuthService {
       );
       return response.statusCode == 200;
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'send the verification code'));
     }
   }
 
@@ -312,7 +292,7 @@ class AuthService {
           'code': code,
         },
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data as Map<String, dynamic>;
         final token = data['access_token'] as String?;
         final userData = data['user'] as Map<String, dynamic>?;
@@ -321,8 +301,7 @@ class AuthService {
         }
       }
     } on DioException catch (e) {
-      final detail = _extractError(e);
-      throw Exception(detail);
+      throw Exception(userFriendlyError(e, action: 'verify the code'));
     }
     return null;
   }
@@ -365,10 +344,12 @@ class AuthService {
   Future<User?> getCachedUser() => AppBootstrap.readValidSession();
 
   Future<void> signOut() async {
-    try {
-      await _firebaseAuth.signOut();
-      await _googleSignIn.signOut();
-    } catch (_) {}
+    if (!ApiEndpoints.localMode) {
+      try {
+        await _firebaseAuth!.signOut();
+        await _googleSignIn!.signOut();
+      } catch (_) {}
+    }
     await _api.clearToken();
     await AppBootstrap.clearSession();
   }
@@ -382,6 +363,7 @@ class AuthService {
     return User(
       uid: data['id'] as String,
       email: data['email'] as String? ?? '',
+      role: data['role'] as String? ?? 'customer',
       displayName: data['name'] as String?,
       phoneNumber: data['phone'] as String?,
       avatarUrl: data['avatar_url'] as String?,
@@ -424,11 +406,4 @@ class AuthService {
     }
   }
 
-  String _extractError(DioException e) {
-    if (e.response?.data is Map<String, dynamic>) {
-      final data = e.response!.data as Map<String, dynamic>;
-      return data['detail'] as String? ?? 'Something went wrong';
-    }
-    return 'Network error. Please try again.';
-  }
 }

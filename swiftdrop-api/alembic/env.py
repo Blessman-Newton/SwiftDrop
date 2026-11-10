@@ -17,14 +17,13 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-# Import all models so Alembic can detect them
-from app.models.user import User, RiderProfile, OTPCode
-from app.models.order import Order, OrderItem, DispatchLog
+# Import all models so Alembic can detect them.
+from app import models  # noqa: F401
 
 
 def run_migrations_offline() -> None:
     database_url = normalize_database_url(settings.DATABASE_URL)
-    
+
     context.configure(
         url=database_url,
         target_metadata=target_metadata,
@@ -43,7 +42,7 @@ def do_run_migrations(connection):
 
 async def run_async_migrations() -> None:
     database_url = normalize_database_url(settings.DATABASE_URL)
-    
+
     configuration = {"sqlalchemy.url": database_url}
     connectable = async_engine_from_config(
         configuration,

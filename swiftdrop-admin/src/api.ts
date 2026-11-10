@@ -1,29 +1,48 @@
 const BASE = import.meta.env.VITE_API_URL || '/api/v1'
 
-function getToken(): string | null {
-  return localStorage.getItem('admin_token')
+function friendlyApiError(error: unknown, status?: number, detail?: unknown): Error {
+  const text = typeof detail === 'string' ? detail.toLowerCase() : ''
+  if (error instanceof TypeError || text.includes('network') || text.includes('fetch')) {
+    return new Error('We could not connect to the server. Please check your internet connection and try again.')
+  }
+  if (status === 401) return new Error('Your session has expired. Please sign in again.')
+  if (status === 403) return new Error('You do not have permission to perform this action.')
+  if (status === 404) return new Error('The requested information could not be found.')
+  if (status === 409 || text.includes('already exists') || text.includes('already registered')) {
+    return new Error('That information is already in use. Please check it and try again.')
+  }
+  if (status === 422) return new Error('Please check the information entered and try again.')
+  if (status !== undefined && status >= 500) {
+    return new Error('Something went wrong on our side. Please try again in a moment.')
+  }
+  if (text.includes('invalid') && text.includes('password')) {
+    return new Error('The email or password is incorrect.')
+  }
+  return new Error('We could not complete that request. Please try again.')
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   }
-  if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { ...options, headers, credentials: 'include' })
+  } catch (error) {
+    throw friendlyApiError(error)
+  }
 
   if (res.status === 401) {
-    localStorage.removeItem('admin_token')
     window.location.reload()
-    throw new Error('Unauthorized')
+    throw friendlyApiError(undefined, 401)
   }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     const detail = body.detail || body.error || `HTTP ${res.status}`
-    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+    throw friendlyApiError(undefined, res.status, detail)
   }
 
   return res.json()
@@ -32,13 +51,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   // Auth
   signUp: (email: string, password: string, phone: string, name?: string) =>
-    request<{ access_token: string; user: any }>('/auth/signup', {
+    request<{ user: any }>('/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ email, password, phone, name, role: 'admin' }),
+      body: JSON.stringify({ email, password, phone, name }),
     }),
 
   loginWithEmail: (email: string, password: string) =>
-    request<{ access_token: string; user: any }>('/auth/login', {
+    request<{ user: any }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
@@ -50,12 +69,14 @@ export const api = {
     }),
 
   verifyOtp: (phone: string, code: string) =>
-    request<{ access_token: string; user: any }>('/auth/verify-otp', {
+    request<{ user: any }>('/auth/verify-otp', {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     }),
 
-  // Dashboard
+  logout: () => request<{ message: string }>('/auth/logout', { method: 'POST' }),
+
+  me: () => request<any>('/auth/me'),
   getDashboard: () => request<any>('/admin/dashboard'),
 
   // Users

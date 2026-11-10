@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -72,10 +73,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted && !_navigated) {
         _navigated = true;
-        // Hand off to the router instead of hard-coding a destination: it
-        // resolves onboarding/role/session state and sends a returning user
-        // straight back to their screen.
-        context.go('/home');
+        final user = ref.read(currentUserProvider);
+        context.go(user == null
+            ? '/auth'
+            : user.role == 'rider'
+                ? '/rider/dashboard'
+                : '/home');
       }
     });
   }

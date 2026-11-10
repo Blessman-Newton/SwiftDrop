@@ -91,40 +91,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   LatLng? _driverPosition;
   LatLng? _destinationPosition;
 
-  int _riderProgressIndex = 0;
-  Timer? _simulationTimer;
-
-  void _startRiderSimulation() {
-    _simulationTimer?.cancel();
-    _riderProgressIndex = 0;
-    if (_routePoints.isEmpty) return;
-
-    _simulationTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      final activeOrder = ref.read(activeOrderProvider);
-      if (activeOrder == null) {
-        timer.cancel();
-        return;
-      }
-
-      final isMoving = activeOrder.status == OrderStatus.pickedUp ||
-          activeOrder.status == OrderStatus.enRoute;
-      if (!isMoving) return;
-
-      if (_riderProgressIndex < _routePoints.length - 1) {
-        setState(() {
-          _riderProgressIndex++;
-          _driverPosition = _routePoints[_riderProgressIndex];
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
-
   @override
   void initState() {
     super.initState();
@@ -149,7 +115,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       setState(() {
         _destinationPosition = delivery;
         _mapCenter = pickup;
-        _driverPosition = pickup;
       });
       _calculateRoute(pickup, delivery);
     }
@@ -161,7 +126,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       setState(() {
         _routePoints = route.points;
       });
-      _startRiderSimulation();
       if (_mapReady && route.points.isNotEmpty) {
         _mapController.fitCamera(
           CameraFit.bounds(
@@ -212,10 +176,12 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             final riderLng = active['rider_lng'] as num?;
             if (riderLat != null && riderLng != null) {
               setState(() {
-                _driverPosition =
-                    LatLng(riderLat.toDouble(), riderLng.toDouble());
+                  _driverPosition =
+                      LatLng(riderLat.toDouble(), riderLng.toDouble());
               });
-              _startRiderSimulation();
+                if (_destinationPosition != null) {
+                  _calculateRoute(_driverPosition!, _destinationPosition!);
+                }
             }
           } else {
             _orderPollTimer?.cancel();
@@ -228,7 +194,6 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   @override
   void dispose() {
     _orderPollTimer?.cancel();
-    _simulationTimer?.cancel();
     _mapTimer?.cancel();
     _callTimer?.cancel();
     _pulseController?.dispose();
@@ -251,7 +216,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
   }
 
   Map<String, dynamic> _getStepDetails(int step) {
-    // Calculate ETA from route if available
+    // Calculate ETA from the live rider position to the destination.
     String eta = '...';
     if (_routePoints.isNotEmpty && step >= 2) {
       double totalDist = 0;
@@ -483,13 +448,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ? const Color(0xFF18233c).withValues(alpha: 0.9)
               : Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           children: [
@@ -628,7 +587,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         children: [
           TileLayer(
             urlTemplate: TomTomService.tileUrl,
-            userAgentPackageName: 'com.swiftdrop.app',
+            userAgentPackageName: 'com.blessman.swiftdrop',
           ),
           if (_routePoints.isNotEmpty)
             PolylineLayer(
@@ -652,12 +611,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 6,
-                            offset: Offset(0, 3)),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: const Icon(Icons.local_shipping,
                         color: Colors.white, size: 20),
@@ -673,12 +627,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       color: Colors.red,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: const [
-                        BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 6,
-                            offset: Offset(0, 3)),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: const Icon(Icons.location_on,
                         color: Colors.white, size: 22),
@@ -730,13 +679,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ? Colors.black.withValues(alpha: 0.9)
               : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -771,13 +714,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(
           icon,
@@ -881,13 +818,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
               ? const Color(0xFF18233c).withValues(alpha: 0.95)
               : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 24,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
           border: Border.all(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.05)
@@ -991,14 +922,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                               ? Colors.white.withValues(alpha: 0.05)
                               : Colors.grey.shade100),
                   shape: BoxShape.circle,
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                          ),
-                        ]
-                      : null,
+                  boxShadow: const [],
                 ),
                 child: Icon(
                   isCompleted ? Icons.check_rounded : icons[stepIdx],
@@ -1151,17 +1075,9 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-        ),
+        color: const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: const [],
       ),
       child: Row(
         children: [
@@ -1204,12 +1120,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             decoration: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                ),
-              ],
+              boxShadow: const [],
             ),
             child: Text(
               pin,
@@ -1282,12 +1193,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                       decoration: BoxDecoration(
                         color: Colors.amber.shade500,
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.amber.shade300.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                          ),
-                        ],
+                        boxShadow: const [],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1418,13 +1324,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF18233c) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    boxShadow: const [],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -1663,12 +1563,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
                                           ? Colors.white.withValues(alpha: 0.05)
                                           : Colors.grey.shade100,
                                     ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.02),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
+                                    boxShadow: const [],
                                   ),
                                   child: Text(
                                     p,
@@ -2479,12 +2374,7 @@ class _MapTrackingScreenState extends ConsumerState<MapTrackingScreen>
             color: const Color(0xFF18233c).withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 24,
-              ),
-            ],
+            boxShadow: const [],
           ),
           child: Row(
             children: [

@@ -64,7 +64,8 @@ class _RiderIncomingRequestScreenState
                   style: AppText.display(false).copyWith(color: Colors.white)),
               const SizedBox(height: 6),
               Text('Sunyani • 2.4 km away',
-                  style: GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
+                  style:
+                      GoogleFonts.inter(color: Colors.white70, fontSize: 13)),
               const SizedBox(height: 22),
               Expanded(
                 child: SingleChildScrollView(
@@ -83,7 +84,7 @@ class _RiderIncomingRequestScreenState
                     onPressed: () => context.go('/rider/orders'),
                     style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white38),
+                        side: BorderSide.none,
                         padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18))),
@@ -120,7 +121,9 @@ class _RiderIncomingRequestScreenState
             borderRadius: BorderRadius.circular(14)),
         child: Text('${seconds}s',
             style: GoogleFonts.spaceGrotesk(
-                color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700)),
       );
 
   Widget _serviceCard() => Container(
@@ -159,8 +162,8 @@ class _RiderIncomingRequestScreenState
           Padding(
               padding: const EdgeInsets.only(left: 12),
               child: Container(height: 20, width: 1, color: Colors.black12)),
-          _stop(Icons.location_on_rounded, 'DROP OFF',
-              'UENR Hostel A, Sunyani', const Color(0xFFD85B4C)),
+          _stop(Icons.location_on_rounded, 'DROP OFF', 'UENR Hostel A, Sunyani',
+              const Color(0xFFD85B4C)),
         ]),
       );
 

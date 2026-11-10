@@ -1,5 +1,5 @@
+
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,7 +11,6 @@ import '../../providers/rider_providers.dart';
 import '../../providers/merchant_providers.dart';
 import '../../services/tomtom_service.dart';
 import '../../models/models.dart';
-import '../../theme/app_theme.dart';
 
 class RiderNavigationScreen extends ConsumerStatefulWidget {
   const RiderNavigationScreen({super.key});
@@ -29,6 +28,9 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
 
   bool _isDarkMap = false;
   LatLng _riderPosition = TomTomService.defaultCenter;
+  String _currentAddress = 'Locating your current position...';
+  List<LatLng> _routePoints = [];
+  LatLng? _lastRouteTarget;
 
   @override
   void initState() {
@@ -54,21 +56,26 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
           permission == LocationPermission.denied) return;
 
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
       );
       setState(() {
         _riderPosition = LatLng(pos.latitude, pos.longitude);
       });
+      _updateCurrentAddress(_riderPosition);
 
       _gpsTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
         try {
           final currentPos = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+            locationSettings:
+                const LocationSettings(accuracy: LocationAccuracy.high),
           );
           if (mounted) {
             setState(() {
-              _riderPosition = LatLng(currentPos.latitude, currentPos.longitude);
+              _riderPosition =
+                  LatLng(currentPos.latitude, currentPos.longitude);
             });
+            _updateCurrentAddress(_riderPosition);
             // Update location on backend
             final service = ref.read(riderServiceProvider);
             service.updateLocation(currentPos.latitude, currentPos.longitude);
@@ -76,6 +83,22 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
         } catch (_) {}
       });
     } catch (_) {}
+  }
+
+  Future<void> _updateCurrentAddress(LatLng position) async {
+    final result = await TomTomService().reverseGeocode(position);
+    if (mounted && result != null) {
+      setState(() => _currentAddress = result.address);
+    }
+  }
+
+  Future<void> _updateRoute(LatLng target) async {
+    if (_lastRouteTarget == target) return;
+    _lastRouteTarget = target;
+    final route = await TomTomService().calculateRoute(_riderPosition, target);
+    if (mounted && route != null && route.points.isNotEmpty) {
+      setState(() => _routePoints = route.points);
+    }
   }
 
   @override
@@ -97,13 +120,14 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
     final activeOrder = ref.watch(riderActiveDeliveryProvider).valueOrNull;
 
     // Parse targets
-    final pickupLat = activeOrder?['pickup_lat'] as double?;
-    final pickupLng = activeOrder?['pickup_lng'] as double?;
-    final deliveryLat = activeOrder?['delivery_lat'] as double?;
-    final deliveryLng = activeOrder?['delivery_lng'] as double?;
+    final pickupLat = (activeOrder?['pickup_lat'] as num?)?.toDouble();
+    final pickupLng = (activeOrder?['pickup_lng'] as num?)?.toDouble();
+    final deliveryLat = (activeOrder?['delivery_lat'] as num?)?.toDouble();
+    final deliveryLng = (activeOrder?['delivery_lng'] as num?)?.toDouble();
 
     final status = activeOrder?['status'] as String?;
-    final isCollected = status == 'collected' || status == 'picked_up' || status == 'en_route';
+    final isCollected =
+        status == 'collected' || status == 'picked_up' || status == 'en_route';
 
     final targetLat = isCollected ? deliveryLat : pickupLat;
     final targetLng = isCollected ? deliveryLng : pickupLng;
@@ -111,13 +135,19 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
     final target = (targetLat != null && targetLng != null)
         ? LatLng(targetLat, targetLng)
         : TomTomService.defaultCenter;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateRoute(target));
 
     final destAddress = isCollected
         ? (activeOrder?['delivery_address'] ?? 'Customer Address')
-        : (activeOrder?['pickup_address'] ?? activeOrder?['restaurant_name'] ?? 'Pickup Depot');
+        : (activeOrder?['pickup_address'] ??
+            activeOrder?['restaurant_name'] ??
+            'Pickup Depot');
 
-    final instruction = isCollected ? "Deliver to customer location" : "Collect items from merchant";
-    final instructionIcon = isCollected ? Icons.home_rounded : Icons.storefront_rounded;
+    final instruction = isCollected
+        ? "Deliver to customer location"
+        : "Collect items from merchant";
+    final instructionIcon =
+        isCollected ? Icons.home_rounded : Icons.storefront_rounded;
 
     // Distance calculation
     final distanceInMeters = Geolocator.distanceBetween(
@@ -130,8 +160,10 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
     final distanceInKm = distanceInMeters / 1000.0;
     // Assuming standard speed of ~40km/h (666m per min)
     final durationInMinutes = (distanceInMeters / 600.0).ceil();
-    final arrivalTime = DateTime.now().add(Duration(minutes: durationInMinutes));
-    final arrivalStr = "${arrivalTime.hour.toString().padLeft(2, '0')}:${arrivalTime.minute.toString().padLeft(2, '0')}";
+    final arrivalTime =
+        DateTime.now().add(Duration(minutes: durationInMinutes));
+    final arrivalStr =
+        "${arrivalTime.hour.toString().padLeft(2, '0')}:${arrivalTime.minute.toString().padLeft(2, '0')}";
 
     // Midpoint to center map dynamically
     final centerLat = (_riderPosition.latitude + target.latitude) / 2.0;
@@ -167,13 +199,15 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
               children: [
                 TileLayer(
                   urlTemplate: TomTomService.tileUrl,
-                  userAgentPackageName: 'com.swiftdrop.app',
+                  userAgentPackageName: 'com.blessman.swiftdrop',
                 ),
                 // Routing polyline
                 PolylineLayer(
                   polylines: [
                     Polyline(
-                      points: [_riderPosition, target],
+                      points: _routePoints.isNotEmpty
+                          ? _routePoints
+                          : [_riderPosition, target],
                       color: const Color(0xFF006C49),
                       strokeWidth: 5,
                       borderColor: Colors.white,
@@ -201,7 +235,8 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: const Color(0xFF10B981).withAlpha(
-                                    (40 - (_pulseAnimation.value - 1.0) * 40).round(),
+                                    (40 - (_pulseAnimation.value - 1.0) * 40)
+                                        .round(),
                                   ),
                                 ),
                               ),
@@ -211,12 +246,12 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF006C49),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 3),
-                                  boxShadow: const [
-                                    BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                                  ],
+                                  border:
+                                      Border.all(color: Colors.white, width: 3),
+                                  boxShadow: const [],
                                 ),
-                                child: const Icon(Icons.local_shipping, color: Colors.white, size: 16),
+                                child: const Icon(Icons.local_shipping,
+                                    color: Colors.white, size: 16),
                               ),
                             ],
                           );
@@ -233,11 +268,10 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                           color: const Color(0xFFE11D48),
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                          ],
+                          boxShadow: const [],
                         ),
-                        child: Icon(instructionIcon, color: Colors.white, size: 20),
+                        child: Icon(instructionIcon,
+                            color: Colors.white, size: 20),
                       ),
                     ),
                   ],
@@ -258,13 +292,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF006C49),
                   borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: Row(
                   children: [
@@ -301,6 +329,16 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               color: const Color(0xFFA7F3D0),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'You are near: $_currentAddress',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              color: Colors.white.withOpacity(0.75),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -350,13 +388,7 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                   topLeft: Radius.circular(32),
                   topRight: Radius.circular(32),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 20,
-                    offset: Offset(0, -5),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -446,10 +478,10 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                               destAddress,
                               textAlign: TextAlign.end,
                               style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF64748B),
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                fontSize: 12,
+                                color: const Color(0xFF64748B),
+                                fontWeight: FontWeight.w600,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -463,7 +495,8 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                     children: [
                       Expanded(
                         child: TextButton.icon(
-                          icon: const Icon(Icons.phone_rounded, size: 16, color: Color(0xFF006C49)),
+                          icon: const Icon(Icons.phone_rounded,
+                              size: 16, color: Color(0xFF006C49)),
                           label: Text(
                             'Call Customer',
                             style: GoogleFonts.inter(
@@ -475,14 +508,19 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             backgroundColor: Colors.grey[100],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: () {
-                            final phone = activeOrder?['customer_phone'] as String?;
+                            final phone =
+                                activeOrder?['customer_phone'] as String?;
                             if (phone != null && phone.isNotEmpty) {
-                              ref.read(riderToastsProvider.notifier).add('Dialing customer: $phone', ToastType.info);
+                              ref.read(riderToastsProvider.notifier).add(
+                                  'Dialing customer: $phone', ToastType.info);
                             } else {
-                              ref.read(riderToastsProvider.notifier).add('Customer phone not available', ToastType.error);
+                              ref.read(riderToastsProvider.notifier).add(
+                                  'Customer phone not available',
+                                  ToastType.error);
                             }
                           },
                         ),
@@ -490,7 +528,8 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          icon: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                          icon: const Icon(Icons.close_rounded,
+                              size: 16, color: Colors.white),
                           label: Text(
                             'Exit Route',
                             style: GoogleFonts.inter(
@@ -502,7 +541,8 @@ class _RiderNavigationScreenState extends ConsumerState<RiderNavigationScreen>
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             backgroundColor: const Color(0xFFE11D48),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: _handleExit,
                         ),
@@ -543,25 +583,14 @@ class _MapControlButton extends StatelessWidget {
           color: isFilled ? const Color(0xFF006C49) : Colors.white,
           shape: BoxShape.circle,
           border: isFilled ? null : Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
-            BoxShadow(
-              color: isFilled
-                  ? const Color(0x33000000)
-                  : const Color(0x26000000),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Icon(
           icon,
           size: 20,
-          color: isFilled
-              ? Colors.white
-              : iconColor ?? const Color(0xFF475569),
+          color: isFilled ? Colors.white : iconColor ?? const Color(0xFF475569),
         ),
       ),
     );
   }
 }
-

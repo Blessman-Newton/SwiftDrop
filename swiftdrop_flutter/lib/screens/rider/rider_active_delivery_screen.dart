@@ -7,10 +7,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/merchant_providers.dart';
 import '../../providers/providers.dart';
 import '../../providers/rider_providers.dart';
-import '../../services/rider_service.dart';
 import '../../services/tomtom_service.dart';
 
 import '../../models/models.dart';
@@ -83,24 +83,35 @@ class _RiderActiveDeliveryScreenState
     super.dispose();
   }
 
-  void _startCall() {
-    setState(() => _isCalling = true);
-    ref.read(riderToastsProvider.notifier).add('Connecting line to customer...', ToastType.info);
-    _callTimer = Timer(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() => _isCalling = false);
-        ref.read(riderToastsProvider.notifier).add('Call ended.', ToastType.info);
-      }
-    });
+  Future<void> _startCall() async {
+    final phone = _getDeliveryInfo().customerPhone;
+    if (phone == null || phone.trim().isEmpty) {
+      ref.read(riderToastsProvider.notifier).add(
+            'The customer has not provided a phone number.',
+            ToastType.error,
+          );
+      return;
+    }
+    final launched = await launchUrl(Uri(scheme: 'tel', path: phone));
+    if (!launched && mounted) {
+      ref.read(riderToastsProvider.notifier).add(
+            'We could not open the phone app. Please try calling $phone manually.',
+            ToastType.error,
+          );
+    }
   }
 
   void _startSupport() {
     setState(() => _isSupporting = true);
-    ref.read(riderToastsProvider.notifier).add('Opening support chat thread...', ToastType.info);
+    ref
+        .read(riderToastsProvider.notifier)
+        .add('Opening support chat thread...', ToastType.info);
     _supportTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         setState(() => _isSupporting = false);
-        ref.read(riderToastsProvider.notifier).add('Support session ended.', ToastType.info);
+        ref
+            .read(riderToastsProvider.notifier)
+            .add('Support session ended.', ToastType.info);
       }
     });
   }
@@ -115,7 +126,8 @@ class _RiderActiveDeliveryScreenState
           permission == LocationPermission.denied) return;
 
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high),
       );
       setState(() {
         _riderPosition = LatLng(pos.latitude, pos.longitude);
@@ -125,11 +137,13 @@ class _RiderActiveDeliveryScreenState
       _gpsTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
         try {
           final currentPos = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+            locationSettings:
+                const LocationSettings(accuracy: LocationAccuracy.high),
           );
           if (mounted) {
             setState(() {
-              _riderPosition = LatLng(currentPos.latitude, currentPos.longitude);
+              _riderPosition =
+                  LatLng(currentPos.latitude, currentPos.longitude);
             });
             final service = ref.read(riderServiceProvider);
             service.updateLocation(currentPos.latitude, currentPos.longitude);
@@ -146,17 +160,25 @@ class _RiderActiveDeliveryScreenState
     final lng = _riderPosition.longitude;
     switch (current) {
       case DeliveryState.enRoute:
-        final success = await service.updateDeliveryStatus('arrived', latitude: lat, longitude: lng);
+        final success = await service.updateDeliveryStatus('arrived',
+            latitude: lat, longitude: lng);
         if (mounted && success) {
-          ref.read(deliveryStateProvider.notifier).state = DeliveryState.arrived;
-          ref.read(riderToastsProvider.notifier).add('Status updated: Arrived at pickup. Please verify order items.', ToastType.success);
+          ref.read(deliveryStateProvider.notifier).state =
+              DeliveryState.arrived;
+          ref.read(riderToastsProvider.notifier).add(
+              'Status updated: Arrived at pickup. Please verify order items.',
+              ToastType.success);
         }
         break;
       case DeliveryState.arrived:
-        final success = await service.updateDeliveryStatus('picked_up', latitude: lat, longitude: lng);
+        final success = await service.updateDeliveryStatus('picked_up',
+            latitude: lat, longitude: lng);
         if (mounted && success) {
-          ref.read(deliveryStateProvider.notifier).state = DeliveryState.collected;
-          ref.read(riderToastsProvider.notifier).add('Items collected! Route configured for dropoff.', ToastType.success);
+          ref.read(deliveryStateProvider.notifier).state =
+              DeliveryState.collected;
+          ref.read(riderToastsProvider.notifier).add(
+              'Items collected! Route configured for dropoff.',
+              ToastType.success);
         }
         break;
       case DeliveryState.collected:
@@ -183,13 +205,7 @@ class _RiderActiveDeliveryScreenState
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
                 borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: Material(
                 color: Colors.transparent,
@@ -248,18 +264,22 @@ class _RiderActiveDeliveryScreenState
                         ),
                         filled: true,
                         fillColor: isDark ? Colors.black26 : Colors.grey[50],
-                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                        contentPadding:
+                            const EdgeInsets.symmetric(vertical: 14),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
                           borderSide: BorderSide(color: Colors.grey[200]!),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.grey[200]!),
+                          borderSide: BorderSide(
+                              color:
+                                  isDark ? Colors.white10 : Colors.grey[200]!),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(16),
-                          borderSide: const BorderSide(color: Color(0xFF059669), width: 2),
+                          borderSide: const BorderSide(
+                              color: Color(0xFF059669), width: 2),
                         ),
                         counterText: "",
                       ),
@@ -272,7 +292,7 @@ class _RiderActiveDeliveryScreenState
                             onPressed: () => Navigator.pop(dialogContext),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              side: BorderSide(color: Colors.grey[300]!),
+                              side: BorderSide.none,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -308,7 +328,8 @@ class _RiderActiveDeliveryScreenState
                               final lat = _riderPosition.latitude;
                               final lng = _riderPosition.longitude;
 
-                              final success = await service.updateDeliveryStatus(
+                              final success =
+                                  await service.updateDeliveryStatus(
                                 'delivered',
                                 latitude: lat,
                                 longitude: lng,
@@ -375,9 +396,9 @@ class _RiderActiveDeliveryScreenState
         orderNo: linkedOrder.id.replaceFirst('ord_', '#SD-'),
         items: linkedOrder.items.map((ci) => ci.foodItem.name).toList(),
         pickupName: linkedOrder.restaurantName,
-        pickupAddress: '455 West Grand Ave',
-        dropoffAddress: '123 Oak St',
-        dropoffDetails: 'Unit 4B (Gate code: 1234)',
+        pickupAddress: '',
+        dropoffAddress: '',
+        dropoffDetails: '',
         total: linkedOrder.totalPrice,
         estimatedTime: '8 mins',
       );
@@ -408,6 +429,9 @@ class _RiderActiveDeliveryScreenState
           pickupAddress: data['pickup_address'] ?? '',
           dropoffAddress: data['delivery_address'] ?? '',
           dropoffDetails: data['delivery_notes'] ?? '',
+          customerName: data['customer_name'] ?? 'Customer',
+          customerPhone: data['customer_phone'],
+          customerEmail: data['customer_email'],
           total: (data['total'] as num?)?.toDouble() ?? 0,
           estimatedTime: '8 mins',
         );
@@ -437,7 +461,9 @@ class _RiderActiveDeliveryScreenState
 
   void _resetDeliveryState() {
     ref.read(deliveryStateProvider.notifier).state = DeliveryState.enRoute;
-    ref.read(riderToastsProvider.notifier).add('Reset delivery task to initial state', ToastType.info);
+    ref
+        .read(riderToastsProvider.notifier)
+        .add('Reset delivery task to initial state', ToastType.info);
   }
 
   String _ctaLabel(DeliveryState state) {
@@ -460,35 +486,35 @@ class _RiderActiveDeliveryScreenState
       backgroundColor: const Color(0xFFF4FBF4),
       body: SafeArea(
         child: Stack(
-        children: [
-          Column(
-            children: [
-              _buildAppBar(),
-              deliveryAsync.when(
-                data: (data) {
-                  if (data == null) {
-                    return _buildNoActiveDelivery();
-                  }
-                  return Expanded(
-                    child: Column(
-                      children: [
-                        _buildMapSection(deliveryState),
-                        _buildDeliverySheet(deliveryState),
-                      ],
-                    ),
-                  );
-                },
-                loading: () => const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
+          children: [
+            Column(
+              children: [
+                _buildAppBar(),
+                deliveryAsync.when(
+                  data: (data) {
+                    if (data == null) {
+                      return _buildNoActiveDelivery();
+                    }
+                    return Expanded(
+                      child: Column(
+                        children: [
+                          _buildMapSection(deliveryState),
+                          _buildDeliverySheet(deliveryState),
+                        ],
+                      ),
+                    );
+                  },
+                  loading: () => const Expanded(
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (_, __) => _buildNoActiveDelivery(),
                 ),
-                error: (_, __) => _buildNoActiveDelivery(),
-              ),
-            ],
-          ),
-          if (_isCalling) _buildCallingOverlay(),
-          if (_isSupporting) _buildSupportOverlay(),
-          _buildBottomNav(),
-        ],
+              ],
+            ),
+            if (_isCalling) _buildCallingOverlay(),
+            if (_isSupporting) _buildSupportOverlay(),
+            _buildBottomNav(),
+          ],
         ),
       ),
     );
@@ -531,7 +557,8 @@ class _RiderActiveDeliveryScreenState
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF059669),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
@@ -555,7 +582,8 @@ class _RiderActiveDeliveryScreenState
           children: [
             GestureDetector(
               onTap: () => context.go('/rider/dashboard'),
-              child: const Icon(Icons.arrow_back, size: 20, color: Color(0xFF334155)),
+              child: const Icon(Icons.arrow_back,
+                  size: 20, color: Color(0xFF334155)),
             ),
             const SizedBox(width: 12),
             Text(
@@ -570,7 +598,9 @@ class _RiderActiveDeliveryScreenState
             GestureDetector(
               onTap: () {
                 ref.invalidate(riderActiveDeliveryProvider);
-                ref.read(riderToastsProvider.notifier).add('Refreshing delivery data...', ToastType.info);
+                ref
+                    .read(riderToastsProvider.notifier)
+                    .add('Refreshing delivery data...', ToastType.info);
               },
               child: Container(
                 width: 32,
@@ -599,9 +629,9 @@ class _RiderActiveDeliveryScreenState
     final isCollected = deliveryState == DeliveryState.collected;
     final activeOrder = ref.watch(riderActiveDeliveryProvider).valueOrNull;
     final pickup = TomTomService.parseLatLng(
-      activeOrder?['pickup_lat'], activeOrder?['pickup_lng']);
+        activeOrder?['pickup_lat'], activeOrder?['pickup_lng']);
     final dropoff = TomTomService.parseLatLng(
-      activeOrder?['delivery_lat'], activeOrder?['delivery_lng']);
+        activeOrder?['delivery_lat'], activeOrder?['delivery_lng']);
     final target = isCollected ? dropoff : pickup;
     final riderPos = _riderPosition;
 
@@ -620,7 +650,7 @@ class _RiderActiveDeliveryScreenState
             children: [
               TileLayer(
                 urlTemplate: TomTomService.tileUrl,
-                userAgentPackageName: 'com.swiftdrop.app',
+                userAgentPackageName: 'com.blessman.swiftdrop',
               ),
               MarkerLayer(
                 markers: [
@@ -633,11 +663,10 @@ class _RiderActiveDeliveryScreenState
                         color: const Color(0xFF059669),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                        ],
+                        boxShadow: const [],
                       ),
-                      child: const Icon(Icons.local_shipping, color: Colors.white, size: 18),
+                      child: const Icon(Icons.local_shipping,
+                          color: Colors.white, size: 18),
                     ),
                   ),
                   Marker(
@@ -649,11 +678,10 @@ class _RiderActiveDeliveryScreenState
                         color: Colors.red,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3)),
-                        ],
+                        boxShadow: const [],
                       ),
-                      child: const Icon(Icons.location_on, color: Colors.white, size: 20),
+                      child: const Icon(Icons.location_on,
+                          color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -669,9 +697,7 @@ class _RiderActiveDeliveryScreenState
               decoration: BoxDecoration(
                 color: const Color(0xF2FFFFFF),
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
-                ],
+                boxShadow: const [],
                 border: Border.all(color: const Color(0xFFF1F5F9)),
               ),
               child: Row(
@@ -683,7 +709,8 @@ class _RiderActiveDeliveryScreenState
                       color: const Color(0xFF10B981),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.navigation, size: 16, color: Colors.white),
+                    child: const Icon(Icons.navigation,
+                        size: 16, color: Colors.white),
                   ),
                   const SizedBox(width: 12),
                   Column(
@@ -726,12 +753,11 @@ class _RiderActiveDeliveryScreenState
                   color: const Color(0xF2FFFFFF),
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFFF1F5F9)),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
-                  ],
+                  boxShadow: const [],
                 ),
                 child: const Center(
-                  child: Icon(Icons.navigation, size: 18, color: Color(0xFF059669)),
+                  child: Icon(Icons.navigation,
+                      size: 18, color: Color(0xFF059669)),
                 ),
               ),
             ),
@@ -749,13 +775,7 @@ class _RiderActiveDeliveryScreenState
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0F000000),
-                blurRadius: 30,
-                offset: Offset(0, -10),
-              ),
-            ],
+            boxShadow: const [],
             border: const Border(
               top: BorderSide(color: Color(0xFFF1F5F9), width: 1),
             ),
@@ -785,6 +805,8 @@ class _RiderActiveDeliveryScreenState
                 const SizedBox(height: 14),
                 // Dropoff card
                 _buildDropoffCard(deliveryState),
+                const SizedBox(height: 24),
+                _buildCustomerCard(),
                 const SizedBox(height: 24),
                 // Contact buttons
                 _buildContactButtons(),
@@ -878,14 +900,10 @@ class _RiderActiveDeliveryScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isActive
-            ? const Color(0x0D10B981)
-            : const Color(0xF2F8FAFC),
+        color: isActive ? const Color(0x0D10B981) : const Color(0xF2F8FAFC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive
-              ? const Color(0x4D10B981)
-              : const Color(0xFFF1F5F9),
+          color: isActive ? const Color(0x4D10B981) : const Color(0xFFF1F5F9),
         ),
       ),
       child: Row(
@@ -897,7 +915,8 @@ class _RiderActiveDeliveryScreenState
               color: const Color(0xFFD1FAE5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.local_shipping, size: 20, color: Color(0xFF059669)),
+            child: const Icon(Icons.local_shipping,
+                size: 20, color: Color(0xFF059669)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -934,7 +953,8 @@ class _RiderActiveDeliveryScreenState
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFFD1FAE5),
                         borderRadius: BorderRadius.circular(4),
@@ -951,7 +971,8 @@ class _RiderActiveDeliveryScreenState
                     if (deliveryState != DeliveryState.enRoute) ...[
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: const Color(0xFFCBD5E1),
                           borderRadius: BorderRadius.circular(4),
@@ -980,16 +1001,11 @@ class _RiderActiveDeliveryScreenState
                 color: Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(color: const Color(0xFFF1F5F9)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0x0D000000),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+                boxShadow: const [],
               ),
               child: const Center(
-                child: Icon(Icons.navigation, size: 16, color: Color(0xFF059669)),
+                child:
+                    Icon(Icons.navigation, size: 16, color: Color(0xFF059669)),
               ),
             ),
           ),
@@ -1004,14 +1020,10 @@ class _RiderActiveDeliveryScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isActive
-            ? const Color(0x0D10B981)
-            : const Color(0xF2F8FAFC),
+        color: isActive ? const Color(0x0D10B981) : const Color(0xF2F8FAFC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive
-              ? const Color(0x4D10B981)
-              : const Color(0xFFF1F5F9),
+          color: isActive ? const Color(0x4D10B981) : const Color(0xFFF1F5F9),
         ),
       ),
       child: Row(
@@ -1023,7 +1035,8 @@ class _RiderActiveDeliveryScreenState
               color: const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.location_on, size: 20, color: Color(0xFF64748B)),
+            child: const Icon(Icons.location_on,
+                size: 20, color: Color(0xFF64748B)),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1118,7 +1131,8 @@ class _RiderActiveDeliveryScreenState
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.help_outline, size: 16, color: Color(0xFFF43F5E)),
+                  const Icon(Icons.help_outline,
+                      size: 16, color: Color(0xFFF43F5E)),
                   const SizedBox(width: 8),
                   Text(
                     'Support Chat',
@@ -1137,6 +1151,54 @@ class _RiderActiveDeliveryScreenState
     );
   }
 
+  Widget _buildCustomerCard() {
+    final info = _getDeliveryInfo();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Customer details',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF1E293B),
+              )),
+          const SizedBox(height: 10),
+          _customerDetailRow(Icons.person_outline, info.customerName),
+          if (info.customerPhone != null && info.customerPhone!.isNotEmpty)
+            _customerDetailRow(Icons.phone_outlined, info.customerPhone!),
+          if (info.customerEmail != null && info.customerEmail!.isNotEmpty)
+            _customerDetailRow(Icons.email_outlined, info.customerEmail!),
+        ],
+      ),
+    );
+  }
+
+  Widget _customerDetailRow(IconData icon, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: const Color(0xFF059669)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(value,
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF475569),
+                  ))),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPrimaryCTA(DeliveryState deliveryState) {
     return GestureDetector(
       onTap: _advanceDeliveryState,
@@ -1146,13 +1208,7 @@ class _RiderActiveDeliveryScreenState
         decoration: BoxDecoration(
           color: const Color(0xFF059669),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0x26059669),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: const [],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1185,7 +1241,8 @@ class _RiderActiveDeliveryScreenState
               builder: (context, child) {
                 return Transform.translate(
                   offset: Offset(0, _phoneBounceAnimation.value),
-                  child: const Icon(Icons.phone, size: 48, color: Color(0xFF10B981)),
+                  child: const Icon(Icons.phone,
+                      size: 48, color: Color(0xFF10B981)),
                 );
               },
             ),
@@ -1211,10 +1268,13 @@ class _RiderActiveDeliveryScreenState
               onTap: () {
                 _callTimer?.cancel();
                 setState(() => _isCalling = false);
-                ref.read(riderToastsProvider.notifier).add('Call ended.', ToastType.info);
+                ref
+                    .read(riderToastsProvider.notifier)
+                    .add('Call ended.', ToastType.info);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFE11D48),
                   borderRadius: BorderRadius.circular(9999),
@@ -1245,7 +1305,8 @@ class _RiderActiveDeliveryScreenState
             AnimatedBuilder(
               animation: _pulseAnimation,
               builder: (context, child) {
-                return Icon(Icons.message, size: 48, color: const Color(0xFFF43F5E));
+                return Icon(Icons.message,
+                    size: 48, color: const Color(0xFFF43F5E));
               },
             ),
             const SizedBox(height: 16),
@@ -1270,10 +1331,13 @@ class _RiderActiveDeliveryScreenState
               onTap: () {
                 _supportTimer?.cancel();
                 setState(() => _isSupporting = false);
-                ref.read(riderToastsProvider.notifier).add('Support session ended.', ToastType.info);
+                ref
+                    .read(riderToastsProvider.notifier)
+                    .add('Support session ended.', ToastType.info);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFF334155),
                   borderRadius: BorderRadius.circular(9999),
@@ -1312,11 +1376,15 @@ class _RiderActiveDeliveryScreenState
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildNavItem(Icons.dashboard_rounded, 'Dashboard', false, () => context.go('/rider/dashboard')),
+            _buildNavItem(Icons.dashboard_rounded, 'Dashboard', false,
+                () => context.go('/rider/dashboard')),
             _buildNavItem(Icons.local_shipping, 'Orders', true, () {}),
-            _buildNavItem(Icons.account_balance_wallet_rounded, 'Earnings', false, () => context.go('/rider/earnings')),
+            _buildNavItem(Icons.account_balance_wallet_rounded, 'Earnings',
+                false, () => context.go('/rider/earnings')),
             _buildNavItem(Icons.person, 'Profile', false, () {
-              ref.read(riderToastsProvider.notifier).add('Alex is a Level 4 Platinum Courier with 98% Rating', ToastType.success);
+              ref.read(riderToastsProvider.notifier).add(
+                  'Alex is a Level 4 Platinum Courier with 98% Rating',
+                  ToastType.success);
             }),
           ],
         ),
@@ -1324,7 +1392,8 @@ class _RiderActiveDeliveryScreenState
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, VoidCallback onTap) {
+  Widget _buildNavItem(
+      IconData icon, String label, bool isActive, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
@@ -1335,7 +1404,8 @@ class _RiderActiveDeliveryScreenState
             Icon(
               icon,
               size: 20,
-              color: isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+              color:
+                  isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
             ),
             const SizedBox(height: 2),
             Text(
@@ -1343,7 +1413,9 @@ class _RiderActiveDeliveryScreenState
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: isActive ? const Color(0xFF059669) : const Color(0xFF94A3B8),
+                color: isActive
+                    ? const Color(0xFF059669)
+                    : const Color(0xFF94A3B8),
               ),
             ),
           ],
@@ -1352,4 +1424,3 @@ class _RiderActiveDeliveryScreenState
     );
   }
 }
-

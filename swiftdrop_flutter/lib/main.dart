@@ -10,27 +10,32 @@ import 'router/router.dart';
 import 'services/firebase_service.dart';
 import 'services/fcm_service.dart';
 import 'services/analytics_service.dart';
+import 'services/api_endpoints.dart';
 import 'dart:ui';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   
-  await FirebaseService.initialize();
+  final firebaseReady = await FirebaseService.initialize();
 
-  FlutterError.onError = (errorDetails) {
-    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-  };
+  if (firebaseReady && !ApiEndpoints.localMode) {
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
 
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   await AppBootstrap.load();
 
-  await AnalyticsService().initialize();
-  await FCMService().initialize();
+  if (!ApiEndpoints.localMode) {
+    await AnalyticsService().initialize();
+  }
+  if (firebaseReady) await FCMService().initialize();
 
   runApp(const ProviderScope(child: DoorushApp()));
 }

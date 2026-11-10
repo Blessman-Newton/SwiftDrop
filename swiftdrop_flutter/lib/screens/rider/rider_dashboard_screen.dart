@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../../services/api_endpoints.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/merchant_providers.dart';
 import '../../providers/rider_providers.dart';
@@ -12,8 +14,13 @@ class RiderDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final online = ref.watch(riderOnlineProvider);
+    final dashboard = ref.watch(riderDashboardProvider);
+    final available = ref.watch(riderAvailableOrdersProvider);
     final name = ref.watch(currentUserProvider)?.displayName?.split(' ').first ?? 'Kwame';
+    final data = dashboard.valueOrNull;
+    final bool online = data?['is_online'] == true ||
+        (data == null && ref.watch(riderOnlineProvider) == true);
+    final services = ((data?['service_types'] as List?) ?? const []).cast<String>();
     return Scaffold(
       backgroundColor: AppColors.paleMint,
       body: SafeArea(
@@ -43,11 +50,11 @@ class RiderDashboardScreen extends ConsumerWidget {
               _onlineCard(context, ref, online),
               const SizedBox(height: 16),
               Row(children: [
-                Expanded(child: _stat('TODAY', 'GHS 86.50', Icons.payments_outlined)),
+                Expanded(child: _stat('TODAY', 'GHS ${(data?['today_earnings'] as num?)?.toStringAsFixed(2) ?? '0.00'}', Icons.payments_outlined)),
                 const SizedBox(width: 10),
-                Expanded(child: _stat('TRIPS', '6', Icons.route_rounded)),
+                Expanded(child: _stat('TRIPS', '${data?['today_trips'] ?? 0}', Icons.route_rounded)),
                 const SizedBox(width: 10),
-                Expanded(child: _stat('RATING', '4.9', Icons.star_rounded)),
+                Expanded(child: _stat('RATING', '${data?['rating'] ?? '0.0'}', Icons.star_rounded)),
               ]),
               const SizedBox(height: 22),
               Text('Nearby requests',
@@ -56,7 +63,7 @@ class RiderDashboardScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w700,
                       color: AppColors.nearBlack)),
               const SizedBox(height: 10),
-              _mapCard(context),
+              _mapCard(context, available.valueOrNull ?? const []),
               const SizedBox(height: 22),
               Row(children: [
                 Text('Your services',
@@ -65,7 +72,7 @@ class RiderDashboardScreen extends ConsumerWidget {
                         fontWeight: FontWeight.w700,
                         color: AppColors.nearBlack)),
                 const Spacer(),
-                Text('4 enabled',
+                Text('${services.length} enabled',
                     style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -73,10 +80,10 @@ class RiderDashboardScreen extends ConsumerWidget {
               ]),
               const SizedBox(height: 10),
               Row(children: [
-                _service(Icons.fastfood_rounded, 'Food', const Color(0xFFE86A22)),
-                _service(Icons.inventory_2_rounded, 'Pickup', const Color(0xFF5278D6)),
-                _service(Icons.local_gas_station_rounded, 'Gas', const Color(0xFFB16B22)),
-                _service(Icons.spa_rounded, 'Beauty', const Color(0xFFB14E83)),
+                _service(Icons.fastfood_rounded, 'Food', const Color(0xFFE86A22), services.contains('food')),
+                _service(Icons.inventory_2_rounded, 'Pickup', const Color(0xFF5278D6), services.contains('pickup')),
+                _service(Icons.local_gas_station_rounded, 'Gas', const Color(0xFFB16B22), services.contains('gas')),
+                _service(Icons.spa_rounded, 'Beauty', const Color(0xFFB14E83), services.contains('beauty')),
               ]),
               const SizedBox(height: 22),
               _tipCard(),
@@ -89,7 +96,7 @@ class RiderDashboardScreen extends ConsumerWidget {
 
   Widget _onlineCard(BuildContext context, WidgetRef ref, bool online) =>
       GestureDetector(
-        onTap: () => ref.read(riderOnlineProvider.notifier).state = !online,
+        onTap: () => _setOnline(ref, !online),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           padding: const EdgeInsets.all(18),
@@ -124,8 +131,7 @@ class RiderDashboardScreen extends ConsumerWidget {
                 ])),
             Switch(
                 value: online,
-                onChanged: (value) =>
-                    ref.read(riderOnlineProvider.notifier).state = value,
+                onChanged: (value) => _setOnline(ref, value),
                 activeThumbColor: AppColors.primaryLight),
           ]),
         ),
@@ -153,33 +159,57 @@ class RiderDashboardScreen extends ConsumerWidget {
         ]),
       );
 
-  Widget _mapCard(BuildContext context) => GestureDetector(
-        onTap: () => context.go('/rider/request'),
-        child: Container(
+  Future<void> _setOnline(WidgetRef ref, bool value) async {
+    final service = ref.read(riderServiceProvider);
+    final result = value ? await service.goOnline() : await service.goOffline();
+    if (result) {
+      ref.read(riderOnlineProvider.notifier).state = value;
+      ref.invalidate(riderDashboardProvider);
+      ref.invalidate(riderAvailableOrdersProvider);
+    }
+  }
+
+  Widget _mapCard(BuildContext context, List<Map<String, dynamic>> orders) => Container(
           height: 190,
-          decoration: BoxDecoration(
-              color: const Color(0xFFDDECE3),
-              borderRadius: BorderRadius.circular(24),
-              image: const DecorationImage(
-                  image: NetworkImage(
-                      'https://tile.openstreetmap.org/15/17410/16080.png'),
-                  fit: BoxFit.cover,
-                  opacity: .35)),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(24)),
           child: Stack(children: [
+            FlutterMap(
+              options: const MapOptions(
+                initialCenter: LatLng(7.9465, -1.0232),
+                initialZoom: 13,
+                interactionOptions: InteractionOptions(flags: InteractiveFlag.none),
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: '${ApiEndpoints.baseUrl}/api/v1/maps/tile/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.blessman.swiftdrop',
+                ),
+                MarkerLayer(markers: [
+                  for (final order in orders)
+                    if (order['pickup_lat'] is num && order['pickup_lng'] is num)
+                      Marker(
+                        point: LatLng(
+                          (order['pickup_lat'] as num).toDouble(),
+                          (order['pickup_lng'] as num).toDouble(),
+                        ),
+                        width: 36,
+                        height: 36,
+                        child: const Icon(Icons.location_on_rounded,
+                            color: AppColors.deepGreen, size: 34),
+                      ),
+                ]),
+              ],
+            ),
             Positioned(
-                top: 14,
-                left: 14,
-                child: _mapPill(Icons.near_me_rounded, '6 requests nearby')),
-            const Center(
-                child: Icon(Icons.location_on_rounded,
-                    color: AppColors.deepGreen, size: 46)),
-            Positioned(
-                bottom: 14,
-                right: 14,
-                child: _mapPill(Icons.open_in_full_rounded, 'View map')),
+              top: 14,
+              left: 14,
+              child: _mapPill(Icons.near_me_rounded, '${orders.length} requests nearby'),
+            ),
+            if (orders.isEmpty)
+              const Center(child: Text('No nearby requests')),
           ]),
-        ),
-      );
+        );
 
   Widget _mapPill(IconData icon, String text) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
@@ -194,14 +224,15 @@ class RiderDashboardScreen extends ConsumerWidget {
         ]),
       );
 
-  Widget _service(IconData icon, String label, Color color) => Expanded(
+  Widget _service(IconData icon, String label, Color color, bool enabled) => Expanded(
         child: Column(children: [
           Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                  color: Colors.white, borderRadius: BorderRadius.circular(18)),
-              child: Icon(icon, color: color, size: 24)),
+                  color: enabled ? Colors.white : Colors.black12,
+                  borderRadius: BorderRadius.circular(18)),
+              child: Icon(icon, color: enabled ? color : Colors.black38, size: 24)),
           const SizedBox(height: 6),
           Text(label,
               style: GoogleFonts.inter(
